@@ -26,4 +26,4 @@
 - [Roadmap](docs/02-roadmap.md)
 - [Architecture](docs/03-architecture.md)
 - [AI Workflow](docs/04-ai-workflow.md)
-
+- [Requirements](docs/05-requirements.md)

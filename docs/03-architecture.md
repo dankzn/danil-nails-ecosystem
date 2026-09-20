@@ -29,18 +29,23 @@ packages/
 ## Основные домены
 
 - Identity and access: пользователи, роли, сессии.
-- Clients: контактные данные, каналы связи, согласия, заметки.
+- Clients: контактные данные, каналы связи, согласия, публичные статусы лояльности, приватные внутренние метки, заметки.
 - Services: услуги, цены, длительность, категории.
 - Staff: мастера, график, услуги, исключения.
 - Scheduling: слоты, записи, переносы, отмены, блокировки.
 - Notifications: события, шаблоны, каналы, история доставки.
 - Payments: статусы оплат, предоплаты, возвраты.
 - Analytics: загрузка, выручка, повторные визиты, no-show.
+- Localization: русский, английский, испанский.
 
 ## Минимальная схема данных
 
 - users
 - clients
+- client_contacts
+- client_loyalty_statuses
+- client_private_tags
+- client_private_tag_assignments
 - staff_profiles
 - services
 - staff_services
@@ -48,11 +53,23 @@ packages/
 - schedule_exceptions
 - appointments
 - appointment_events
+- visit_notes
+- visit_materials
+- nail_photos
 - notification_templates
 - notification_jobs
 - message_channels
 - payments
 - reviews
+- consent_records
+
+## Права доступа
+
+- Owner/superuser видит все: CRM, аналитику, настройки, клиентов, мастеров, внутренние статусы.
+- Admin видит операционную CRM, подтверждает записи, связывается с клиентами и управляет расписанием в рамках прав.
+- Master видит только свои записи, карточки клиентов в объеме, необходимом для оказания услуги, и историю своих визитов.
+- Client видит только свои записи, публичный статус лояльности и разрешенные данные профиля.
+- Private client tags не должны попадать в клиентские API, Telegram Mini App или публичный web.
 
 ## Каналы
 
@@ -67,4 +84,3 @@ Telegram Mini App открывает web-интерфейс внутри Telegra
 ### WhatsApp
 
 WhatsApp идет через Cloud API. Вне 24-часового окна свободные сообщения запрещены, поэтому подтверждения и напоминания должны быть оформлены как approved templates.
-
