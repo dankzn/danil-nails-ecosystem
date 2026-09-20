@@ -1,0 +1,334 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/client"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Locale {
+  ru
+  en
+  es
+}
+
+enum UserRole {
+  owner
+  admin
+  master
+  client
+}
+
+enum AppointmentStatus {
+  draft
+  pending_admin_confirmation
+  pending_client_confirmation
+  confirmed
+  completed
+  canceled
+  rescheduled
+  no_show
+}
+
+enum ContactChannel {
+  phone
+  email
+  telegram
+  whatsapp
+}
+
+model User {
+  id           String   @id @default(cuid())
+  role         UserRole
+  email        String?  @unique
+  phone        String?  @unique
+  passwordHash String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  staffProfile StaffProfile?
+  client       Client?
+}
+
+model Client {
+  id                    String   @id @default(cuid())
+  userId                String?  @unique
+  fullName              String?
+  phone                 String
+  email                 String?
+  telegramUsername      String?
+  telegramChatId        String?
+  whatsappPhone         String?
+  allergies             String?
+  notes                 String?
+  requiresPrepayment    Boolean  @default(false)
+  prepaymentReason      String?
+  loyaltyStatusId       String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  user                  User?                     @relation(fields: [userId], references: [id])
+  loyaltyStatus         ClientLoyaltyStatus?      @relation(fields: [loyaltyStatusId], references: [id])
+  appointments          Appointment[]
+  privateTagAssignments ClientPrivateTagAssignment[]
+  visitNotes            VisitNote[]
+  visitMaterials        VisitMaterial[]
+  nailPhotos            NailPhoto[]
+  consentRecords        ConsentRecord[]
+
+  @@index([phone])
+  @@index([telegramUsername])
+}
+
+model ClientLoyaltyStatus {
+  id          String   @id @default(cuid())
+  code        String   @unique
+  titleRu     String
+  titleEn     String?
+  titleEs     String?
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  clients     Client[]
+}
+
+model ClientPrivateTag {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  color       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  assignments ClientPrivateTagAssignment[]
+}
+
+model ClientPrivateTagAssignment {
+  id        String   @id @default(cuid())
+  clientId  String
+  tagId     String
+  createdAt DateTime @default(now())
+
+  client    Client           @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  tag       ClientPrivateTag @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@unique([clientId, tagId])
+}
+
+model StaffProfile {
+  id           String   @id @default(cuid())
+  userId       String   @unique
+  displayName  String
+  bio          String?
+  isBookable   Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user         User                @relation(fields: [userId], references: [id])
+  services     StaffService[]
+  workingHours WorkingHour[]
+  exceptions   ScheduleException[]
+  appointments Appointment[]
+}
+
+model Service {
+  id                     String   @id @default(cuid())
+  slug                   String   @unique
+  titleRu                String
+  titleEn                String?
+  titleEs                String?
+  category               String?
+  durationMinutes        Int
+  priceAmount            Int?
+  priceCurrency          String   @default("RUB")
+  isActive               Boolean  @default(true)
+  requiresManualReview   Boolean  @default(false)
+  bufferAfterMinutes     Int      @default(0)
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  staffServices          StaffService[]
+  appointments           Appointment[]
+}
+
+model StaffService {
+  id        String @id @default(cuid())
+  staffId   String
+  serviceId String
+
+  staff     StaffProfile @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  service   Service      @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  @@unique([staffId, serviceId])
+}
+
+model WorkingHour {
+  id          String @id @default(cuid())
+  staffId     String
+  weekday     Int
+  startsAt    String
+  endsAt      String
+  isActive    Boolean @default(true)
+
+  staff       StaffProfile @relation(fields: [staffId], references: [id], onDelete: Cascade)
+
+  @@index([staffId, weekday])
+}
+
+model ScheduleException {
+  id          String   @id @default(cuid())
+  staffId     String
+  startsAt    DateTime
+  endsAt      DateTime
+  reason      String?
+  isBookable  Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  staff       StaffProfile @relation(fields: [staffId], references: [id], onDelete: Cascade)
+
+  @@index([staffId, startsAt, endsAt])
+}
+
+model Appointment {
+  id               String            @id @default(cuid())
+  clientId         String
+  staffId          String
+  serviceId        String
+  status           AppointmentStatus @default(pending_admin_confirmation)
+  startsAt         DateTime
+  endsAt           DateTime
+  clientComment    String?
+  internalNote     String?
+  clientConfirmedAt DateTime?
+  adminConfirmedAt  DateTime?
+  canceledAt       DateTime?
+  cancellationReason String?
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  client           Client       @relation(fields: [clientId], references: [id])
+  staff            StaffProfile @relation(fields: [staffId], references: [id])
+  service          Service      @relation(fields: [serviceId], references: [id])
+  events           AppointmentEvent[]
+  visitNotes       VisitNote[]
+  visitMaterials   VisitMaterial[]
+  nailPhotos       NailPhoto[]
+
+  @@index([staffId, startsAt, endsAt])
+  @@index([clientId, startsAt])
+  @@index([status])
+}
+
+model AppointmentEvent {
+  id            String            @id @default(cuid())
+  appointmentId String
+  fromStatus    AppointmentStatus?
+  toStatus      AppointmentStatus
+  actorUserId   String?
+  note          String?
+  createdAt     DateTime          @default(now())
+
+  appointment   Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+}
+
+model VisitNote {
+  id            String   @id @default(cuid())
+  clientId      String
+  appointmentId String?
+  authorUserId  String?
+  note          String
+  createdAt     DateTime @default(now())
+
+  client        Client       @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  appointment   Appointment? @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+}
+
+model VisitMaterial {
+  id            String   @id @default(cuid())
+  clientId      String
+  appointmentId String?
+  name          String
+  colorCode     String?
+  brand         String?
+  notes         String?
+  createdAt     DateTime @default(now())
+
+  client        Client       @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  appointment   Appointment? @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+}
+
+model NailPhoto {
+  id            String   @id @default(cuid())
+  clientId      String
+  appointmentId String?
+  url           String
+  caption       String?
+  createdAt     DateTime @default(now())
+
+  client        Client       @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  appointment   Appointment? @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+}
+
+model NotificationTemplate {
+  id        String   @id @default(cuid())
+  code      String   @unique
+  channel   String
+  locale    Locale   @default(ru)
+  title     String?
+  body      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model NotificationJob {
+  id          String   @id @default(cuid())
+  channel     String
+  recipient   String
+  templateCode String?
+  payload     Json?
+  scheduledAt DateTime
+  sentAt      DateTime?
+  failedAt    DateTime?
+  error       String?
+  createdAt   DateTime @default(now())
+
+  @@index([scheduledAt, sentAt])
+}
+
+model Payment {
+  id            String   @id @default(cuid())
+  appointmentId String?
+  clientId      String?
+  amount        Int
+  currency      String   @default("RUB")
+  status        String
+  provider      String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model Review {
+  id            String   @id @default(cuid())
+  appointmentId String?
+  clientId      String?
+  rating        Int
+  text          String?
+  isPublished   Boolean  @default(false)
+  createdAt     DateTime @default(now())
+}
+
+model ConsentRecord {
+  id          String   @id @default(cuid())
+  clientId    String
+  type        String
+  grantedAt   DateTime?
+  revokedAt   DateTime?
+  source      String?
+  createdAt   DateTime @default(now())
+
+  client      Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  @@index([clientId, type])
+}

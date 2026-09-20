@@ -1,0 +1,24 @@
+{
+  "name": "danil-nails-ecosystem",
+  "private": true,
+  "packageManager": "pnpm@11.25.0",
+  "engines": {
+    "node": ">=22.19.0",
+    "pnpm": ">=11.25.0"
+  },
+  "scripts": {
+    "dev": "pnpm --parallel --filter @danil-nails/api --filter @danil-nails/web dev",
+    "dev:api": "pnpm --filter @danil-nails/api dev",
+    "dev:web": "pnpm --filter @danil-nails/web dev",
+    "build": "pnpm -r build",
+    "lint": "pnpm -r lint",
+    "typecheck": "pnpm -r typecheck",
+    "db:generate": "pnpm --filter @danil-nails/db db:generate",
+    "db:migrate": "pnpm --filter @danil-nails/db db:migrate",
+    "db:studio": "pnpm --filter @danil-nails/db db:studio"
+  },
+  "devDependencies": {
+    "typescript": "latest"
+  }
+}
+
