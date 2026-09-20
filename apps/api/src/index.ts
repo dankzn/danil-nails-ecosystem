@@ -1,8 +1,11 @@
 import Fastify from "fastify";
 import {
+  attendanceConfirmationStatuses,
   appointmentStatuses,
+  bookingRules,
   businessConfig,
   initialServices,
+  supportedCurrencies,
   supportedLocales,
   userRoles
 } from "@danil-nails/shared";
@@ -23,8 +26,10 @@ server.get("/v1/meta", async () => ({
   brand: businessConfig.brandName,
   timezone: businessConfig.timezone,
   locales: supportedLocales,
+  currencies: supportedCurrencies,
   roles: userRoles,
-  appointmentStatuses
+  appointmentStatuses,
+  attendanceConfirmationStatuses
 }));
 
 server.get("/v1/services", async () => ({
@@ -34,8 +39,8 @@ server.get("/v1/services", async () => ({
 server.get("/v1/requirements", async () => ({
   launchMode: "owner_closed_test",
   bookingModeration: "manual_admin_confirmation",
-  defaultReminderMinutesBeforeAppointment: 60,
-  nextBookingRequiresPrepaymentAfterNoShow: true,
+  attendanceConfirmation: "separate_from_appointment_status",
+  bookingRules,
   privateClientTagsMustNeverReachClientApi: true
 }));
 
@@ -45,4 +50,3 @@ try {
   server.log.error(error);
   process.exit(1);
 }
-

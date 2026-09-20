@@ -48,6 +48,7 @@ packages/
 - client_private_tag_assignments
 - staff_profiles
 - services
+- service_prices
 - staff_services
 - working_hours
 - schedule_exceptions

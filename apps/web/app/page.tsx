@@ -1,113 +1,105 @@
-import { businessConfig, initialServices } from "@danil-nails/shared";
-
-const todayAppointments = [
-  {
-    time: "10:00",
-    client: "Тестовый клиент",
-    service: "Маникюр с покрытием",
-    status: "Ожидает подтверждения"
-  },
-  {
-    time: "13:00",
-    client: "Новый клиент",
-    service: "Японский маникюр",
-    status: "Черновик"
-  }
-];
-
-const launchTasks = [
-  ["Требования MVP", "готово"],
-  ["Каркас проекта", "в работе"],
-  ["База данных", "следующая"],
-  ["Telegram bot", "позже"]
-];
+import { CalendarPlus, ChevronRight, CircleAlert } from "lucide-react";
+import Link from "next/link";
+import { initialServices } from "@danil-nails/shared";
+import { mockAppointments, mockClients } from "./lib/mock-data";
 
 export default function Home() {
   return (
-    <main className="app-shell">
-      <aside className="sidebar">
-        <div className="brand">
-          <span className="brand-title">{businessConfig.brandName}</span>
-          <span className="brand-subtitle">CRM ecosystem</span>
+    <div className="page-stack">
+      <header className="page-header">
+        <div>
+          <p className="eyebrow">Москва · 20 сентября 2026</p>
+          <h1>Доброе утро, Данил</h1>
+          <p className="page-description">
+            Сегодня три записи, одна из них ждёт твоего подтверждения.
+          </p>
         </div>
+        <Link className="primary-button" href="/appointments">
+          <CalendarPlus aria-hidden="true" size={18} />
+          Создать запись
+        </Link>
+      </header>
 
-        <nav className="nav-list" aria-label="Основная навигация">
-          <span className="nav-item nav-item-active">Обзор</span>
-          <span className="nav-item">Записи</span>
-          <span className="nav-item">Клиенты</span>
-          <span className="nav-item">Услуги</span>
-          <span className="nav-item">Расписание</span>
-        </nav>
+      <section className="metric-grid" aria-label="Ключевые показатели">
+        <article className="metric">
+          <span className="metric-label">Записи сегодня</span>
+          <strong className="metric-value">{mockAppointments.length}</strong>
+          <span className="metric-note">4 ч 15 мин работы</span>
+        </article>
+        <article className="metric metric-attention">
+          <span className="metric-label">Ждут действия</span>
+          <strong className="metric-value">2</strong>
+          <span className="metric-note">Модерация и подтверждение</span>
+        </article>
+        <article className="metric">
+          <span className="metric-label">Клиенты</span>
+          <strong className="metric-value">{mockClients.length}</strong>
+          <span className="metric-note">Тестовая база</span>
+        </article>
+        <article className="metric">
+          <span className="metric-label">Услуги</span>
+          <strong className="metric-value">{initialServices.length}</strong>
+          <span className="metric-note">Доступны для записи</span>
+        </article>
+      </section>
 
-        <p className="sidebar-note">
-          Закрытый запуск для владельца. Следующий рубеж - полный цикл записи с
-          ручным подтверждением.
-        </p>
-      </aside>
+      <section className="content-grid content-grid-wide">
+        <article className="panel">
+          <div className="panel-heading">
+            <div>
+              <p className="section-kicker">Сегодня</p>
+              <h2>Ближайшие записи</h2>
+            </div>
+            <Link className="text-link" href="/appointments">
+              Все записи
+              <ChevronRight aria-hidden="true" size={16} />
+            </Link>
+          </div>
 
-      <section className="main">
-        <div className="topbar">
-          <div>
-            <p className="eyebrow">Москва · {businessConfig.timezone}</p>
-            <h1>Рабочая панель первого запуска</h1>
-            <p>
-              Здесь будет собираться ежедневная картина: записи, подтверждения,
-              клиенты, напоминания и статусы, которые видны только внутри CRM.
-            </p>
-          </div>
-          <span className="status-pill">MVP в разработке</span>
-        </div>
-
-        <section className="metric-grid" aria-label="Ключевые показатели">
-          <div className="metric">
-            <span className="metric-label">Записи сегодня</span>
-            <strong className="metric-value">2</strong>
-          </div>
-          <div className="metric">
-            <span className="metric-label">Ожидают подтверждения</span>
-            <strong className="metric-value">1</strong>
-          </div>
-          <div className="metric">
-            <span className="metric-label">Услуги в прайсе</span>
-            <strong className="metric-value">{initialServices.length}</strong>
-          </div>
-          <div className="metric">
-            <span className="metric-label">Языки интерфейса</span>
-            <strong className="metric-value">3</strong>
-          </div>
-        </section>
-
-        <section className="section-grid">
-          <div className="panel">
-            <h2>Ближайшие записи</h2>
-            <div className="timeline">
-              {todayAppointments.map((appointment) => (
-                <div className="timeline-row" key={appointment.time}>
-                  <span className="time">{appointment.time}</span>
-                  <span className="client">
-                    <strong>{appointment.client}</strong>
-                    <span>{appointment.service}</span>
-                  </span>
-                  <span className="tag">{appointment.status}</span>
+          <div className="appointment-list">
+            {mockAppointments.map((appointment) => (
+              <div className="appointment-row" key={appointment.id}>
+                <div className="appointment-time">
+                  <strong>{appointment.time}</strong>
+                  <span>{appointment.duration}</span>
                 </div>
-              ))}
+                <div className="appointment-client">
+                  <strong>{appointment.client}</strong>
+                  <span>{appointment.service}</span>
+                </div>
+                <span className={`status status-${appointment.statusTone}`}>
+                  {appointment.status}
+                </span>
+              </div>
+            ))}
+          </div>
+        </article>
+
+        <article className="panel attention-panel">
+          <div className="panel-heading">
+            <div>
+              <p className="section-kicker">Контроль</p>
+              <h2>Требует внимания</h2>
             </div>
           </div>
-
-          <div className="panel">
-            <h2>Стартовые задачи</h2>
-            <ul className="checklist">
-              {launchTasks.map(([task, status]) => (
-                <li key={task}>
-                  <strong>{task}</strong>
-                  <span>{status}</span>
-                </li>
-              ))}
-            </ul>
+          <div className="attention-list">
+            <div className="attention-item">
+              <CircleAlert aria-hidden="true" size={20} />
+              <div>
+                <strong>Подтвердить новую запись</strong>
+                <span>Анна Петрова, сегодня в 10:00</span>
+              </div>
+            </div>
+            <div className="attention-item">
+              <CircleAlert aria-hidden="true" size={20} />
+              <div>
+                <strong>График на октябрь не составлен</strong>
+                <span>Заполнить до 20 сентября включительно</span>
+              </div>
+            </div>
           </div>
-        </section>
+        </article>
       </section>
-    </main>
+    </div>
   );
 }
-

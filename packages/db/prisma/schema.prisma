@@ -23,12 +23,24 @@ enum UserRole {
 enum AppointmentStatus {
   draft
   pending_admin_confirmation
-  pending_client_confirmation
   confirmed
   completed
   canceled
   rescheduled
   no_show
+}
+
+enum AttendanceConfirmationStatus {
+  not_requested
+  pending
+  confirmed
+  declined
+}
+
+enum Currency {
+  RUB
+  EUR
+  USD
 }
 
 enum ContactChannel {
@@ -141,8 +153,6 @@ model Service {
   titleEs                String?
   category               String?
   durationMinutes        Int
-  priceAmount            Int?
-  priceCurrency          String   @default("RUB")
   isActive               Boolean  @default(true)
   requiresManualReview   Boolean  @default(false)
   bufferAfterMinutes     Int      @default(0)
@@ -151,6 +161,20 @@ model Service {
 
   staffServices          StaffService[]
   appointments           Appointment[]
+  prices                 ServicePrice[]
+}
+
+model ServicePrice {
+  id          String   @id @default(cuid())
+  serviceId   String
+  currency    Currency
+  amountMinor Int
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  service     Service @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  @@unique([serviceId, currency])
 }
 
 model StaffService {
@@ -197,11 +221,13 @@ model Appointment {
   staffId          String
   serviceId        String
   status           AppointmentStatus @default(pending_admin_confirmation)
+  attendanceConfirmationStatus AttendanceConfirmationStatus @default(not_requested)
   startsAt         DateTime
   endsAt           DateTime
   clientComment    String?
   internalNote     String?
   clientConfirmedAt DateTime?
+  attendanceConfirmationRequestedAt DateTime?
   adminConfirmedAt  DateTime?
   canceledAt       DateTime?
   cancellationReason String?
@@ -302,7 +328,7 @@ model Payment {
   appointmentId String?
   clientId      String?
   amount        Int
-  currency      String   @default("RUB")
+  currency      Currency @default(RUB)
   status        String
   provider      String?
   createdAt     DateTime @default(now())
