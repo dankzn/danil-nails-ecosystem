@@ -27,3 +27,4 @@
 - [Architecture](docs/03-architecture.md)
 - [AI Workflow](docs/04-ai-workflow.md)
 - [Requirements](docs/05-requirements.md)
+- [Supabase Setup](docs/06-supabase-setup.md)

@@ -4,12 +4,13 @@ import {
   CalendarDays,
   Clock3,
   LayoutDashboard,
+  LogOut,
   Scissors,
   Users
 } from "lucide-react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import type { ReactNode } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useState, type ReactNode } from "react";
 
 const navigation = [
   { href: "/", label: "Обзор", icon: LayoutDashboard },
@@ -21,6 +22,77 @@ const navigation = [
 
 export function CrmShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
+  const [user, setUser] = useState<{
+    displayName: string | null;
+    email: string | null;
+    role: string;
+  } | null>(null);
+  const [isCheckingSession, setIsCheckingSession] = useState(pathname !== "/login");
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
+
+  useEffect(() => {
+    if (pathname === "/login") {
+      setIsCheckingSession(false);
+      return;
+    }
+
+    const controller = new AbortController();
+
+    async function checkSession() {
+      try {
+        const response = await fetch(`${apiUrl}/v1/auth/me`, {
+          credentials: "include",
+          signal: controller.signal
+        });
+
+        if (!response.ok) {
+          router.replace("/login");
+          return;
+        }
+
+        const body = (await response.json()) as {
+          user: {
+            displayName: string | null;
+            email: string | null;
+            role: string;
+          };
+        };
+        setUser(body.user);
+      } catch (error) {
+        if (!(error instanceof DOMException && error.name === "AbortError")) {
+          router.replace("/login");
+        }
+      } finally {
+        setIsCheckingSession(false);
+      }
+    }
+
+    void checkSession();
+    return () => controller.abort();
+  }, [apiUrl, pathname, router]);
+
+  async function logout() {
+    await fetch(`${apiUrl}/v1/auth/logout`, {
+      method: "POST",
+      credentials: "include"
+    });
+    setUser(null);
+    router.replace("/login");
+  }
+
+  if (pathname === "/login") {
+    return children;
+  }
+
+  if (isCheckingSession || !user) {
+    return (
+      <div className="auth-loading" role="status">
+        <span className="brand-mark">DN</span>
+        <span>Проверяем доступ к CRM…</span>
+      </div>
+    );
+  }
 
   return (
     <div className="app-shell">
@@ -53,10 +125,19 @@ export function CrmShell({ children }: { children: ReactNode }) {
 
         <div className="account">
           <span className="account-avatar">ДА</span>
-          <span>
-            <strong>Данил Афлиатов</strong>
-            <small>Владелец</small>
+          <span className="account-copy">
+            <strong>{user.displayName ?? user.email ?? "Владелец"}</strong>
+            <small>{user.role === "owner" ? "Владелец" : user.role}</small>
           </span>
+          <button
+            aria-label="Выйти из CRM"
+            className="icon-button icon-button-dark"
+            onClick={() => void logout()}
+            title="Выйти"
+            type="button"
+          >
+            <LogOut aria-hidden="true" size={17} />
+          </button>
         </div>
       </aside>
 

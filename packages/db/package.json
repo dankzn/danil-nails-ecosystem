@@ -2,19 +2,38 @@
   "name": "@danil-nails/db",
   "private": true,
   "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
   "scripts": {
-    "build": "prisma generate",
-    "lint": "prisma validate",
-    "typecheck": "prisma validate",
+    "build": "prisma generate && tsc --project tsconfig.json",
+    "test": "tsx --test src/**/*.test.ts",
+    "lint": "prisma validate && tsc --project tsconfig.json --noEmit",
+    "typecheck": "prisma validate && prisma generate && tsc --project tsconfig.json --noEmit",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
+    "db:deploy": "prisma migrate deploy",
+    "db:seed": "prisma generate && tsx src/seed.ts",
     "db:studio": "prisma studio"
   },
   "dependencies": {
-    "@prisma/client": "7.10.0"
+    "@danil-nails/shared": "workspace:*",
+    "@prisma/adapter-pg": "^7.10.0",
+    "@prisma/client": "7.10.0",
+    "dotenv": "^18.0.1",
+    "pg": "^8.23.0"
   },
   "devDependencies": {
-    "prisma": "7.10.0"
+    "@types/node": "^26.6.2",
+    "@types/pg": "^8.23.1",
+    "prisma": "7.10.0",
+    "tsx": "^4.23.14",
+    "typescript": "^7.0.2"
   },
   "prisma": {
     "schema": "prisma/schema.prisma"

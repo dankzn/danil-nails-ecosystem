@@ -11,14 +11,16 @@
     "dev:api": "pnpm --filter @danil-nails/api dev",
     "dev:web": "pnpm --filter @danil-nails/web dev",
     "build": "pnpm -r build",
+    "test": "pnpm --filter @danil-nails/db build && pnpm -r test",
     "lint": "pnpm -r lint",
     "typecheck": "pnpm -r typecheck",
     "db:generate": "pnpm --filter @danil-nails/db db:generate",
     "db:migrate": "pnpm --filter @danil-nails/db db:migrate",
+    "db:deploy": "pnpm --filter @danil-nails/db db:deploy",
+    "db:seed": "pnpm --filter @danil-nails/db db:seed",
     "db:studio": "pnpm --filter @danil-nails/db db:studio"
   },
   "devDependencies": {
     "typescript": "latest"
   }
 }
-

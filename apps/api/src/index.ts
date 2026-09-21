@@ -1,52 +1,26 @@
-import Fastify from "fastify";
-import {
-  attendanceConfirmationStatuses,
-  appointmentStatuses,
-  bookingRules,
-  businessConfig,
-  initialServices,
-  supportedCurrencies,
-  supportedLocales,
-  userRoles
-} from "@danil-nails/shared";
+import { createDatabaseClient } from "@danil-nails/db";
+import { buildServer } from "./app.js";
+import { environment } from "./config.js";
 
-const server = Fastify({
-  logger: true
-});
-
-const port = Number(process.env.PORT ?? 4000);
-const host = process.env.HOST ?? "0.0.0.0";
-
-server.get("/health", async () => ({
-  ok: true,
-  service: "danil-nails-api"
-}));
-
-server.get("/v1/meta", async () => ({
-  brand: businessConfig.brandName,
-  timezone: businessConfig.timezone,
-  locales: supportedLocales,
-  currencies: supportedCurrencies,
-  roles: userRoles,
-  appointmentStatuses,
-  attendanceConfirmationStatuses
-}));
-
-server.get("/v1/services", async () => ({
-  services: initialServices
-}));
-
-server.get("/v1/requirements", async () => ({
-  launchMode: "owner_closed_test",
-  bookingModeration: "manual_admin_confirmation",
-  attendanceConfirmation: "separate_from_appointment_status",
-  bookingRules,
-  privateClientTagsMustNeverReachClientApi: true
-}));
+const database = environment.DATABASE_URL
+  ? createDatabaseClient(environment.DATABASE_URL)
+  : null;
+const server = await buildServer(database);
 
 try {
-  await server.listen({ port, host });
+  await server.listen({ port: environment.PORT, host: environment.HOST });
 } catch (error) {
   server.log.error(error);
+  await database?.$disconnect();
   process.exit(1);
 }
+
+async function shutdown(signal: string) {
+  server.log.info({ signal }, "Shutting down");
+  await server.close();
+  await database?.$disconnect();
+  process.exit(0);
+}
+
+process.once("SIGINT", () => void shutdown("SIGINT"));
+process.once("SIGTERM", () => void shutdown("SIGTERM"));
