@@ -16,6 +16,7 @@ import { environment } from "./config.js";
 import { registerAuthRoutes } from "./routes/auth.js";
 import { registerAppointmentRoutes } from "./routes/appointments.js";
 import { registerClientRoutes } from "./routes/clients.js";
+import { registerDashboardRoutes } from "./routes/dashboard.js";
 import { registerServiceRoutes } from "./routes/services.js";
 
 export async function buildServer(
@@ -72,6 +73,7 @@ export async function buildServer(
   registerAppointmentRoutes(server, database);
   registerServiceRoutes(server, database);
   registerClientRoutes(server, database);
+  registerDashboardRoutes(server, database);
 
   return server;
 }
