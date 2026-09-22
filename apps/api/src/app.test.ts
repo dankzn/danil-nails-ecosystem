@@ -34,6 +34,24 @@ test("public services fall back to seed data", async () => {
   assert.equal(body.services.length, 3);
 });
 
+test("CORS preflight allows CRM mutation methods", async () => {
+  const response = await server.inject({
+    method: "OPTIONS",
+    url: "/v1/admin/schedule/working-hours",
+    headers: {
+      origin: "http://localhost:3000",
+      "access-control-request-method": "PUT",
+      "access-control-request-headers": "content-type"
+    }
+  });
+  const methods = response.headers["access-control-allow-methods"];
+
+  assert.equal(response.statusCode, 204);
+  assert.match(String(methods), /PUT/);
+  assert.match(String(methods), /PATCH/);
+  assert.match(String(methods), /DELETE/);
+});
+
 test("database routes fail closed before configuration", async () => {
   const loginResponse = await server.inject({
     method: "POST",
@@ -56,10 +74,15 @@ test("database routes fail closed before configuration", async () => {
     method: "GET",
     url: "/v1/admin/dashboard"
   });
+  const scheduleResponse = await server.inject({
+    method: "GET",
+    url: "/v1/admin/schedule"
+  });
 
   assert.equal(loginResponse.statusCode, 503);
   assert.equal(clientsResponse.statusCode, 503);
   assert.equal(appointmentsResponse.statusCode, 503);
   assert.equal(bookingOptionsResponse.statusCode, 503);
   assert.equal(dashboardResponse.statusCode, 503);
+  assert.equal(scheduleResponse.statusCode, 503);
 });

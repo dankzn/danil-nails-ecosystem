@@ -17,6 +17,7 @@ import { registerAuthRoutes } from "./routes/auth.js";
 import { registerAppointmentRoutes } from "./routes/appointments.js";
 import { registerClientRoutes } from "./routes/clients.js";
 import { registerDashboardRoutes } from "./routes/dashboard.js";
+import { registerScheduleRoutes } from "./routes/schedule.js";
 import { registerServiceRoutes } from "./routes/services.js";
 
 export async function buildServer(
@@ -30,7 +31,8 @@ export async function buildServer(
   await server.register(cookie);
   await server.register(cors, {
     origin: environment.APP_PUBLIC_URL,
-    credentials: true
+    credentials: true,
+    methods: ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
   });
   await server.register(rateLimit, {
     global: false
@@ -74,6 +76,7 @@ export async function buildServer(
   registerServiceRoutes(server, database);
   registerClientRoutes(server, database);
   registerDashboardRoutes(server, database);
+  registerScheduleRoutes(server, database);
 
   return server;
 }
