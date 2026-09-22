@@ -14,6 +14,7 @@ import {
 import Fastify from "fastify";
 import { environment } from "./config.js";
 import { registerAuthRoutes } from "./routes/auth.js";
+import { registerAppointmentRoutes } from "./routes/appointments.js";
 import { registerClientRoutes } from "./routes/clients.js";
 import { registerServiceRoutes } from "./routes/services.js";
 
@@ -68,6 +69,7 @@ export async function buildServer(
   }));
 
   registerAuthRoutes(server, database);
+  registerAppointmentRoutes(server, database);
   registerServiceRoutes(server, database);
   registerClientRoutes(server, database);
 

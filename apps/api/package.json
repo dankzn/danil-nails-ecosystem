@@ -6,7 +6,7 @@
     "predev": "pnpm --filter @danil-nails/db build",
     "dev": "tsx watch src/index.ts",
     "build": "tsc --project tsconfig.json",
-    "test": "tsx --test src/**/*.test.ts",
+    "test": "tsx --test src/*.test.ts src/**/*.test.ts",
     "start": "node dist/index.js",
     "lint": "tsc --project tsconfig.json --noEmit",
     "typecheck": "tsc --project tsconfig.json --noEmit"
