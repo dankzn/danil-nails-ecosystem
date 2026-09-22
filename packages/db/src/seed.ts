@@ -139,7 +139,7 @@ async function seed() {
   }
 
   console.info(
-    `Seed completed: owner ${ownerEmail}, ${initialServices.length} services`
+    `Seed completed: owner account and ${initialServices.length} services`
   );
 }
 
