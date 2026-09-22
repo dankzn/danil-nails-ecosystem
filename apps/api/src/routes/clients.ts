@@ -86,7 +86,15 @@ export function registerClientRoutes(
               ]
             }
           : {},
-        include: adminClientInclude,
+        include: {
+          ...adminClientInclude,
+          _count: { select: { appointments: true } },
+          appointments: {
+            select: { startsAt: true },
+            orderBy: { startsAt: "desc" },
+            take: 1
+          }
+        },
         orderBy: { updatedAt: "desc" },
         take: query.data.limit
       });
