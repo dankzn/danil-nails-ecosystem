@@ -25,6 +25,9 @@ const navigation = [
 
 export function CrmShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  const normalizedPathname =
+    pathname === "/" ? pathname : pathname.replace(/\/+$/, "");
+  const isLoginPage = normalizedPathname === "/login";
   const router = useRouter();
   const activeNavItemRef = useRef<HTMLAnchorElement>(null);
   const [user, setUser] = useState<{
@@ -32,9 +35,9 @@ export function CrmShell({ children }: { children: ReactNode }) {
     email: string | null;
     role: string;
   } | null>(null);
-  const [isCheckingSession, setIsCheckingSession] = useState(pathname !== "/login");
+  const [isCheckingSession, setIsCheckingSession] = useState(!isLoginPage);
   useEffect(() => {
-    if (pathname === "/login") {
+    if (isLoginPage) {
       setIsCheckingSession(false);
       return;
     }
@@ -72,7 +75,7 @@ export function CrmShell({ children }: { children: ReactNode }) {
 
     void checkSession();
     return () => controller.abort();
-  }, [apiUrl, pathname, router]);
+  }, [apiUrl, isLoginPage, router]);
 
   useEffect(() => {
     if (window.matchMedia("(max-width: 760px)").matches) {
@@ -93,7 +96,7 @@ export function CrmShell({ children }: { children: ReactNode }) {
     router.replace("/login");
   }
 
-  if (pathname === "/login") {
+  if (isLoginPage) {
     return children;
   }
 
@@ -122,7 +125,9 @@ export function CrmShell({ children }: { children: ReactNode }) {
             .filter((item) => !item.ownerOnly || user.role === "owner")
             .map(({ href, label, icon: Icon }) => {
             const isActive =
-              href === "/" ? pathname === href : pathname.startsWith(href);
+              href === "/"
+                ? normalizedPathname === href
+                : normalizedPathname.startsWith(href);
 
             return (
               <Link
