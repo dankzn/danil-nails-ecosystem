@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: danil-nails-crm
+    runtime: node
+    plan: free
+    region: frankfurt
+    branch: main
+    buildCommand: pnpm install --frozen-lockfile && pnpm build
+    startCommand: pnpm start:deploy
+    healthCheckPath: /ready
+    autoDeployTrigger: commit
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: APP_PUBLIC_URL
+        value: https://danil-nails-crm.onrender.com
+      - key: DATABASE_URL
+        sync: false
+      - key: SESSION_COOKIE_NAME
+        value: danil_nails_crm_session
+      - key: SESSION_TTL_DAYS
+        value: 30

@@ -3,14 +3,15 @@
   "private": true,
   "packageManager": "pnpm@11.25.0",
   "engines": {
-    "node": ">=22.19.0",
-    "pnpm": ">=11.25.0"
+    "node": ">=22.19.0 <23",
+    "pnpm": ">=11.25.0 <12"
   },
   "scripts": {
     "dev": "pnpm --parallel --filter @danil-nails/api --filter @danil-nails/web dev",
     "dev:api": "pnpm --filter @danil-nails/api dev",
     "dev:web": "pnpm --filter @danil-nails/web dev",
     "build": "pnpm -r build",
+    "start:deploy": "node apps/api/dist/index.js",
     "test": "pnpm --filter @danil-nails/db build && pnpm -r test",
     "lint": "pnpm -r lint",
     "typecheck": "pnpm -r typecheck",

@@ -1,6 +1,7 @@
 import cookie from "@fastify/cookie";
 import cors from "@fastify/cors";
 import rateLimit from "@fastify/rate-limit";
+import staticFiles from "@fastify/static";
 import type { DatabaseClient } from "@danil-nails/db";
 import {
   appointmentStatuses,
@@ -12,6 +13,7 @@ import {
   userRoles
 } from "@danil-nails/shared";
 import Fastify from "fastify";
+import { resolve } from "node:path";
 import { environment } from "./config.js";
 import { registerAuthRoutes } from "./routes/auth.js";
 import { registerAppointmentRoutes } from "./routes/appointments.js";
@@ -38,6 +40,10 @@ export async function buildServer(
   });
   await server.register(rateLimit, {
     global: false
+  });
+  server.addHook("onSend", async (_request, reply, payload) => {
+    reply.header("x-robots-tag", "noindex, nofollow, noarchive");
+    return payload;
   });
 
   server.get("/health", async () => ({
@@ -81,6 +87,16 @@ export async function buildServer(
   registerScheduleRoutes(server, database);
   registerEmployeeRoutes(server, database);
   registerPayrollRoutes(server, database);
+
+  if (environment.NODE_ENV === "production") {
+    await server.register(staticFiles, {
+      root: resolve(
+        environment.CRM_STATIC_DIR ?? resolve(process.cwd(), "apps/web/out")
+      ),
+      prefix: "/",
+      redirect: true
+    });
+  }
 
   return server;
 }

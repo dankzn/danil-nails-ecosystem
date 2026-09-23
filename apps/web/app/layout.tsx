@@ -4,7 +4,13 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Danil Nails Studio CRM",
-  description: "CRM, booking and client cabinet for Danil Nails Studio"
+  description: "Закрытая CRM Danil Nails Studio",
+  robots: {
+    index: false,
+    follow: false,
+    noarchive: true,
+    nocache: true
+  }
 };
 
 export default function RootLayout({

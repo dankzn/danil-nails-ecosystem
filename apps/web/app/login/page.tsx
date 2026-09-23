@@ -3,13 +3,12 @@
 import { ArrowRight, LockKeyhole } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
+import { apiUrl } from "../lib/api-url";
 
 export default function LoginPage() {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
-
   async function submitLogin(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setErrorMessage(null);

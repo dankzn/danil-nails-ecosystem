@@ -49,7 +49,7 @@
 - Напоминания клиенту за 1 час.
 - Уведомление администратору за день до записей на завтра.
 - Подтверждение/отмена записи.
-- Staging deployment.
+- Бесплатный staging deployment CRM на Render Free.
 - Базовые e2e сценарии.
 
 ### Week 6: Stabilization и soft launch

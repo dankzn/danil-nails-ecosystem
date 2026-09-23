@@ -12,6 +12,7 @@ import {
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { apiUrl } from "../lib/api-url";
 
 const navigation = [
   { href: "/", label: "Обзор", icon: LayoutDashboard, ownerOnly: false },
@@ -32,8 +33,6 @@ export function CrmShell({ children }: { children: ReactNode }) {
     role: string;
   } | null>(null);
   const [isCheckingSession, setIsCheckingSession] = useState(pathname !== "/login");
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
-
   useEffect(() => {
     if (pathname === "/login") {
       setIsCheckingSession(false);
