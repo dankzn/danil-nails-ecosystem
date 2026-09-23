@@ -78,6 +78,10 @@ test("database routes fail closed before configuration", async () => {
     method: "GET",
     url: "/v1/admin/schedule"
   });
+  const employeesResponse = await server.inject({
+    method: "GET",
+    url: "/v1/owner/employees"
+  });
 
   assert.equal(loginResponse.statusCode, 503);
   assert.equal(clientsResponse.statusCode, 503);
@@ -85,4 +89,5 @@ test("database routes fail closed before configuration", async () => {
   assert.equal(bookingOptionsResponse.statusCode, 503);
   assert.equal(dashboardResponse.statusCode, 503);
   assert.equal(scheduleResponse.statusCode, 503);
+  assert.equal(employeesResponse.statusCode, 503);
 });

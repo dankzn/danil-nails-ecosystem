@@ -4,7 +4,13 @@ export {
   AppointmentStatus,
   AttendanceConfirmationStatus,
   Currency,
+  EmployeeDocumentType,
+  EmployeeEventType,
+  EmployeeNoteCategory,
+  EmploymentStatus,
+  EmploymentType,
   Locale,
   Prisma,
+  TrainingStatus,
   UserRole
 } from "./generated/client/client.js";

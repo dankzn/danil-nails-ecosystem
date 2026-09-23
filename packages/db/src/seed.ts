@@ -2,7 +2,12 @@ import { resolve } from "node:path";
 import { config } from "dotenv";
 import { initialServices } from "@danil-nails/shared";
 import { createDatabaseClient } from "./client.js";
-import { Currency, UserRole } from "./generated/client/client.js";
+import {
+  Currency,
+  EmploymentStatus,
+  EmploymentType,
+  UserRole
+} from "./generated/client/client.js";
 import { hashPassword } from "./security.js";
 
 config({
@@ -51,11 +56,18 @@ async function seed() {
     where: { userId: owner.id },
     update: {
       displayName: ownerName,
+      legalName: ownerName,
+      employmentStatus: EmploymentStatus.active,
+      employmentType: EmploymentType.owner,
       isBookable: true
     },
     create: {
       userId: owner.id,
       displayName: ownerName,
+      legalName: ownerName,
+      employmentStatus: EmploymentStatus.active,
+      employmentType: EmploymentType.owner,
+      hiredAt: new Date(),
       isBookable: true
     }
   });

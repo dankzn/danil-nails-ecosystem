@@ -7,10 +7,17 @@ type ModalProps = {
   children: ReactNode;
   description?: string;
   onClose: () => void;
+  size?: "default" | "wide";
   title: string;
 };
 
-export function Modal({ children, description, onClose, title }: ModalProps) {
+export function Modal({
+  children,
+  description,
+  onClose,
+  size = "default",
+  title
+}: ModalProps) {
   useEffect(() => {
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -37,7 +44,7 @@ export function Modal({ children, description, onClose, title }: ModalProps) {
         aria-describedby={description ? "modal-description" : undefined}
         aria-labelledby="modal-title"
         aria-modal="true"
-        className="modal"
+        className={`modal${size === "wide" ? " modal-wide" : ""}`}
         role="dialog"
       >
         <header className="modal-header">

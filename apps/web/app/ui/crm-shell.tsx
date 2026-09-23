@@ -3,6 +3,7 @@
 import {
   CalendarDays,
   Clock3,
+  ContactRound,
   LayoutDashboard,
   LogOut,
   Scissors,
@@ -10,19 +11,21 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 
 const navigation = [
-  { href: "/", label: "Обзор", icon: LayoutDashboard },
-  { href: "/appointments", label: "Записи", icon: CalendarDays },
-  { href: "/clients", label: "Клиенты", icon: Users },
-  { href: "/services", label: "Услуги", icon: Scissors },
-  { href: "/schedule", label: "Расписание", icon: Clock3 }
+  { href: "/", label: "Обзор", icon: LayoutDashboard, ownerOnly: false },
+  { href: "/appointments", label: "Записи", icon: CalendarDays, ownerOnly: false },
+  { href: "/clients", label: "Клиенты", icon: Users, ownerOnly: false },
+  { href: "/employees", label: "Сотрудники", icon: ContactRound, ownerOnly: true },
+  { href: "/services", label: "Услуги", icon: Scissors, ownerOnly: false },
+  { href: "/schedule", label: "Расписание", icon: Clock3, ownerOnly: false }
 ] as const;
 
 export function CrmShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
+  const activeNavItemRef = useRef<HTMLAnchorElement>(null);
   const [user, setUser] = useState<{
     displayName: string | null;
     email: string | null;
@@ -72,6 +75,16 @@ export function CrmShell({ children }: { children: ReactNode }) {
     return () => controller.abort();
   }, [apiUrl, pathname, router]);
 
+  useEffect(() => {
+    if (window.matchMedia("(max-width: 760px)").matches) {
+      activeNavItemRef.current?.scrollIntoView({
+        behavior: "instant",
+        block: "nearest",
+        inline: "center"
+      });
+    }
+  }, [pathname, user]);
+
   async function logout() {
     await fetch(`${apiUrl}/v1/auth/logout`, {
       method: "POST",
@@ -106,7 +119,9 @@ export function CrmShell({ children }: { children: ReactNode }) {
         </Link>
 
         <nav className="nav-list" aria-label="Основная навигация">
-          {navigation.map(({ href, label, icon: Icon }) => {
+          {navigation
+            .filter((item) => !item.ownerOnly || user.role === "owner")
+            .map(({ href, label, icon: Icon }) => {
             const isActive =
               href === "/" ? pathname === href : pathname.startsWith(href);
 
@@ -115,12 +130,13 @@ export function CrmShell({ children }: { children: ReactNode }) {
                 className={`nav-item${isActive ? " nav-item-active" : ""}`}
                 href={href}
                 key={href}
+                ref={isActive ? activeNavItemRef : undefined}
               >
                 <Icon aria-hidden="true" size={18} strokeWidth={1.8} />
                 <span>{label}</span>
               </Link>
             );
-          })}
+            })}
         </nav>
 
         <div className="account">

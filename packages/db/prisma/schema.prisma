@@ -50,6 +50,56 @@ enum ContactChannel {
   whatsapp
 }
 
+enum EmploymentStatus {
+  active
+  probation
+  leave
+  dismissed
+}
+
+enum EmploymentType {
+  owner
+  full_time
+  part_time
+  contractor
+  intern
+}
+
+enum EmployeeNoteCategory {
+  general
+  performance
+  recognition
+  incident
+  hr
+}
+
+enum TrainingStatus {
+  planned
+  in_progress
+  completed
+  canceled
+}
+
+enum EmployeeDocumentType {
+  employment_contract
+  nda
+  consent
+  medical_book
+  certificate
+  other
+}
+
+enum EmployeeEventType {
+  hired
+  status_changed
+  leave_started
+  leave_ended
+  dismissed
+  rehired
+  role_changed
+  profile_updated
+}
+
 model User {
   id           String   @id @default(cuid())
   role         UserRole
@@ -64,6 +114,8 @@ model User {
   staffProfile StaffProfile?
   client       Client?
   sessions     Session[]
+  employeeNotesAuthored  EmployeeNote[]  @relation("EmployeeNoteAuthor")
+  employeeEventsAuthored EmployeeEvent[] @relation("EmployeeEventActor")
 }
 
 model Session {
@@ -148,19 +200,108 @@ model ClientPrivateTagAssignment {
 }
 
 model StaffProfile {
-  id           String   @id @default(cuid())
-  userId       String   @unique
-  displayName  String
-  bio          String?
-  isBookable   Boolean  @default(true)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id                   String           @id @default(cuid())
+  userId               String           @unique
+  displayName          String
+  legalName            String?
+  position             String?
+  bio                  String?
+  employmentStatus     EmploymentStatus @default(active)
+  employmentType       EmploymentType   @default(full_time)
+  hiredAt              DateTime?
+  probationEndsAt      DateTime?
+  dismissedAt          DateTime?
+  dateOfBirth          DateTime?
+  workPhone            String?
+  personalEmail        String?
+  address              String?
+  emergencyContactName String?
+  emergencyContactPhone String?
+  isBookable           Boolean          @default(true)
+  createdAt            DateTime         @default(now())
+  updatedAt            DateTime         @updatedAt
 
   user         User                @relation(fields: [userId], references: [id])
   services     StaffService[]
   workingHours WorkingHour[]
   exceptions   ScheduleException[]
   appointments Appointment[]
+  employeeNotes EmployeeNote[]
+  trainings     EmployeeTraining[]
+  documents     EmployeeDocument[]
+  employeeEvents EmployeeEvent[]
+}
+
+model EmployeeNote {
+  id              String               @id @default(cuid())
+  staffId         String
+  category        EmployeeNoteCategory @default(general)
+  title           String?
+  body            String
+  eventDate       DateTime?
+  createdByUserId String?
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+
+  staff           StaffProfile @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  createdBy       User?        @relation("EmployeeNoteAuthor", fields: [createdByUserId], references: [id], onDelete: SetNull)
+
+  @@index([staffId, createdAt])
+}
+
+model EmployeeTraining {
+  id             String         @id @default(cuid())
+  staffId        String
+  title          String
+  provider       String?
+  status         TrainingStatus @default(planned)
+  startsAt       DateTime?
+  endsAt         DateTime?
+  completedAt    DateTime?
+  costMinor      Int?
+  currency       Currency?
+  certificateUrl String?
+  notes          String?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  staff          StaffProfile @relation(fields: [staffId], references: [id], onDelete: Cascade)
+
+  @@index([staffId, status])
+  @@index([endsAt])
+}
+
+model EmployeeDocument {
+  id        String               @id @default(cuid())
+  staffId   String
+  type      EmployeeDocumentType
+  title     String
+  issuedAt  DateTime?
+  expiresAt DateTime?
+  notes     String?
+  createdAt DateTime             @default(now())
+  updatedAt DateTime             @updatedAt
+
+  staff     StaffProfile @relation(fields: [staffId], references: [id], onDelete: Cascade)
+
+  @@index([staffId, type])
+  @@index([expiresAt])
+}
+
+model EmployeeEvent {
+  id          String            @id @default(cuid())
+  staffId     String
+  type        EmployeeEventType
+  occurredAt  DateTime          @default(now())
+  reason      String?
+  details     Json?
+  actorUserId String?
+  createdAt   DateTime          @default(now())
+
+  staff       StaffProfile @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  actor       User?        @relation("EmployeeEventActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([staffId, occurredAt])
 }
 
 model Service {
