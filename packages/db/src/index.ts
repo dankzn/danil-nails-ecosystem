@@ -3,6 +3,7 @@ export { hashPassword, verifyPassword } from "./security.js";
 export {
   AppointmentStatus,
   AttendanceConfirmationStatus,
+  BookingSource,
   Currency,
   EmployeeDocumentType,
   EmployeeEventType,
@@ -10,6 +11,8 @@ export {
   EmploymentStatus,
   EmploymentType,
   Locale,
+  PayrollEntryType,
+  PayrollStatus,
   Prisma,
   TrainingStatus,
   UserRole

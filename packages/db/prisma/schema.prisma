@@ -100,6 +100,29 @@ enum EmployeeEventType {
   profile_updated
 }
 
+enum BookingSource {
+  online
+  admin_manual
+}
+
+enum PayrollStatus {
+  accrued
+  partially_paid
+  paid
+  adjustment_due
+}
+
+enum PayrollEntryType {
+  master_commission
+  admin_commission
+  fixed_salary
+  review_bonus
+  cleaning
+  bonus
+  deduction
+  adjustment
+}
+
 model User {
   id           String   @id @default(cuid())
   role         UserRole
@@ -116,6 +139,11 @@ model User {
   sessions     Session[]
   employeeNotesAuthored  EmployeeNote[]  @relation("EmployeeNoteAuthor")
   employeeEventsAuthored EmployeeEvent[] @relation("EmployeeEventActor")
+  appointmentsCreated    Appointment[]   @relation("AppointmentCreator")
+  compensationRulesAuthored EmployeeCompensationRule[] @relation("CompensationRuleAuthor")
+  payrollsCreated        EmployeePayroll[] @relation("PayrollCreator")
+  payrollEntriesAuthored PayrollEntry[] @relation("PayrollEntryAuthor")
+  payrollPaymentsAuthored PayrollPayment[] @relation("PayrollPaymentAuthor")
 }
 
 model Session {
@@ -230,6 +258,8 @@ model StaffProfile {
   trainings     EmployeeTraining[]
   documents     EmployeeDocument[]
   employeeEvents EmployeeEvent[]
+  compensationRules EmployeeCompensationRule[]
+  payrolls       EmployeePayroll[]
 }
 
 model EmployeeNote {
@@ -302,6 +332,93 @@ model EmployeeEvent {
   actor       User?        @relation("EmployeeEventActor", fields: [actorUserId], references: [id], onDelete: SetNull)
 
   @@index([staffId, occurredAt])
+}
+
+model EmployeeCompensationRule {
+  id                        String   @id @default(cuid())
+  staffId                   String
+  effectiveFrom             DateTime
+  effectiveTo               DateTime?
+  masterCommissionBps       Int      @default(0)
+  adminBookingCommissionBps Int      @default(0)
+  fixedMonthlyMinor         Int      @default(0)
+  currency                  Currency @default(RUB)
+  createdByUserId           String?
+  createdAt                 DateTime @default(now())
+  updatedAt                 DateTime @updatedAt
+
+  staff                     StaffProfile @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  createdBy                 User? @relation("CompensationRuleAuthor", fields: [createdByUserId], references: [id], onDelete: SetNull)
+
+  @@unique([staffId, effectiveFrom])
+  @@index([staffId, effectiveFrom, effectiveTo])
+}
+
+model EmployeePayroll {
+  id                             String        @id @default(cuid())
+  staffId                        String
+  periodStart                    DateTime
+  periodEnd                      DateTime
+  currency                       Currency      @default(RUB)
+  status                         PayrollStatus @default(accrued)
+  masterCommissionBpsSnapshot    Int           @default(0)
+  adminCommissionBpsSnapshot     Int           @default(0)
+  fixedMonthlyMinorSnapshot      Int           @default(0)
+  appointmentCommissionMinor     Int           @default(0)
+  fixedMinor                     Int           @default(0)
+  adjustmentsMinor               Int           @default(0)
+  totalAccruedMinor              Int           @default(0)
+  totalPaidMinor                 Int           @default(0)
+  accruedAt                      DateTime       @default(now())
+  paidAt                         DateTime?
+  createdByUserId                String?
+  createdAt                      DateTime       @default(now())
+  updatedAt                      DateTime       @updatedAt
+
+  staff                          StaffProfile @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  createdBy                      User? @relation("PayrollCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  entries                        PayrollEntry[]
+  payments                       PayrollPayment[]
+
+  @@unique([staffId, periodStart, currency])
+  @@index([periodStart, status])
+}
+
+model PayrollEntry {
+  id                String           @id @default(cuid())
+  payrollId         String
+  appointmentId     String?
+  type              PayrollEntryType
+  description       String
+  sourceAmountMinor Int?
+  rateBps           Int?
+  amountMinor       Int
+  occurredAt        DateTime
+  createdByUserId   String?
+  createdAt         DateTime         @default(now())
+
+  payroll           EmployeePayroll @relation(fields: [payrollId], references: [id], onDelete: Cascade)
+  appointment       Appointment? @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+  createdBy         User? @relation("PayrollEntryAuthor", fields: [createdByUserId], references: [id], onDelete: SetNull)
+
+  @@unique([payrollId, appointmentId, type])
+  @@index([payrollId, type])
+}
+
+model PayrollPayment {
+  id              String   @id @default(cuid())
+  payrollId       String
+  amountMinor     Int
+  paidAt          DateTime
+  method          String?
+  note            String?
+  createdByUserId String?
+  createdAt       DateTime @default(now())
+
+  payroll         EmployeePayroll @relation(fields: [payrollId], references: [id], onDelete: Cascade)
+  createdBy       User? @relation("PayrollPaymentAuthor", fields: [createdByUserId], references: [id], onDelete: SetNull)
+
+  @@index([payrollId, paidAt])
 }
 
 model Service {
@@ -390,20 +507,29 @@ model Appointment {
   adminConfirmedAt  DateTime?
   canceledAt       DateTime?
   cancellationReason String?
+  source           BookingSource     @default(online)
+  createdByUserId   String?
+  priceMinor        Int               @default(0)
+  currency          Currency          @default(RUB)
+  completedAt       DateTime?
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
 
   client           Client       @relation(fields: [clientId], references: [id])
   staff            StaffProfile @relation(fields: [staffId], references: [id])
   service          Service      @relation(fields: [serviceId], references: [id])
+  createdBy        User?        @relation("AppointmentCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
   events           AppointmentEvent[]
   visitNotes       VisitNote[]
   visitMaterials   VisitMaterial[]
   nailPhotos       NailPhoto[]
+  payrollEntries   PayrollEntry[]
 
   @@index([staffId, startsAt, endsAt])
   @@index([clientId, startsAt])
   @@index([status])
+  @@index([createdByUserId, source, completedAt])
+  @@index([completedAt, status])
 }
 
 model AppointmentEvent {

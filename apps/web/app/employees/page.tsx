@@ -2,6 +2,7 @@
 
 import {
   Award,
+  Banknote,
   BookOpenCheck,
   BriefcaseBusiness,
   FileClock,
@@ -9,6 +10,7 @@ import {
   FolderOpen,
   GraduationCap,
   History,
+  Landmark,
   Pencil,
   Plus,
   RotateCcw,
@@ -33,6 +35,22 @@ type EmploymentStatus = "active" | "probation" | "leave" | "dismissed";
 type EmploymentType = "owner" | "full_time" | "part_time" | "contractor" | "intern";
 type UserRole = "owner" | "admin" | "master";
 type TrainingStatus = "planned" | "in_progress" | "completed" | "canceled";
+type Currency = "RUB" | "EUR" | "USD";
+type PayrollStatus =
+  | "not_accrued"
+  | "accrued"
+  | "partially_paid"
+  | "paid"
+  | "adjustment_due";
+type PayrollEntryType =
+  | "master_commission"
+  | "admin_commission"
+  | "fixed_salary"
+  | "review_bonus"
+  | "cleaning"
+  | "bonus"
+  | "deduction"
+  | "adjustment";
 type ServiceOption = { id: string; titleRu: string; isActive: boolean };
 
 type Employee = {
@@ -68,6 +86,58 @@ type Employee = {
     trainings: number;
     documents: number;
   };
+  payrollSummary?: {
+    month: string;
+    currency: Currency;
+    accruedMinor: number;
+    paidMinor: number;
+    status: PayrollStatus;
+  } | null;
+};
+
+type PayrollEntry = {
+  id?: string;
+  appointmentId: string | null;
+  type: PayrollEntryType;
+  description: string;
+  sourceAmountMinor: number | null;
+  rateBps: number | null;
+  amountMinor: number;
+  occurredAt: string;
+};
+type PayrollPayment = {
+  id: string;
+  amountMinor: number;
+  paidAt: string;
+  method: string | null;
+  note: string | null;
+};
+type PayrollData = {
+  month: string;
+  rule: {
+    id: string | null;
+    masterCommissionBps: number;
+    adminBookingCommissionBps: number;
+    fixedMonthlyMinor: number;
+    currency: Currency;
+  };
+  preview: {
+    entries: PayrollEntry[];
+    commissionMinor: number;
+    fixedMinor: number;
+    totalMinor: number;
+    currency: Currency;
+  };
+  payroll: {
+    id: string;
+    status: Exclude<PayrollStatus, "not_accrued">;
+    currency: Currency;
+    totalAccruedMinor: number;
+    totalPaidMinor: number;
+    remainingMinor: number;
+    entries: PayrollEntry[];
+    payments: PayrollPayment[];
+  } | null;
 };
 
 type EmployeeNote = {
@@ -144,7 +214,13 @@ type Metrics = {
   dismissed: number;
   pendingTrainings: number;
 };
-type DetailTab = "profile" | "notes" | "training" | "documents" | "history";
+type DetailTab =
+  | "profile"
+  | "salary"
+  | "notes"
+  | "training"
+  | "documents"
+  | "history";
 
 const statusMeta: Record<EmploymentStatus, { label: string; tone: string }> = {
   active: { label: "Работает", tone: "success" },
@@ -195,6 +271,23 @@ const eventLabels: Record<string, string> = {
   role_changed: "Изменена роль доступа",
   profile_updated: "Обновлено личное дело"
 };
+const payrollStatusMeta: Record<PayrollStatus, { label: string; tone: string }> = {
+  not_accrued: { label: "Не начислено", tone: "warning" },
+  accrued: { label: "Начислено", tone: "warning" },
+  partially_paid: { label: "Частично выплачено", tone: "info" },
+  paid: { label: "Выплачено", tone: "success" },
+  adjustment_due: { label: "Нужна корректировка", tone: "danger" }
+};
+const payrollEntryLabels: Record<PayrollEntryType, string> = {
+  master_commission: "Процент мастера",
+  admin_commission: "Процент администратора",
+  fixed_salary: "Фиксированная часть",
+  review_bonus: "Премия за отзыв",
+  cleaning: "Доплата за уборку",
+  bonus: "Премия",
+  deduction: "Удержание",
+  adjustment: "Корректировка"
+};
 
 const dateFormatter = new Intl.DateTimeFormat("ru-RU", {
   day: "numeric",
@@ -203,6 +296,20 @@ const dateFormatter = new Intl.DateTimeFormat("ru-RU", {
   timeZone: "UTC"
 });
 const today = new Date().toISOString().slice(0, 10);
+const currentMonth = today.slice(0, 7);
+
+function formatMoney(amountMinor: number, currency: Currency) {
+  return new Intl.NumberFormat("ru-RU", {
+    style: "currency",
+    currency,
+    maximumFractionDigits: 2
+  }).format(amountMinor / 100);
+}
+
+function minorAmount(value: string) {
+  const parsed = Number(value.replace(",", "."));
+  return Number.isFinite(parsed) ? Math.round(parsed * 100) : Number.NaN;
+}
 
 function emptyEmployeeForm(): EmployeeForm {
   return {
@@ -256,6 +363,15 @@ function employeeErrorMessage(error: unknown) {
     }
     if (error.code === "owner_employee_protected") {
       return "Учётную запись владельца нельзя уволить или изменить её роль.";
+    }
+    if (error.code === "paid_payroll_is_locked") {
+      return "В периоде уже есть выплаты. Автоматический расчёт заблокирован.";
+    }
+    if (error.code === "payroll_not_accrued") {
+      return "Сначала начислите зарплату за выбранный месяц.";
+    }
+    if (error.code === "invalid_payroll_payment_amount") {
+      return "Сумма выплаты превышает остаток к выплате.";
     }
     if (error.status === 401 || error.status === 403) {
       return "Этот раздел доступен только владельцу.";
@@ -344,6 +460,30 @@ export default function EmployeesPage() {
     expiresAt: "",
     notes: ""
   });
+  const [payrollMonth, setPayrollMonth] = useState(currentMonth);
+  const [payrollData, setPayrollData] = useState<PayrollData | null>(null);
+  const [isPayrollLoading, setIsPayrollLoading] = useState(false);
+  const [compensationForm, setCompensationForm] = useState({
+    masterPercent: "46",
+    adminPercent: "0",
+    fixedAmount: "0",
+    currency: "RUB" as Currency
+  });
+  const [adjustmentForm, setAdjustmentForm] = useState({
+    type: "bonus" as Exclude<
+      PayrollEntryType,
+      "master_commission" | "admin_commission" | "fixed_salary"
+    >,
+    description: "",
+    amount: "",
+    occurredAt: today
+  });
+  const [paymentForm, setPaymentForm] = useState({
+    amount: "",
+    paidAt: today,
+    method: "Банковский перевод",
+    note: ""
+  });
 
   const loadEmployees = useCallback(async (query: string, status: string) => {
     setIsLoading(true);
@@ -381,10 +521,38 @@ export default function EmployeesPage() {
         `/v1/owner/employees/${employeeId}`
       );
       setSelectedEmployee(response.employee);
+      setPayrollData(null);
     } catch (error) {
       setFormError(employeeErrorMessage(error));
     } finally {
       setIsDetailLoading(false);
+    }
+  }, []);
+
+  const loadPayroll = useCallback(async (employeeId: string, month: string) => {
+    setIsPayrollLoading(true);
+    setFormError(null);
+    try {
+      const response = await apiRequest<PayrollData>(
+        `/v1/owner/employees/${employeeId}/payroll?month=${month}`
+      );
+      setPayrollData(response);
+      setCompensationForm({
+        masterPercent: String(response.rule.masterCommissionBps / 100),
+        adminPercent: String(response.rule.adminBookingCommissionBps / 100),
+        fixedAmount: String(response.rule.fixedMonthlyMinor / 100),
+        currency: response.rule.currency
+      });
+      setPaymentForm((current) => ({
+        ...current,
+        amount: response.payroll
+          ? String(response.payroll.remainingMinor / 100)
+          : ""
+      }));
+    } catch (error) {
+      setFormError(employeeErrorMessage(error));
+    } finally {
+      setIsPayrollLoading(false);
     }
   }, []);
 
@@ -647,6 +815,160 @@ export default function EmployeesPage() {
     }
   }
 
+  async function refreshPayroll() {
+    if (!selectedEmployee) return;
+    await Promise.all([
+      loadPayroll(selectedEmployee.id, payrollMonth),
+      loadEmployees(search, statusFilter)
+    ]);
+  }
+
+  async function saveCompensation(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!selectedEmployee) return;
+    const masterCommissionBps = Math.round(
+      Number(compensationForm.masterPercent.replace(",", ".")) * 100
+    );
+    const adminBookingCommissionBps = Math.round(
+      Number(compensationForm.adminPercent.replace(",", ".")) * 100
+    );
+    const fixedMonthlyMinor = minorAmount(compensationForm.fixedAmount);
+    if (
+      !Number.isFinite(masterCommissionBps) ||
+      masterCommissionBps < 0 ||
+      masterCommissionBps > 10_000 ||
+      !Number.isFinite(adminBookingCommissionBps) ||
+      adminBookingCommissionBps < 0 ||
+      adminBookingCommissionBps > 10_000 ||
+      !Number.isFinite(fixedMonthlyMinor) ||
+      fixedMonthlyMinor < 0
+    ) {
+      setFormError("Проверьте проценты и фиксированную часть зарплаты.");
+      return;
+    }
+    setIsSaving(true);
+    setFormError(null);
+    try {
+      await apiRequest(`/v1/owner/employees/${selectedEmployee.id}/compensation`, {
+        method: "PUT",
+        body: JSON.stringify({
+          month: payrollMonth,
+          masterCommissionBps,
+          adminBookingCommissionBps,
+          fixedMonthlyMinor,
+          currency: compensationForm.currency
+        })
+      });
+      setNotice("Условия оплаты сохранены.");
+      await refreshPayroll();
+    } catch (error) {
+      setFormError(employeeErrorMessage(error));
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  async function accruePayroll() {
+    if (!selectedEmployee) return;
+    setIsSaving(true);
+    setFormError(null);
+    try {
+      await apiRequest(`/v1/owner/employees/${selectedEmployee.id}/payroll/accrue`, {
+        method: "POST",
+        body: JSON.stringify({ month: payrollMonth })
+      });
+      setNotice(payrollData?.payroll ? "Расчёт зарплаты обновлён." : "Зарплата начислена.");
+      await refreshPayroll();
+    } catch (error) {
+      setFormError(employeeErrorMessage(error));
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  async function submitPayrollAdjustment(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!selectedEmployee) return;
+    const amountMinor = minorAmount(adjustmentForm.amount);
+    if (!Number.isFinite(amountMinor) || amountMinor <= 0) {
+      setFormError("Укажите положительную сумму начисления или удержания.");
+      return;
+    }
+    setIsSaving(true);
+    setFormError(null);
+    try {
+      await apiRequest(`/v1/owner/employees/${selectedEmployee.id}/payroll/entries`, {
+        method: "POST",
+        body: JSON.stringify({
+          month: payrollMonth,
+          type: adjustmentForm.type,
+          description: adjustmentForm.description.trim(),
+          amountMinor,
+          occurredAt: adjustmentForm.occurredAt
+        })
+      });
+      setAdjustmentForm({
+        type: "bonus",
+        description: "",
+        amount: "",
+        occurredAt: today
+      });
+      await refreshPayroll();
+    } catch (error) {
+      setFormError(employeeErrorMessage(error));
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  async function deletePayrollAdjustment(entryId: string) {
+    if (!selectedEmployee) return;
+    setIsSaving(true);
+    setFormError(null);
+    try {
+      await apiRequest(
+        `/v1/owner/employees/${selectedEmployee.id}/payroll/entries/${entryId}?month=${payrollMonth}`,
+        { method: "DELETE" }
+      );
+      await refreshPayroll();
+    } catch (error) {
+      setFormError(employeeErrorMessage(error));
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  async function submitPayrollPayment(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!selectedEmployee) return;
+    const amountMinor = minorAmount(paymentForm.amount);
+    if (!Number.isFinite(amountMinor) || amountMinor <= 0) {
+      setFormError("Укажите сумму выплаты.");
+      return;
+    }
+    setIsSaving(true);
+    setFormError(null);
+    try {
+      await apiRequest(`/v1/owner/employees/${selectedEmployee.id}/payroll/payments`, {
+        method: "POST",
+        body: JSON.stringify({
+          month: payrollMonth,
+          amountMinor,
+          paidAt: paymentForm.paidAt,
+          method: optionalValue(paymentForm.method),
+          note: optionalValue(paymentForm.note)
+        })
+      });
+      setPaymentForm((current) => ({ ...current, note: "" }));
+      setNotice("Выплата отмечена.");
+      await refreshPayroll();
+    } catch (error) {
+      setFormError(employeeErrorMessage(error));
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
   return (
     <div className="page-stack">
       <header className="page-header">
@@ -746,6 +1068,7 @@ export default function EmployeesPage() {
                   <th>Статус</th>
                   <th>Занятость</th>
                   <th>CRM</th>
+                  <th>Зарплата за месяц</th>
                   <th>Личное дело</th>
                   <th aria-label="Действия" />
                 </tr>
@@ -784,6 +1107,27 @@ export default function EmployeesPage() {
                               : "Без пароля"
                             : "Закрыт"}
                         </span>
+                      </td>
+                      <td>
+                        {employee.payrollSummary ? (
+                          <div className="payroll-table-cell">
+                            <strong>
+                              {formatMoney(
+                                employee.payrollSummary.accruedMinor,
+                                employee.payrollSummary.currency
+                              )}
+                            </strong>
+                            <span
+                              className={`status status-${
+                                payrollStatusMeta[employee.payrollSummary.status].tone
+                              }`}
+                            >
+                              {payrollStatusMeta[employee.payrollSummary.status].label}
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="muted-label">Нет расчёта</span>
+                        )}
                       </td>
                       <td>
                         <strong>{employee._count.employeeNotes + employee._count.trainings + employee._count.documents}</strong>
@@ -1124,6 +1468,7 @@ export default function EmployeesPage() {
                 {(
                   [
                     { tab: "profile", label: "Профиль", Icon: BriefcaseBusiness },
+                    { tab: "salary", label: "Зарплата", Icon: Banknote },
                     { tab: "notes", label: "Заметки", Icon: Award },
                     { tab: "training", label: "Обучение", Icon: GraduationCap },
                     { tab: "documents", label: "Документы", Icon: FilePlus2 },
@@ -1137,6 +1482,9 @@ export default function EmployeesPage() {
                     onClick={() => {
                       setDetailTab(tab);
                       setFormError(null);
+                      if (tab === "salary" && selectedEmployee) {
+                        void loadPayroll(selectedEmployee.id, payrollMonth);
+                      }
                     }}
                     role="tab"
                     type="button"
@@ -1186,6 +1534,373 @@ export default function EmployeesPage() {
                       <span>Служебная информация</span>
                       <strong>{selectedEmployee.bio ?? "Не указана"}</strong>
                     </div>
+                  </div>
+                ) : null}
+
+                {detailTab === "salary" ? (
+                  <div className="payroll-stack">
+                    <div className="payroll-toolbar">
+                      <label className="form-field payroll-month-field">
+                        <span>Расчётный месяц</span>
+                        <input
+                          onChange={(event) => {
+                            const month = event.target.value;
+                            setPayrollMonth(month);
+                            void loadPayroll(selectedEmployee.id, month);
+                          }}
+                          type="month"
+                          value={payrollMonth}
+                        />
+                      </label>
+                      {payrollData ? (
+                        <span
+                          className={`status status-${
+                            payrollStatusMeta[
+                              payrollData.payroll?.status ?? "not_accrued"
+                            ].tone
+                          } payroll-status-chip`}
+                        >
+                          {
+                            payrollStatusMeta[
+                              payrollData.payroll?.status ?? "not_accrued"
+                            ].label
+                          }
+                        </span>
+                      ) : null}
+                    </div>
+
+                    {isPayrollLoading ? (
+                      <div className="schedule-loading" role="status">
+                        Загружаем расчёт зарплаты…
+                      </div>
+                    ) : payrollData ? (
+                      <>
+                        <section className="payroll-metrics" aria-label="Итоги зарплаты">
+                          <div>
+                            <span>
+                              {payrollData.payroll ? "Начислено" : "Предварительно"}
+                            </span>
+                            <strong>
+                              {formatMoney(
+                                payrollData.payroll?.totalAccruedMinor ??
+                                  payrollData.preview.totalMinor,
+                                payrollData.payroll?.currency ?? payrollData.preview.currency
+                              )}
+                            </strong>
+                          </div>
+                          <div>
+                            <span>Выплачено</span>
+                            <strong>
+                              {formatMoney(
+                                payrollData.payroll?.totalPaidMinor ?? 0,
+                                payrollData.payroll?.currency ?? payrollData.rule.currency
+                              )}
+                            </strong>
+                          </div>
+                          <div>
+                            <span>Осталось</span>
+                            <strong>
+                              {formatMoney(
+                                payrollData.payroll?.remainingMinor ??
+                                  payrollData.preview.totalMinor,
+                                payrollData.payroll?.currency ?? payrollData.rule.currency
+                              )}
+                            </strong>
+                          </div>
+                          <div>
+                            <span>Записей в расчёте</span>
+                            <strong>
+                              {
+                                (payrollData.payroll?.entries ??
+                                  payrollData.preview.entries).filter(
+                                  (entry) => entry.appointmentId
+                                ).length
+                              }
+                            </strong>
+                          </div>
+                        </section>
+
+                        <form className="payroll-section" onSubmit={(event) => void saveCompensation(event)}>
+                          <div className="payroll-section-heading">
+                            <div>
+                              <strong>Условия оплаты</strong>
+                              <span>Действуют для выбранного месяца и будущих расчётов.</span>
+                            </div>
+                          </div>
+                          <div className="form-grid form-grid-four">
+                            <label className="form-field">
+                              <span>Процент мастера</span>
+                              <input
+                                max={100}
+                                min={0}
+                                onChange={(event) =>
+                                  setCompensationForm((current) => ({
+                                    ...current,
+                                    masterPercent: event.target.value
+                                  }))
+                                }
+                                step="0.01"
+                                type="number"
+                                value={compensationForm.masterPercent}
+                              />
+                            </label>
+                            <label className="form-field">
+                              <span>Процент администратора</span>
+                              <input
+                                max={100}
+                                min={0}
+                                onChange={(event) =>
+                                  setCompensationForm((current) => ({
+                                    ...current,
+                                    adminPercent: event.target.value
+                                  }))
+                                }
+                                step="0.01"
+                                type="number"
+                                value={compensationForm.adminPercent}
+                              />
+                            </label>
+                            <label className="form-field">
+                              <span>Фиксированная часть</span>
+                              <input
+                                min={0}
+                                onChange={(event) =>
+                                  setCompensationForm((current) => ({
+                                    ...current,
+                                    fixedAmount: event.target.value
+                                  }))
+                                }
+                                step="0.01"
+                                type="number"
+                                value={compensationForm.fixedAmount}
+                              />
+                            </label>
+                            <label className="form-field">
+                              <span>Валюта</span>
+                              <select
+                                onChange={(event) =>
+                                  setCompensationForm((current) => ({
+                                    ...current,
+                                    currency: event.target.value as Currency
+                                  }))
+                                }
+                                value={compensationForm.currency}
+                              >
+                                <option value="RUB">RUB</option>
+                                <option value="EUR">EUR</option>
+                                <option value="USD">USD</option>
+                              </select>
+                            </label>
+                          </div>
+                          <div className="payroll-form-actions">
+                            <button className="secondary-button" disabled={isSaving} type="submit">
+                              Сохранить условия
+                            </button>
+                            <button
+                              className="primary-button"
+                              disabled={isSaving || Boolean(payrollData.payroll?.totalPaidMinor)}
+                              onClick={() => void accruePayroll()}
+                              type="button"
+                            >
+                              <Banknote aria-hidden="true" size={16} />
+                              {payrollData.payroll ? "Пересчитать" : "Начислить зарплату"}
+                            </button>
+                          </div>
+                        </form>
+
+                        <section className="payroll-section">
+                          <div className="payroll-section-heading">
+                            <div>
+                              <strong>Расшифровка начисления</strong>
+                              <span>Каждая сумма связана с записью или ручным основанием.</span>
+                            </div>
+                          </div>
+                          <div className="payroll-entry-list">
+                            {(payrollData.payroll?.entries ?? payrollData.preview.entries).map(
+                              (entry, index) => (
+                                <div className="payroll-entry" key={entry.id ?? `${entry.appointmentId}-${entry.type}-${index}`}>
+                                  <div>
+                                    <span>{payrollEntryLabels[entry.type]}</span>
+                                    <strong>{entry.description}</strong>
+                                    <small>
+                                      {formatDate(entry.occurredAt)}
+                                      {entry.sourceAmountMinor !== null && entry.rateBps !== null
+                                        ? ` · ${formatMoney(entry.sourceAmountMinor, payrollData.payroll?.currency ?? payrollData.rule.currency)} × ${entry.rateBps / 100}%`
+                                        : ""}
+                                    </small>
+                                  </div>
+                                  <strong className={entry.amountMinor < 0 ? "payroll-negative" : ""}>
+                                    {formatMoney(entry.amountMinor, payrollData.payroll?.currency ?? payrollData.rule.currency)}
+                                  </strong>
+                                  {entry.id &&
+                                  ![
+                                    "master_commission",
+                                    "admin_commission",
+                                    "fixed_salary"
+                                  ].includes(entry.type) ? (
+                                    <button
+                                      aria-label="Удалить начисление"
+                                      className="icon-button"
+                                      disabled={isSaving}
+                                      onClick={() => void deletePayrollAdjustment(entry.id!)}
+                                      title="Удалить"
+                                      type="button"
+                                    >
+                                      <Trash2 aria-hidden="true" size={15} />
+                                    </button>
+                                  ) : null}
+                                </div>
+                              )
+                            )}
+                            {!payrollData.preview.entries.length &&
+                            !payrollData.payroll?.entries.length ? (
+                              <div className="hr-empty-records">
+                                Закрытых записей и начислений за этот месяц пока нет.
+                              </div>
+                            ) : null}
+                          </div>
+                        </section>
+
+                        {payrollData.payroll ? (
+                          <div className="payroll-two-column">
+                            <form className="payroll-section" onSubmit={(event) => void submitPayrollAdjustment(event)}>
+                              <div className="payroll-section-heading">
+                                <div>
+                                  <strong>Дополнительное начисление</strong>
+                                  <span>Премия, уборка, удержание или корректировка.</span>
+                                </div>
+                              </div>
+                              <div className="form-grid form-grid-two">
+                                <label className="form-field">
+                                  <span>Тип</span>
+                                  <select
+                                    onChange={(event) =>
+                                      setAdjustmentForm((current) => ({
+                                        ...current,
+                                        type: event.target.value as typeof current.type
+                                      }))
+                                    }
+                                    value={adjustmentForm.type}
+                                  >
+                                    <option value="review_bonus">Премия за отзыв</option>
+                                    <option value="cleaning">Доплата за уборку</option>
+                                    <option value="bonus">Премия</option>
+                                    <option value="deduction">Удержание</option>
+                                    <option value="adjustment">Корректировка</option>
+                                  </select>
+                                </label>
+                                <label className="form-field">
+                                  <span>Сумма</span>
+                                  <input
+                                    min={0.01}
+                                    onChange={(event) =>
+                                      setAdjustmentForm((current) => ({ ...current, amount: event.target.value }))
+                                    }
+                                    required
+                                    step="0.01"
+                                    type="number"
+                                    value={adjustmentForm.amount}
+                                  />
+                                </label>
+                                <label className="form-field form-field-span-two">
+                                  <span>Основание</span>
+                                  <input
+                                    maxLength={300}
+                                    onChange={(event) =>
+                                      setAdjustmentForm((current) => ({ ...current, description: event.target.value }))
+                                    }
+                                    required
+                                    value={adjustmentForm.description}
+                                  />
+                                </label>
+                              </div>
+                              <button className="secondary-button payroll-submit" disabled={isSaving} type="submit">
+                                <Plus aria-hidden="true" size={15} />
+                                Добавить
+                              </button>
+                            </form>
+
+                            <form className="payroll-section" onSubmit={(event) => void submitPayrollPayment(event)}>
+                              <div className="payroll-section-heading">
+                                <div>
+                                  <strong>Выплата</strong>
+                                  <span>Отметка о фактически переданной сотруднику сумме.</span>
+                                </div>
+                              </div>
+                              <div className="form-grid form-grid-two">
+                                <label className="form-field">
+                                  <span>Сумма выплаты</span>
+                                  <input
+                                    disabled={payrollData.payroll.remainingMinor <= 0}
+                                    min={0.01}
+                                    onChange={(event) =>
+                                      setPaymentForm((current) => ({ ...current, amount: event.target.value }))
+                                    }
+                                    required
+                                    step="0.01"
+                                    type="number"
+                                    value={paymentForm.amount}
+                                  />
+                                </label>
+                                <label className="form-field">
+                                  <span>Дата</span>
+                                  <input
+                                    onChange={(event) =>
+                                      setPaymentForm((current) => ({ ...current, paidAt: event.target.value }))
+                                    }
+                                    required
+                                    type="date"
+                                    value={paymentForm.paidAt}
+                                  />
+                                </label>
+                                <label className="form-field form-field-span-two">
+                                  <span>Способ выплаты</span>
+                                  <input
+                                    maxLength={120}
+                                    onChange={(event) =>
+                                      setPaymentForm((current) => ({ ...current, method: event.target.value }))
+                                    }
+                                    value={paymentForm.method}
+                                  />
+                                </label>
+                              </div>
+                              <button
+                                className="primary-button payroll-submit"
+                                disabled={isSaving || payrollData.payroll.remainingMinor <= 0}
+                                type="submit"
+                              >
+                                <Landmark aria-hidden="true" size={15} />
+                                Отметить выплату
+                              </button>
+                            </form>
+                          </div>
+                        ) : null}
+
+                        {payrollData.payroll?.payments.length ? (
+                          <section className="payroll-section">
+                            <div className="payroll-section-heading">
+                              <div>
+                                <strong>История выплат</strong>
+                                <span>Все подтверждённые выплаты за выбранный месяц.</span>
+                              </div>
+                            </div>
+                            <div className="payroll-payment-list">
+                              {payrollData.payroll.payments.map((payment) => (
+                                <div key={payment.id}>
+                                  <span>{formatDate(payment.paidAt)}</span>
+                                  <strong>{formatMoney(payment.amountMinor, payrollData.payroll?.currency ?? payrollData.rule.currency)}</strong>
+                                  <small>{payment.method ?? "Способ не указан"}</small>
+                                </div>
+                              ))}
+                            </div>
+                          </section>
+                        ) : null}
+                      </>
+                    ) : (
+                      <div className="hr-empty-records">
+                        Не удалось загрузить расчёт зарплаты.
+                      </div>
+                    )}
                   </div>
                 ) : null}
 

@@ -1,6 +1,8 @@
 import {
   AppointmentStatus,
   AttendanceConfirmationStatus,
+  BookingSource,
+  Currency,
   UserRole,
   type DatabaseClient
 } from "@danil-nails/db";
@@ -242,7 +244,8 @@ export function registerAppointmentRoutes(
       const [client, service, staff] = await Promise.all([
         database!.client.findUnique({ where: { id: input.data.clientId } }),
         database!.service.findFirst({
-          where: { id: input.data.serviceId, isActive: true }
+          where: { id: input.data.serviceId, isActive: true },
+          include: { prices: { where: { currency: Currency.RUB }, take: 1 } }
         }),
         database!.staffProfile.findFirst({
           where: { id: input.data.staffId, isBookable: true }
@@ -271,6 +274,10 @@ export function registerAppointmentRoutes(
             clientId: client.id,
             staffId: staff.id,
             serviceId: service.id,
+            source: BookingSource.admin_manual,
+            createdByUserId: request.crmUser!.id,
+            priceMinor: service.prices[0]?.amountMinor ?? 0,
+            currency: Currency.RUB,
             startsAt,
             endsAt,
             ...(input.data.clientComment !== undefined
@@ -336,6 +343,9 @@ export function registerAppointmentRoutes(
             status,
             ...(status === AppointmentStatus.confirmed
               ? { adminConfirmedAt: now }
+              : {}),
+            ...(status === AppointmentStatus.completed
+              ? { completedAt: current.completedAt ?? now }
               : {}),
             ...(status === AppointmentStatus.canceled
               ? {
@@ -435,7 +445,8 @@ export function registerAppointmentRoutes(
           where: { id: staffId, isBookable: true }
         }),
         database!.service.findFirst({
-          where: { id: serviceId, isActive: true }
+          where: { id: serviceId, isActive: true },
+          include: { prices: { where: { currency: current.currency }, take: 1 } }
         })
       ]);
       if (!staff) return reply.code(404).send({ error: "staff_not_found" });
@@ -480,6 +491,13 @@ export function registerAppointmentRoutes(
             clientId: current.clientId,
             staffId,
             serviceId,
+            source: current.source,
+            createdByUserId: current.createdByUserId,
+            priceMinor:
+              serviceId === current.serviceId
+                ? current.priceMinor
+                : service.prices[0]?.amountMinor ?? 0,
+            currency: current.currency,
             startsAt,
             endsAt,
             clientComment: current.clientComment,

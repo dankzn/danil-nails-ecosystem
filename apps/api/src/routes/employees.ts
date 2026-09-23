@@ -13,6 +13,7 @@ import {
 import type { FastifyInstance, FastifyReply } from "fastify";
 import { z } from "zod";
 import { authorize } from "../auth/session.js";
+import { currentMonthKey, payrollPreview } from "../payroll/calculation.js";
 
 const dateSchema = z.iso.date().nullable().optional();
 const optionalEmailSchema = z.union([z.email(), z.literal("")]).nullable().optional();
@@ -273,9 +274,37 @@ export function registerEmployeeRoutes(
       const statusCount = Object.fromEntries(
         allEmployees.map((item) => [item.employmentStatus, item._count._all])
       );
+      const payrollMonth = currentMonthKey();
+      const payrollContexts = await Promise.all(
+        employees.map((employee) =>
+          payrollPreview(database!, employee.id, payrollMonth)
+        )
+      );
+      const payrollByStaffId = new Map(
+        payrollContexts
+          .filter((context) => context !== null)
+          .map((context) => [context.staff.id, context])
+      );
       return {
-        employees: employees.map(serializeEmployee),
+        employees: employees.map((employee) => {
+          const context = payrollByStaffId.get(employee.id);
+          const payroll = context?.payroll;
+          return {
+            ...serializeEmployee(employee),
+            payrollSummary: context
+              ? {
+                  month: payrollMonth,
+                  currency: payroll?.currency ?? context.preview.currency,
+                  accruedMinor:
+                    payroll?.totalAccruedMinor ?? context.preview.totalMinor,
+                  paidMinor: payroll?.totalPaidMinor ?? 0,
+                  status: payroll?.status ?? "not_accrued"
+                }
+              : null
+          };
+        }),
         services,
+        payrollMonth,
         metrics: {
           active: statusCount.active ?? 0,
           probation: statusCount.probation ?? 0,

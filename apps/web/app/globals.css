@@ -1507,6 +1507,10 @@ td strong {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+.form-grid-four {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
 .checkbox-field {
   min-height: 54px;
   display: flex;
@@ -1625,7 +1629,19 @@ td strong {
 }
 
 .employee-table {
-  min-width: 940px;
+  min-width: 1120px;
+}
+
+.payroll-table-cell {
+  min-width: 138px;
+  display: grid;
+  justify-items: start;
+  gap: 6px;
+}
+
+.payroll-table-cell > strong {
+  font-size: 12px;
+  white-space: nowrap;
 }
 
 .employee-name-cell {
@@ -1809,6 +1825,163 @@ td strong {
 
 .employee-tab-content > .feedback {
   margin-bottom: 16px;
+}
+
+.payroll-stack {
+  display: grid;
+  gap: 18px;
+}
+
+.payroll-toolbar {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.payroll-month-field {
+  width: min(230px, 100%);
+}
+
+.payroll-status-chip {
+  margin-bottom: 8px;
+}
+
+.payroll-metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  overflow: hidden;
+}
+
+.payroll-metrics > div {
+  min-height: 82px;
+  display: grid;
+  align-content: center;
+  gap: 7px;
+  border-right: 1px solid var(--border);
+  padding: 13px 15px;
+}
+
+.payroll-metrics > div:last-child {
+  border-right: 0;
+}
+
+.payroll-metrics span,
+.payroll-section-heading span {
+  color: var(--text-muted);
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.payroll-metrics strong {
+  font-size: 18px;
+}
+
+.payroll-section {
+  display: grid;
+  gap: 14px;
+  border-top: 1px solid var(--border);
+  padding-top: 18px;
+}
+
+.payroll-section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.payroll-section-heading > div {
+  display: grid;
+  gap: 4px;
+}
+
+.payroll-section-heading strong {
+  font-size: 13px;
+}
+
+.payroll-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.payroll-entry-list {
+  display: grid;
+}
+
+.payroll-entry {
+  min-height: 68px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 13px;
+  border-bottom: 1px solid var(--border);
+  padding: 11px 0;
+}
+
+.payroll-entry:first-child {
+  border-top: 1px solid var(--border);
+}
+
+.payroll-entry > div:first-child {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.payroll-entry span,
+.payroll-entry small {
+  color: var(--text-muted);
+  font-size: 10px;
+}
+
+.payroll-entry > div > strong {
+  overflow: hidden;
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.payroll-entry > strong {
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.payroll-negative {
+  color: var(--danger);
+}
+
+.payroll-two-column {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 22px;
+}
+
+.payroll-submit {
+  width: max-content;
+  justify-self: end;
+}
+
+.payroll-payment-list {
+  display: grid;
+}
+
+.payroll-payment-list > div {
+  min-height: 50px;
+  display: grid;
+  grid-template-columns: 140px 150px minmax(0, 1fr);
+  align-items: center;
+  gap: 12px;
+  border-bottom: 1px solid var(--border);
+  font-size: 11px;
+}
+
+.payroll-payment-list span,
+.payroll-payment-list small {
+  color: var(--text-muted);
 }
 
 .employee-profile-grid {
@@ -2329,8 +2502,62 @@ td strong {
   }
 
   .form-grid-two,
-  .form-grid-three {
+  .form-grid-three,
+  .form-grid-four {
     grid-template-columns: 1fr;
+  }
+
+  .payroll-toolbar,
+  .payroll-form-actions {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .payroll-status-chip {
+    width: max-content;
+    margin-bottom: 0;
+  }
+
+  .payroll-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .payroll-metrics > div {
+    border-bottom: 1px solid var(--border);
+  }
+
+  .payroll-metrics > div:nth-child(2n) {
+    border-right: 0;
+  }
+
+  .payroll-metrics > div:nth-last-child(-n + 2) {
+    border-bottom: 0;
+  }
+
+  .payroll-form-actions > button,
+  .payroll-submit {
+    width: 100%;
+  }
+
+  .payroll-two-column {
+    grid-template-columns: 1fr;
+  }
+
+  .payroll-entry {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .payroll-entry > button {
+    grid-column: 1 / -1;
+    justify-self: end;
+  }
+
+  .payroll-payment-list > div {
+    grid-template-columns: 1fr auto;
+  }
+
+  .payroll-payment-list small {
+    grid-column: 1 / -1;
   }
 
   .modal-actions {

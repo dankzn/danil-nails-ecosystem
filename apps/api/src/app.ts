@@ -18,6 +18,7 @@ import { registerAppointmentRoutes } from "./routes/appointments.js";
 import { registerClientRoutes } from "./routes/clients.js";
 import { registerDashboardRoutes } from "./routes/dashboard.js";
 import { registerEmployeeRoutes } from "./routes/employees.js";
+import { registerPayrollRoutes } from "./routes/payroll.js";
 import { registerScheduleRoutes } from "./routes/schedule.js";
 import { registerServiceRoutes } from "./routes/services.js";
 
@@ -79,6 +80,7 @@ export async function buildServer(
   registerDashboardRoutes(server, database);
   registerScheduleRoutes(server, database);
   registerEmployeeRoutes(server, database);
+  registerPayrollRoutes(server, database);
 
   return server;
 }

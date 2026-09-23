@@ -82,6 +82,10 @@ test("database routes fail closed before configuration", async () => {
     method: "GET",
     url: "/v1/owner/employees"
   });
+  const payrollResponse = await server.inject({
+    method: "GET",
+    url: "/v1/owner/employees/cmh0000000000000000000000/payroll?month=2026-09"
+  });
 
   assert.equal(loginResponse.statusCode, 503);
   assert.equal(clientsResponse.statusCode, 503);
@@ -90,4 +94,5 @@ test("database routes fail closed before configuration", async () => {
   assert.equal(dashboardResponse.statusCode, 503);
   assert.equal(scheduleResponse.statusCode, 503);
   assert.equal(employeesResponse.statusCode, 503);
+  assert.equal(payrollResponse.statusCode, 503);
 });
