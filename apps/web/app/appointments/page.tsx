@@ -29,6 +29,7 @@ type AttendanceStatus =
 
 type Appointment = {
   id: string;
+  source: "online" | "admin_manual";
   status: AppointmentStatus;
   attendanceConfirmationStatus: AttendanceStatus;
   startsAt: string;
@@ -50,6 +51,10 @@ type Appointment = {
     bufferAfterMinutes: number;
   };
   staff: { id: string; displayName: string; userId: string };
+  createdBy: {
+    email: string | null;
+    staffProfile: { displayName: string } | null;
+  } | null;
 };
 
 type BookingOptions = {
@@ -184,6 +189,15 @@ function formatBusyTime(minutes: number) {
   const rest = minutes % 60;
   if (!hours) return `${rest} мин`;
   return rest ? `${hours} ч ${rest} мин` : `${hours} ч`;
+}
+
+function appointmentSourceLabel(appointment: Appointment) {
+  if (appointment.source === "online") return "Online";
+  return (
+    appointment.createdBy?.staffProfile?.displayName ??
+    appointment.createdBy?.email ??
+    "Администратор"
+  );
 }
 
 function appointmentErrorMessage(error: unknown) {
@@ -559,6 +573,7 @@ export default function AppointmentsPage() {
                       <small>
                         {appointment.staff.displayName} · {appointment.client.phone}
                       </small>
+                      <small>Источник: {appointmentSourceLabel(appointment)}</small>
                     </div>
                     <div className="agenda-actions">
                       <span className={`status status-${meta.tone}`}>
@@ -761,6 +776,10 @@ export default function AppointmentsPage() {
               <div>
                 <dt>Статус</dt>
                 <dd>{statusMeta[selectedAppointment.status].label}</dd>
+              </div>
+              <div>
+                <dt>Источник записи</dt>
+                <dd>{appointmentSourceLabel(selectedAppointment)}</dd>
               </div>
               <div>
                 <dt>Подтверждение визита</dt>

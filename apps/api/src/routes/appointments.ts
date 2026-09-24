@@ -78,7 +78,13 @@ const appointmentInclude = {
       bufferAfterMinutes: true
     }
   },
-  staff: { select: { id: true, displayName: true, userId: true } }
+  staff: { select: { id: true, displayName: true, userId: true } },
+  createdBy: {
+    select: {
+      email: true,
+      staffProfile: { select: { displayName: true } }
+    }
+  }
 } as const;
 
 function sendInvalidPayload(reply: FastifyReply) {
