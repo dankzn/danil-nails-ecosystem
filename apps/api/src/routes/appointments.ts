@@ -38,6 +38,11 @@ const listQuerySchema = z.object({
   date: z.string().regex(datePattern).optional(),
   staffId: z.string().cuid().optional()
 });
+const rescheduleAvailabilityQuerySchema = z.object({
+  date: z.string().regex(datePattern),
+  staffId: z.string().cuid().optional(),
+  serviceId: z.string().cuid().optional()
+});
 const createAppointmentSchema = z.object({
   clientId: z.string().cuid(),
   staffId: z.string().cuid(),
@@ -449,6 +454,43 @@ export function registerAppointmentRoutes(
       });
 
       return { appointment };
+    }
+  );
+
+  server.get(
+    "/v1/admin/appointments/:id/availability",
+    { preHandler: adminGuard },
+    async (request, reply) => {
+      const parameters = idSchema.safeParse(request.params);
+      const query = rescheduleAvailabilityQuerySchema.safeParse(request.query);
+      if (!parameters.success || !query.success) return sendInvalidPayload(reply);
+
+      const current = await database!.appointment.findUnique({
+        where: { id: parameters.data.id },
+        select: { id: true, staffId: true, serviceId: true }
+      });
+      if (!current) return reply.code(404).send({ error: "appointment_not_found" });
+      if (!isDateWithinBookingHorizon(query.data.date)) {
+        return sendInvalidPayload(reply);
+      }
+
+      const availability = await findAvailableSlots(database!, {
+        staffId: query.data.staffId ?? current.staffId,
+        serviceId: query.data.serviceId ?? current.serviceId,
+        date: query.data.date,
+        excludeAppointmentId: current.id
+      });
+      if (!availability.ok) {
+        return reply.code(404).send({ error: availability.error });
+      }
+
+      return {
+        date: query.data.date,
+        timezone: businessConfig.timezone,
+        staff: availability.staff,
+        service: availability.service,
+        slots: availability.slots
+      };
     }
   );
 

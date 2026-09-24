@@ -158,13 +158,6 @@ function moscowDateTimeInput(date: Date) {
   return `${part("year")}-${part("month")}-${part("day")}T${part("hour")}:${part("minute")}`;
 }
 
-function defaultStartForDate(date: string) {
-  if (date !== moscowDateKey()) return `${date}T10:00`;
-  const start = new Date(Date.now() + 2 * 60 * 60 * 1000);
-  start.setMinutes(Math.ceil(start.getMinutes() / 30) * 30, 0, 0);
-  return moscowDateTimeInput(start);
-}
-
 function moveDate(date: string, days: number) {
   const value = new Date(`${date}T12:00:00.000Z`);
   value.setUTCDate(value.getUTCDate() + days);
@@ -180,6 +173,73 @@ function selectedDateHeading(date: string) {
     new Date(`${date}T12:00:00.000Z`)
   );
   return formatted.charAt(0).toUpperCase() + formatted.slice(1);
+}
+
+function AvailabilityPicker({
+  slots,
+  isLoading,
+  error,
+  selectedStartsAt,
+  onSelect
+}: {
+  slots: AvailableSlot[];
+  isLoading: boolean;
+  error: string | null;
+  selectedStartsAt: string;
+  onSelect: (startsAt: string) => void;
+}) {
+  return (
+    <section
+      aria-busy={isLoading}
+      aria-live="polite"
+      className="availability-picker"
+    >
+      <div className="availability-heading">
+        <div>
+          <span>Свободные окна</span>
+          <small>Время указано по Москве</small>
+        </div>
+        {selectedStartsAt ? (
+          <strong>
+            Выбрано {timeFormatter.format(new Date(toMoscowIso(selectedStartsAt)))}
+          </strong>
+        ) : null}
+      </div>
+      {isLoading ? (
+        <div className="availability-state">Ищем свободное время…</div>
+      ) : error ? (
+        <div className="availability-state availability-state-error">
+          {error}
+        </div>
+      ) : slots.length ? (
+        <div className="availability-slots">
+          {slots.map((slot) => {
+            const localValue = moscowDateTimeInput(new Date(slot.startsAt));
+            const isSelected = selectedStartsAt === localValue;
+            return (
+              <button
+                aria-pressed={isSelected}
+                className={`slot-button${
+                  isSelected ? " slot-button-selected" : ""
+                }`}
+                key={slot.startsAt}
+                onClick={() => onSelect(localValue)}
+                type="button"
+              >
+                <strong>{timeFormatter.format(new Date(slot.startsAt))}</strong>
+                <span>до {timeFormatter.format(new Date(slot.endsAt))}</span>
+              </button>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="availability-state">
+          <strong>Свободных окон нет</strong>
+          <span>Выберите другую дату, мастера или проверьте график.</span>
+        </div>
+      )}
+    </section>
+  );
 }
 
 function durationMinutes(appointment: Appointment) {
@@ -255,7 +315,18 @@ export default function AppointmentsPage() {
   const [cancellationReason, setCancellationReason] = useState("");
   const [canceledBy, setCanceledBy] = useState<"client" | "studio">("studio");
   const [isRescheduling, setIsRescheduling] = useState(false);
+  const [rescheduleDate, setRescheduleDate] = useState(moscowDateKey);
+  const [rescheduleStaffId, setRescheduleStaffId] = useState("");
+  const [rescheduleServiceId, setRescheduleServiceId] = useState("");
   const [rescheduleStartsAt, setRescheduleStartsAt] = useState("");
+  const [rescheduleSlots, setRescheduleSlots] = useState<AvailableSlot[]>([]);
+  const [isRescheduleAvailabilityLoading, setIsRescheduleAvailabilityLoading] =
+    useState(false);
+  const [rescheduleAvailabilityError, setRescheduleAvailabilityError] = useState<
+    string | null
+  >(null);
+  const [rescheduleAvailabilityVersion, setRescheduleAvailabilityVersion] =
+    useState(0);
   const [rescheduleRequestedBy, setRescheduleRequestedBy] =
     useState<"client" | "studio">("studio");
   const [formError, setFormError] = useState<string | null>(null);
@@ -344,6 +415,63 @@ export default function AppointmentsPage() {
     isCreateOpen
   ]);
 
+  useEffect(() => {
+    if (
+      !selectedAppointment ||
+      !isRescheduling ||
+      !rescheduleDate ||
+      !rescheduleStaffId ||
+      !rescheduleServiceId
+    ) {
+      setRescheduleSlots([]);
+      return;
+    }
+
+    const controller = new AbortController();
+    const searchParams = new URLSearchParams({
+      date: rescheduleDate,
+      staffId: rescheduleStaffId,
+      serviceId: rescheduleServiceId
+    });
+    setIsRescheduleAvailabilityLoading(true);
+    setRescheduleAvailabilityError(null);
+    void apiRequest<{ slots: AvailableSlot[] }>(
+      `/v1/admin/appointments/${selectedAppointment.id}/availability?${searchParams}`,
+      { signal: controller.signal }
+    )
+      .then((response) => {
+        setRescheduleSlots(response.slots);
+        setRescheduleStartsAt((current) => {
+          const remainsAvailable = response.slots.some(
+            (slot) => moscowDateTimeInput(new Date(slot.startsAt)) === current
+          );
+          return remainsAvailable ? current : "";
+        });
+      })
+      .catch((error) => {
+        if (!(error instanceof DOMException && error.name === "AbortError")) {
+          setRescheduleSlots([]);
+          setRescheduleAvailabilityError(
+            "Не удалось загрузить свободные окна для переноса."
+          );
+        }
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) {
+          setIsRescheduleAvailabilityLoading(false);
+        }
+      });
+
+    return () => controller.abort();
+  }, [
+    isRescheduling,
+    rescheduleAvailabilityVersion,
+    rescheduleDate,
+    rescheduleServiceId,
+    rescheduleStaffId,
+    selectedAppointment
+  ]);
+
   function openCreateForm() {
     const today = moscowDateKey();
     const latestDate = moveDate(today, bookingRules.bookingHorizonDays);
@@ -366,6 +494,13 @@ export default function AppointmentsPage() {
   }
 
   function openAppointment(appointment: Appointment) {
+    const today = moscowDateKey();
+    const latestDate = moveDate(today, bookingRules.bookingHorizonDays);
+    const appointmentDate = moscowDateKey(new Date(appointment.startsAt));
+    const initialDate =
+      appointmentDate >= today && appointmentDate <= latestDate
+        ? appointmentDate
+        : today;
     setSelectedAppointment(appointment);
     setStatus(
       appointment.status === "completed" ||
@@ -378,7 +513,12 @@ export default function AppointmentsPage() {
     setCancellationReason(appointment.cancellationReason ?? "");
     setCanceledBy("studio");
     setIsRescheduling(false);
-    setRescheduleStartsAt(defaultStartForDate(selectedDate));
+    setRescheduleDate(initialDate);
+    setRescheduleStaffId(appointment.staff.id);
+    setRescheduleServiceId(appointment.service.id);
+    setRescheduleStartsAt("");
+    setRescheduleSlots([]);
+    setRescheduleAvailabilityError(null);
     setRescheduleRequestedBy("studio");
     setFormError(null);
   }
@@ -489,6 +629,10 @@ export default function AppointmentsPage() {
 
   async function rescheduleAppointment() {
     if (!selectedAppointment) return;
+    if (!rescheduleStartsAt) {
+      setFormError("Выберите свободное время для переноса.");
+      return;
+    }
     setIsSaving(true);
     setFormError(null);
     setNotice(null);
@@ -499,6 +643,8 @@ export default function AppointmentsPage() {
           method: "POST",
           body: JSON.stringify({
             startsAt: toMoscowIso(rescheduleStartsAt),
+            staffId: rescheduleStaffId,
+            serviceId: rescheduleServiceId,
             requestedBy: rescheduleRequestedBy
           })
         }
@@ -510,6 +656,14 @@ export default function AppointmentsPage() {
       await Promise.all([loadAppointments(newDate), loadOptions()]);
     } catch (error) {
       setFormError(appointmentErrorMessage(error));
+      if (
+        error instanceof ApiError &&
+        (error.code === "appointment_slot_unavailable" ||
+          error.code === "appointment_time_conflict")
+      ) {
+        setRescheduleStartsAt("");
+        setRescheduleAvailabilityVersion((current) => current + 1);
+      }
     } finally {
       setIsSaving(false);
     }
@@ -781,60 +935,13 @@ export default function AppointmentsPage() {
                   </label>
                 </div>
 
-                <section className="availability-picker" aria-live="polite">
-                  <div className="availability-heading">
-                    <div>
-                      <span>Свободные окна</span>
-                      <small>Время указано по Москве</small>
-                    </div>
-                    {form.startsAt ? (
-                      <strong>
-                        Выбрано {timeFormatter.format(new Date(toMoscowIso(form.startsAt)))}
-                      </strong>
-                    ) : null}
-                  </div>
-                  {isAvailabilityLoading ? (
-                    <div className="availability-state">Ищем свободное время…</div>
-                  ) : availabilityError ? (
-                    <div className="availability-state availability-state-error">
-                      {availabilityError}
-                    </div>
-                  ) : availableSlots.length ? (
-                    <div className="availability-slots">
-                      {availableSlots.map((slot) => {
-                        const localValue = moscowDateTimeInput(
-                          new Date(slot.startsAt)
-                        );
-                        const isSelected = form.startsAt === localValue;
-                        return (
-                          <button
-                            aria-pressed={isSelected}
-                            className={`slot-button${
-                              isSelected ? " slot-button-selected" : ""
-                            }`}
-                            key={slot.startsAt}
-                            onClick={() => updateForm("startsAt", localValue)}
-                            type="button"
-                          >
-                            <strong>
-                              {timeFormatter.format(new Date(slot.startsAt))}
-                            </strong>
-                            <span>
-                              до {timeFormatter.format(new Date(slot.endsAt))}
-                            </span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <div className="availability-state">
-                      <strong>Свободных окон нет</strong>
-                      <span>
-                        Выберите другую дату, мастера или проверьте график.
-                      </span>
-                    </div>
-                  )}
-                </section>
+                <AvailabilityPicker
+                  error={availabilityError}
+                  isLoading={isAvailabilityLoading}
+                  onSelect={(startsAt) => updateForm("startsAt", startsAt)}
+                  selectedStartsAt={form.startsAt}
+                  slots={availableSlots}
+                />
 
                 {selectedClient?.requiresPrepayment ? (
                   <p className="feedback feedback-warning">
@@ -1053,15 +1160,54 @@ export default function AppointmentsPage() {
                 <div className="reschedule-fields">
                   <div className="form-grid form-grid-two">
                     <label className="form-field">
-                      <span>Новое начало</span>
-                      <input
-                        onChange={(event) =>
-                          setRescheduleStartsAt(event.target.value)
-                        }
+                      <span>Мастер</span>
+                      <select
+                        onChange={(event) => {
+                          setRescheduleStaffId(event.target.value);
+                          setRescheduleStartsAt("");
+                        }}
                         required
-                        step={1800}
-                        type="datetime-local"
-                        value={rescheduleStartsAt}
+                        value={rescheduleStaffId}
+                      >
+                        {options?.staff.map((staff) => (
+                          <option key={staff.id} value={staff.id}>
+                            {staff.displayName}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="form-field">
+                      <span>Услуга</span>
+                      <select
+                        onChange={(event) => {
+                          setRescheduleServiceId(event.target.value);
+                          setRescheduleStartsAt("");
+                        }}
+                        required
+                        value={rescheduleServiceId}
+                      >
+                        {options?.services.map((service) => (
+                          <option key={service.id} value={service.id}>
+                            {service.titleRu} · {service.durationMinutes} мин
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="form-field">
+                      <span>Новая дата</span>
+                      <input
+                        max={moveDate(
+                          moscowDateKey(),
+                          bookingRules.bookingHorizonDays
+                        )}
+                        min={moscowDateKey()}
+                        onChange={(event) => {
+                          setRescheduleDate(event.target.value);
+                          setRescheduleStartsAt("");
+                        }}
+                        required
+                        type="date"
+                        value={rescheduleDate}
                       />
                     </label>
                     <label className="form-field">
@@ -1079,9 +1225,16 @@ export default function AppointmentsPage() {
                       </select>
                     </label>
                   </div>
+                  <AvailabilityPicker
+                    error={rescheduleAvailabilityError}
+                    isLoading={isRescheduleAvailabilityLoading}
+                    onSelect={setRescheduleStartsAt}
+                    selectedStartsAt={rescheduleStartsAt}
+                    slots={rescheduleSlots}
+                  />
                   <button
                     className="primary-button editor-action"
-                    disabled={isSaving}
+                    disabled={isSaving || !rescheduleStartsAt}
                     onClick={() => void rescheduleAppointment()}
                     type="button"
                   >
