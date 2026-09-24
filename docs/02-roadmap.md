@@ -22,8 +22,8 @@
 - Реализовать модели: client public loyalty status, private client tags, visit notes, nail photos, materials/history.
 - Добавить Prisma migrations и seed.
 - Сделать CRUD для услуг, клиентов, мастеров.
-- Добавить базовую авторизацию администратора.
-- Добавить разграничение доступа: owner/admin/master/client.
+- Добавить базовую авторизацию внутренних пользователей.
+- Добавить разграничение доступа: owner founder, owner cofounder, SMM manager, salon admin и внешний client.
 - Реализовать кадровые карточки сотрудников, документы, заметки, обучение и увольнение. ✅
 - Реализовать owner-only расчёт зарплаты с расшифровкой записей, ручным начислением и выплатами. ✅
 
