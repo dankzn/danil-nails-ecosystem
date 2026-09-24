@@ -15,6 +15,7 @@ import {
 import Fastify from "fastify";
 import { resolve } from "node:path";
 import { environment } from "./config.js";
+import { registerAvailabilityRoutes } from "./routes/availability.js";
 import { registerAuthRoutes } from "./routes/auth.js";
 import { registerAppointmentRoutes } from "./routes/appointments.js";
 import { registerClientRoutes } from "./routes/clients.js";
@@ -80,6 +81,7 @@ export async function buildServer(
   }));
 
   registerAuthRoutes(server, database);
+  registerAvailabilityRoutes(server, database);
   registerAppointmentRoutes(server, database);
   registerServiceRoutes(server, database);
   registerClientRoutes(server, database);

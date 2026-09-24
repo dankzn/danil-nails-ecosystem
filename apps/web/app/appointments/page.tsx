@@ -1,5 +1,6 @@
 "use client";
 
+import { bookingRules } from "@danil-nails/shared";
 import {
   CalendarPlus,
   ChevronLeft,
@@ -71,6 +72,11 @@ type BookingOptions = {
     bufferAfterMinutes: number;
   }>;
   staff: Array<{ id: string; displayName: string }>;
+};
+
+type AvailableSlot = {
+  startsAt: string;
+  endsAt: string;
 };
 
 type BookingForm = {
@@ -205,6 +211,9 @@ function appointmentErrorMessage(error: unknown) {
     if (error.code === "appointment_time_conflict") {
       return "Это время уже занято другой активной записью.";
     }
+    if (error.code === "appointment_slot_unavailable") {
+      return "Окно уже недоступно. Выберите другое свободное время.";
+    }
     if (error.code === "client_not_found") return "Клиент больше не найден.";
     if (error.code === "service_not_found") return "Услуга недоступна.";
     if (error.code === "staff_not_found") return "Мастер недоступен.";
@@ -219,6 +228,11 @@ export default function AppointmentsPage() {
   const [selectedDate, setSelectedDate] = useState(moscowDateKey);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [options, setOptions] = useState<BookingOptions | null>(null);
+  const [bookingDate, setBookingDate] = useState(moscowDateKey);
+  const [availableSlots, setAvailableSlots] = useState<AvailableSlot[]>([]);
+  const [isAvailabilityLoading, setIsAvailabilityLoading] = useState(false);
+  const [availabilityError, setAvailabilityError] = useState<string | null>(null);
+  const [availabilityVersion, setAvailabilityVersion] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -281,15 +295,71 @@ export default function AppointmentsPage() {
     void loadOptions();
   }, [loadOptions]);
 
+  useEffect(() => {
+    if (
+      !isCreateOpen ||
+      !bookingDate ||
+      !form.staffId ||
+      !form.serviceId
+    ) {
+      setAvailableSlots([]);
+      return;
+    }
+
+    const controller = new AbortController();
+    setIsAvailabilityLoading(true);
+    setAvailabilityError(null);
+    void apiRequest<{ slots: AvailableSlot[] }>(
+      `/v1/availability?staffId=${encodeURIComponent(
+        form.staffId
+      )}&serviceId=${encodeURIComponent(form.serviceId)}&date=${bookingDate}`,
+      { signal: controller.signal }
+    )
+      .then((response) => {
+        setAvailableSlots(response.slots);
+        setForm((current) => {
+          const remainsAvailable = response.slots.some(
+            (slot) =>
+              moscowDateTimeInput(new Date(slot.startsAt)) === current.startsAt
+          );
+          return remainsAvailable ? current : { ...current, startsAt: "" };
+        });
+      })
+      .catch((error) => {
+        if (!(error instanceof DOMException && error.name === "AbortError")) {
+          setAvailableSlots([]);
+          setAvailabilityError("Не удалось загрузить свободные окна.");
+        }
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setIsAvailabilityLoading(false);
+      });
+
+    return () => controller.abort();
+  }, [
+    availabilityVersion,
+    bookingDate,
+    form.serviceId,
+    form.staffId,
+    isCreateOpen
+  ]);
+
   function openCreateForm() {
+    const today = moscowDateKey();
+    const latestDate = moveDate(today, bookingRules.bookingHorizonDays);
+    const initialDate =
+      selectedDate >= today && selectedDate <= latestDate ? selectedDate : today;
     const nextForm = {
       clientId: options?.clients[0]?.id ?? "",
       serviceId: options?.services[0]?.id ?? "",
       staffId: options?.staff[0]?.id ?? "",
-      startsAt: defaultStartForDate(selectedDate),
+      startsAt: "",
       clientComment: "",
       internalNote: ""
     };
+    setBookingDate(initialDate);
+    setAvailableSlots([]);
+    setAvailabilityError(null);
     setForm(nextForm);
     setFormError(null);
     setIsCreateOpen(true);
@@ -326,6 +396,10 @@ export default function AppointmentsPage() {
 
   async function submitAppointment(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (!form.startsAt) {
+      setFormError("Выберите свободное время для записи.");
+      return;
+    }
     setIsSaving(true);
     setFormError(null);
     setNotice(null);
@@ -346,6 +420,14 @@ export default function AppointmentsPage() {
       await refresh();
     } catch (error) {
       setFormError(appointmentErrorMessage(error));
+      if (
+        error instanceof ApiError &&
+        (error.code === "appointment_slot_unavailable" ||
+          error.code === "appointment_time_conflict")
+      ) {
+        setForm((current) => ({ ...current, startsAt: "" }));
+        setAvailabilityVersion((current) => current + 1);
+      }
     } finally {
       setIsSaving(false);
     }
@@ -649,7 +731,10 @@ export default function AppointmentsPage() {
                   <label className="form-field">
                     <span>Мастер</span>
                     <select
-                      onChange={(event) => updateForm("staffId", event.target.value)}
+                      onChange={(event) => {
+                        updateForm("staffId", event.target.value);
+                        updateForm("startsAt", "");
+                      }}
                       required
                       value={form.staffId}
                     >
@@ -663,7 +748,10 @@ export default function AppointmentsPage() {
                   <label className="form-field">
                     <span>Услуга</span>
                     <select
-                      onChange={(event) => updateForm("serviceId", event.target.value)}
+                      onChange={(event) => {
+                        updateForm("serviceId", event.target.value);
+                        updateForm("startsAt", "");
+                      }}
                       required
                       value={form.serviceId}
                     >
@@ -675,16 +763,78 @@ export default function AppointmentsPage() {
                     </select>
                   </label>
                   <label className="form-field">
-                    <span>Начало</span>
+                    <span>Дата</span>
                     <input
-                      onChange={(event) => updateForm("startsAt", event.target.value)}
+                      max={moveDate(
+                        moscowDateKey(),
+                        bookingRules.bookingHorizonDays
+                      )}
+                      min={moscowDateKey()}
+                      onChange={(event) => {
+                        setBookingDate(event.target.value);
+                        updateForm("startsAt", "");
+                      }}
                       required
-                      step={1800}
-                      type="datetime-local"
-                      value={form.startsAt}
+                      type="date"
+                      value={bookingDate}
                     />
                   </label>
                 </div>
+
+                <section className="availability-picker" aria-live="polite">
+                  <div className="availability-heading">
+                    <div>
+                      <span>Свободные окна</span>
+                      <small>Время указано по Москве</small>
+                    </div>
+                    {form.startsAt ? (
+                      <strong>
+                        Выбрано {timeFormatter.format(new Date(toMoscowIso(form.startsAt)))}
+                      </strong>
+                    ) : null}
+                  </div>
+                  {isAvailabilityLoading ? (
+                    <div className="availability-state">Ищем свободное время…</div>
+                  ) : availabilityError ? (
+                    <div className="availability-state availability-state-error">
+                      {availabilityError}
+                    </div>
+                  ) : availableSlots.length ? (
+                    <div className="availability-slots">
+                      {availableSlots.map((slot) => {
+                        const localValue = moscowDateTimeInput(
+                          new Date(slot.startsAt)
+                        );
+                        const isSelected = form.startsAt === localValue;
+                        return (
+                          <button
+                            aria-pressed={isSelected}
+                            className={`slot-button${
+                              isSelected ? " slot-button-selected" : ""
+                            }`}
+                            key={slot.startsAt}
+                            onClick={() => updateForm("startsAt", localValue)}
+                            type="button"
+                          >
+                            <strong>
+                              {timeFormatter.format(new Date(slot.startsAt))}
+                            </strong>
+                            <span>
+                              до {timeFormatter.format(new Date(slot.endsAt))}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="availability-state">
+                      <strong>Свободных окон нет</strong>
+                      <span>
+                        Выберите другую дату, мастера или проверьте график.
+                      </span>
+                    </div>
+                  )}
+                </section>
 
                 {selectedClient?.requiresPrepayment ? (
                   <p className="feedback feedback-warning">
@@ -742,7 +892,7 @@ export default function AppointmentsPage() {
               {options?.clients.length ? (
                 <button
                   className="primary-button"
-                  disabled={isSaving}
+                  disabled={isSaving || !form.startsAt}
                   type="submit"
                 >
                   {isSaving ? "Создаём…" : "Создать запись"}

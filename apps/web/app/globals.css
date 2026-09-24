@@ -2196,6 +2196,94 @@ td strong {
   margin: -5px 0 0;
 }
 
+.availability-picker {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-soft);
+}
+
+.availability-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.availability-heading > div {
+  display: grid;
+  gap: 3px;
+}
+
+.availability-heading span,
+.availability-heading strong {
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.availability-heading small,
+.availability-state span {
+  color: var(--text-muted);
+  font-size: 10px;
+}
+
+.availability-slots {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(92px, 1fr));
+  gap: 8px;
+}
+
+.slot-button {
+  min-height: 52px;
+  display: grid;
+  place-content: center;
+  gap: 2px;
+  border: 1px solid var(--border-strong);
+  border-radius: 7px;
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+}
+
+.slot-button:hover {
+  border-color: var(--accent);
+}
+
+.slot-button strong {
+  font-size: 13px;
+}
+
+.slot-button span {
+  color: var(--text-muted);
+  font-size: 9px;
+}
+
+.slot-button-selected {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #fff;
+}
+
+.slot-button-selected span {
+  color: rgb(255 255 255 / 75%);
+}
+
+.availability-state {
+  min-height: 64px;
+  display: grid;
+  place-content: center;
+  gap: 4px;
+  color: var(--text-muted);
+  font-size: 11px;
+  text-align: center;
+}
+
+.availability-state-error {
+  color: var(--red);
+}
+
 .appointment-editor {
   gap: 0;
   padding: 0;

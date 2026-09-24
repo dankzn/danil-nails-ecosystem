@@ -9,6 +9,10 @@ import {
 import { bookingRules, businessConfig } from "@danil-nails/shared";
 import type { FastifyInstance, FastifyReply } from "fastify";
 import { z } from "zod";
+import {
+  findAvailableSlots,
+  isDateWithinBookingHorizon
+} from "../availability.js";
 import { authorize } from "../auth/session.js";
 
 const appointmentStatuses = [
@@ -262,6 +266,23 @@ export function registerAppointmentRoutes(
       if (!service) return reply.code(404).send({ error: "service_not_found" });
       if (!staff) return reply.code(404).send({ error: "staff_not_found" });
 
+      if (!isDateWithinBookingHorizon(moscowDateKey(startsAt))) {
+        return reply.code(409).send({ error: "appointment_slot_unavailable" });
+      }
+      const availability = await findAvailableSlots(database!, {
+        staffId: staff.id,
+        serviceId: service.id,
+        date: moscowDateKey(startsAt)
+      });
+      if (
+        !availability.ok ||
+        !availability.slots.some(
+          (slot) => slot.startsAt.getTime() === startsAt.getTime()
+        )
+      ) {
+        return reply.code(409).send({ error: "appointment_slot_unavailable" });
+      }
+
       const endsAt = appointmentEnd(startsAt, service.durationMinutes);
       if (
         await conflictingAppointment(
@@ -459,6 +480,24 @@ export function registerAppointmentRoutes(
       if (!service) return reply.code(404).send({ error: "service_not_found" });
 
       const startsAt = new Date(input.data.startsAt);
+      if (!isDateWithinBookingHorizon(moscowDateKey(startsAt))) {
+        return reply.code(409).send({ error: "appointment_slot_unavailable" });
+      }
+      const availability = await findAvailableSlots(database!, {
+        staffId: staff.id,
+        serviceId: service.id,
+        date: moscowDateKey(startsAt),
+        excludeAppointmentId: current.id
+      });
+      if (
+        !availability.ok ||
+        !availability.slots.some(
+          (slot) => slot.startsAt.getTime() === startsAt.getTime()
+        )
+      ) {
+        return reply.code(409).send({ error: "appointment_slot_unavailable" });
+      }
+
       const endsAt = appointmentEnd(startsAt, service.durationMinutes);
       if (
         await conflictingAppointment(
