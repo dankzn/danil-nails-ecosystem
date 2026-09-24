@@ -1,6 +1,6 @@
 "use client";
 
-import { Pencil, Search, UserPlus, Users } from "lucide-react";
+import { Pencil, Plus, Search, UserPlus, Users } from "lucide-react";
 import {
   useCallback,
   useEffect,
@@ -35,6 +35,7 @@ type ClientForm = {
   whatsappPhone: string;
   allergies: string;
   notes: string;
+  privateTags: string[];
   requiresPrepayment: boolean;
   prepaymentReason: string;
 };
@@ -47,6 +48,7 @@ const emptyForm: ClientForm = {
   whatsappPhone: "",
   allergies: "",
   notes: "",
+  privateTags: [],
   requiresPrepayment: false,
   prepaymentReason: ""
 };
@@ -71,6 +73,20 @@ function optionalValue(value: string) {
   return normalized ? normalized : null;
 }
 
+function samePrivateTagTitle(left: string, right: string) {
+  return (
+    left.toLocaleLowerCase("ru-RU") === right.toLocaleLowerCase("ru-RU")
+  );
+}
+
+function uniquePrivateTagTitles(titles: string[]) {
+  return titles.filter(
+    (title, index) =>
+      titles.findIndex((candidate) => samePrivateTagTitle(candidate, title)) ===
+      index
+  );
+}
+
 function clientErrorMessage(error: unknown) {
   if (error instanceof ApiError) {
     if (error.code === "client_phone_already_exists") {
@@ -92,6 +108,8 @@ export default function ClientsPage() {
   const [editingClient, setEditingClient] = useState<Client | null>(null);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [form, setForm] = useState<ClientForm>(emptyForm);
+  const [privateTagOptions, setPrivateTagOptions] = useState<string[]>([]);
+  const [newPrivateTag, setNewPrivateTag] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -114,6 +132,17 @@ export default function ClientsPage() {
     }
   }, []);
 
+  const loadClientReferenceData = useCallback(async () => {
+    try {
+      const response = await apiRequest<{
+        privateTags: Array<{ title: string }>;
+      }>("/v1/admin/client-reference-data");
+      setPrivateTagOptions(response.privateTags.map((tag) => tag.title));
+    } catch {
+      setPrivateTagOptions([]);
+    }
+  }, []);
+
   useEffect(() => {
     const controller = new AbortController();
     const timeout = window.setTimeout(() => {
@@ -126,9 +155,14 @@ export default function ClientsPage() {
     };
   }, [loadClients, search]);
 
+  useEffect(() => {
+    void loadClientReferenceData();
+  }, [loadClientReferenceData]);
+
   function openCreateForm() {
     setEditingClient(null);
     setForm(emptyForm);
+    setNewPrivateTag("");
     setFormError(null);
     setIsFormOpen(true);
   }
@@ -143,10 +177,12 @@ export default function ClientsPage() {
       whatsappPhone: client.whatsappPhone ?? "",
       allergies: client.allergies ?? "",
       notes: client.notes ?? "",
+      privateTags: client.privateTagAssignments.map(({ tag }) => tag.title),
       requiresPrepayment: client.requiresPrepayment,
       prepaymentReason: client.prepaymentReason ?? ""
     });
     setFormError(null);
+    setNewPrivateTag("");
     setIsFormOpen(true);
   }
 
@@ -155,6 +191,36 @@ export default function ClientsPage() {
     value: ClientForm[Key]
   ) {
     setForm((current) => ({ ...current, [key]: value }));
+  }
+
+  function togglePrivateTag(title: string) {
+    setForm((current) => ({
+      ...current,
+      privateTags: current.privateTags.some((tag) =>
+        samePrivateTagTitle(tag, title)
+      )
+        ? current.privateTags.filter((tag) => !samePrivateTagTitle(tag, title))
+        : [...current.privateTags, title]
+    }));
+  }
+
+  function addPrivateTag() {
+    const title = newPrivateTag.trim().replace(/\s+/g, " ");
+    if (!title) return;
+    setPrivateTagOptions((current) =>
+      current.some((tag) => samePrivateTagTitle(tag, title))
+        ? current
+        : [...current, title]
+    );
+    setForm((current) => ({
+      ...current,
+      privateTags: current.privateTags.some((tag) =>
+        samePrivateTagTitle(tag, title)
+      )
+        ? current.privateTags
+        : [...current.privateTags, title]
+    }));
+    setNewPrivateTag("");
   }
 
   async function submitClient(event: FormEvent<HTMLFormElement>) {
@@ -171,6 +237,7 @@ export default function ClientsPage() {
       whatsappPhone: optionalValue(form.whatsappPhone),
       allergies: optionalValue(form.allergies),
       notes: optionalValue(form.notes),
+      privateTags: form.privateTags,
       requiresPrepayment: form.requiresPrepayment,
       prepaymentReason: form.requiresPrepayment
         ? optionalValue(form.prepaymentReason)
@@ -189,13 +256,17 @@ export default function ClientsPage() {
       );
       setIsFormOpen(false);
       setNotice(editingClient ? "Данные клиента обновлены." : "Клиент добавлен.");
-      await loadClients(search);
+      await Promise.all([loadClients(search), loadClientReferenceData()]);
     } catch (error) {
       setFormError(clientErrorMessage(error));
     } finally {
       setIsSaving(false);
     }
   }
+
+  const visiblePrivateTagOptions = uniquePrivateTagTitles(
+    [...privateTagOptions, ...form.privateTags]
+  );
 
   return (
     <div className="page-stack">
@@ -275,9 +346,9 @@ export default function ClientsPage() {
               </thead>
               <tbody>
                 {clients.map((client) => {
-                  const privateTags = client.privateTagAssignments
-                    .map(({ tag }) => tag.title)
-                    .join(", ");
+                  const privateTags = client.privateTagAssignments.map(
+                    ({ tag }) => tag.title
+                  );
                   const lastVisit = client.appointments[0]?.startsAt;
 
                   return (
@@ -305,8 +376,14 @@ export default function ClientsPage() {
                         </span>
                       </td>
                       <td>
-                        {privateTags ? (
-                          <span className="private-badge">{privateTags}</span>
+                        {privateTags.length ? (
+                          <div className="private-tag-list">
+                            {privateTags.map((title) => (
+                              <span className="private-badge" key={title}>
+                                {title}
+                              </span>
+                            ))}
+                          </div>
                         ) : (
                           <span className="muted-label">Нет</span>
                         )}
@@ -421,6 +498,61 @@ export default function ClientsPage() {
                 value={form.notes}
               />
             </label>
+
+            <fieldset className="tag-fieldset">
+              <legend>Внутренние метки</legend>
+              <div className="tag-cloud" aria-label="Внутренние метки клиента">
+                {visiblePrivateTagOptions.map((title) => {
+                  const isSelected = form.privateTags.some((tag) =>
+                    samePrivateTagTitle(tag, title)
+                  );
+                  return (
+                    <button
+                      aria-pressed={isSelected}
+                      className={`tag-option${
+                        isSelected ? " tag-option-selected" : ""
+                      }`}
+                      key={title}
+                      onClick={() => togglePrivateTag(title)}
+                      type="button"
+                    >
+                      {title}
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="tag-create-row">
+                <label className="form-field">
+                  <span>Новая метка</span>
+                  <input
+                    maxLength={80}
+                    onChange={(event) => setNewPrivateTag(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") {
+                        event.preventDefault();
+                        addPrivateTag();
+                      }
+                    }}
+                    placeholder="Например, любит тишину"
+                    value={newPrivateTag}
+                  />
+                </label>
+                <button
+                  aria-label="Добавить внутреннюю метку"
+                  className="secondary-button"
+                  disabled={!newPrivateTag.trim()}
+                  onClick={addPrivateTag}
+                  type="button"
+                >
+                  <Plus aria-hidden="true" size={16} />
+                  Добавить
+                </button>
+              </div>
+              <small>
+                Метки видны только сотрудникам внутри CRM и никогда не
+                показываются клиенту.
+              </small>
+            </fieldset>
 
             <label className="checkbox-field">
               <input

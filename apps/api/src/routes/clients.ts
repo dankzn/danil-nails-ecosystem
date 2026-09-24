@@ -11,6 +11,7 @@ const clientInputSchema = z.object({
   whatsappPhone: z.string().trim().max(30).nullable().optional(),
   allergies: z.string().trim().max(2000).nullable().optional(),
   notes: z.string().trim().max(4000).nullable().optional(),
+  privateTags: z.array(z.string().trim().min(1).max(80)).max(20).optional(),
   requiresPrepayment: z.boolean().default(false),
   prepaymentReason: z.string().trim().max(500).nullable().optional()
 });
@@ -21,6 +22,26 @@ const listQuerySchema = z.object({
   search: z.string().trim().max(120).optional(),
   limit: z.coerce.number().int().min(1).max(100).default(50)
 });
+
+const defaultPrivateTagTitles = [
+  "скандальный",
+  "требовательный",
+  "доебистый",
+  "лапочка"
+];
+
+export function normalizePrivateTagTitles(titles: string[]) {
+  const unique = new Map<string, string>();
+
+  for (const value of titles) {
+    const title = value.trim().replace(/\s+/g, " ");
+    if (!title) continue;
+    const key = title.toLocaleLowerCase("ru-RU");
+    if (!unique.has(key)) unique.set(key, title);
+  }
+
+  return [...unique.values()];
+}
 
 function normalizePhone(phone: string) {
   return phone.replace(/[^\d+]/g, "");
@@ -50,6 +71,29 @@ function withoutUndefined<T extends Record<string, unknown>>(value: T) {
   );
 }
 
+async function resolvePrivateTagIds(
+  transaction: Prisma.TransactionClient,
+  titles: string[]
+) {
+  const tagIds: string[] = [];
+
+  for (const title of normalizePrivateTagTitles(titles)) {
+    const existing = await transaction.clientPrivateTag.findFirst({
+      where: { title: { equals: title, mode: "insensitive" } },
+      select: { id: true }
+    });
+    const tag =
+      existing ??
+      (await transaction.clientPrivateTag.create({
+        data: { title },
+        select: { id: true }
+      }));
+    tagIds.push(tag.id);
+  }
+
+  return tagIds;
+}
+
 const adminClientInclude = {
   loyaltyStatus: true,
   privateTagAssignments: {
@@ -62,6 +106,23 @@ export function registerClientRoutes(
   database: DatabaseClient | null
 ) {
   const adminGuard = authorize(database, [UserRole.owner, UserRole.admin]);
+
+  server.get(
+    "/v1/admin/client-reference-data",
+    { preHandler: adminGuard },
+    async () => {
+      const storedTags = await database!.clientPrivateTag.findMany({
+        select: { title: true },
+        orderBy: { title: "asc" }
+      });
+      const privateTags = normalizePrivateTagTitles([
+        ...defaultPrivateTagTitles,
+        ...storedTags.map((tag) => tag.title)
+      ]).map((title) => ({ title }));
+
+      return { privateTags };
+    }
+  );
 
   server.get(
     "/v1/admin/clients",
@@ -141,20 +202,31 @@ export function registerClientRoutes(
       });
 
       try {
-        const clientData = withoutUndefined({
-          ...input.data,
-          phone: normalizePhone(input.data.phone),
-          telegramUsername: normalizeTelegramUsername(
-            input.data.telegramUsername
-          ),
-          ...(guestStatus
-            ? { loyaltyStatus: { connect: { id: guestStatus.id } } }
-            : {})
-        }) as Prisma.ClientCreateInput;
+        const { privateTags = [], ...clientFields } = input.data;
+        const client = await database!.$transaction(async (transaction) => {
+          const tagIds = await resolvePrivateTagIds(transaction, privateTags);
+          const clientData = withoutUndefined({
+            ...clientFields,
+            phone: normalizePhone(clientFields.phone),
+            telegramUsername: normalizeTelegramUsername(
+              clientFields.telegramUsername
+            ),
+            ...(guestStatus
+              ? { loyaltyStatus: { connect: { id: guestStatus.id } } }
+              : {}),
+            ...(tagIds.length
+              ? {
+                  privateTagAssignments: {
+                    create: tagIds.map((tagId) => ({ tagId }))
+                  }
+                }
+              : {})
+          }) as Prisma.ClientCreateInput;
 
-        const client = await database!.client.create({
-          data: clientData,
-          include: adminClientInclude
+          return transaction.client.create({
+            data: clientData,
+            include: adminClientInclude
+          });
         });
 
         return reply.code(201).send({ client });
@@ -176,25 +248,40 @@ export function registerClientRoutes(
 
       if (!parameters.success || !input.success) return sendInvalidPayload(reply);
 
-      const data = withoutUndefined({
-        ...input.data,
-        ...(input.data.phone
-          ? { phone: normalizePhone(input.data.phone) }
-          : undefined),
-        ...(input.data.telegramUsername !== undefined
-          ? {
-              telegramUsername: normalizeTelegramUsername(
-                input.data.telegramUsername
-              )
-            }
-          : undefined)
-      }) as Prisma.ClientUpdateInput;
-
       try {
-        const client = await database!.client.update({
-          where: { id: parameters.data.id },
-          data,
-          include: adminClientInclude
+        const { privateTags, ...clientFields } = input.data;
+        const client = await database!.$transaction(async (transaction) => {
+          const tagIds =
+            privateTags === undefined
+              ? undefined
+              : await resolvePrivateTagIds(transaction, privateTags);
+          const data = withoutUndefined({
+            ...clientFields,
+            ...(clientFields.phone
+              ? { phone: normalizePhone(clientFields.phone) }
+              : undefined),
+            ...(clientFields.telegramUsername !== undefined
+              ? {
+                  telegramUsername: normalizeTelegramUsername(
+                    clientFields.telegramUsername
+                  )
+                }
+              : undefined),
+            ...(tagIds !== undefined
+              ? {
+                  privateTagAssignments: {
+                    deleteMany: {},
+                    create: tagIds.map((tagId) => ({ tagId }))
+                  }
+                }
+              : {})
+          }) as Prisma.ClientUpdateInput;
+
+          return transaction.client.update({
+            where: { id: parameters.data.id },
+            data,
+            include: adminClientInclude
+          });
         });
 
         return { client };

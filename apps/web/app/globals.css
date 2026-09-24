@@ -590,6 +590,70 @@ table small {
   color: #4f565d;
 }
 
+.private-tag-list,
+.tag-cloud {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.tag-fieldset {
+  display: grid;
+  gap: 12px;
+  margin: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px;
+}
+
+.tag-fieldset legend {
+  padding: 0 6px;
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.tag-fieldset > small {
+  color: var(--text-muted);
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.tag-option {
+  min-height: 32px;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  padding: 6px 10px;
+  background: var(--surface);
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.tag-option:hover,
+.tag-option:focus-visible {
+  border-color: var(--accent);
+  outline: 0;
+}
+
+.tag-option-selected {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}
+
+.tag-create-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 9px;
+}
+
+.tag-create-row .secondary-button {
+  min-height: 42px;
+}
+
 .attention-panel {
   align-self: start;
 }
@@ -2593,6 +2657,14 @@ td strong {
   .form-grid-three,
   .form-grid-four {
     grid-template-columns: 1fr;
+  }
+
+  .tag-create-row {
+    grid-template-columns: 1fr;
+  }
+
+  .tag-create-row .secondary-button {
+    width: 100%;
   }
 
   .payroll-toolbar,
