@@ -3,6 +3,7 @@ import {
   AttendanceConfirmationStatus,
   BookingSource,
   Currency,
+  PaymentMethod,
   UserRole,
   type DatabaseClient
 } from "@danil-nails/db";
@@ -15,11 +16,11 @@ import {
 } from "../availability.js";
 import { authorize } from "../auth/session.js";
 
-const appointmentStatuses = [
-  "confirmed",
-  "completed",
-  "canceled",
-  "no_show"
+const appointmentStatuses = ["confirmed", "canceled", "no_show"] as const;
+const paymentMethods = [
+  "online_acquiring",
+  "cash",
+  "phone_transfer"
 ] as const;
 const attendanceStatuses = [
   "not_requested",
@@ -27,7 +28,7 @@ const attendanceStatuses = [
   "confirmed",
   "declined"
 ] as const;
-const activeAppointmentStatuses = [
+const activeAppointmentStatuses: AppointmentStatus[] = [
   AppointmentStatus.draft,
   AppointmentStatus.pending_admin_confirmation,
   AppointmentStatus.confirmed
@@ -67,6 +68,19 @@ const rescheduleSchema = z.object({
   requestedBy: z.enum(["client", "studio"]).default("studio"),
   note: z.string().trim().max(1000).nullable().optional()
 });
+const closePaymentSchema = z.object({
+  method: z.enum(paymentMethods),
+  amountMinor: z.number().int().positive(),
+  externalTransactionId: z.string().trim().max(200).nullable().optional()
+});
+const closeAppointmentSchema = z.object({
+  payments: z.array(closePaymentSchema).max(10).default([]),
+  note: z.string().trim().max(1000).nullable().optional(),
+  adjustmentReason: z.string().trim().max(1000).nullable().optional()
+});
+const reopenAppointmentSchema = z.object({
+  reason: z.string().trim().min(1).max(1000)
+});
 const idSchema = z.object({ id: z.string().cuid() });
 
 const appointmentInclude = {
@@ -92,6 +106,30 @@ const appointmentInclude = {
     select: {
       email: true,
       staffProfile: { select: { displayName: true } }
+    }
+  },
+  closedBy: {
+    select: {
+      email: true,
+      staffProfile: { select: { displayName: true } }
+    }
+  },
+  payments: {
+    where: { voidedAt: null },
+    orderBy: { occurredAt: "asc" },
+    select: {
+      id: true,
+      method: true,
+      amountMinor: true,
+      currency: true,
+      externalTransactionId: true,
+      occurredAt: true,
+      receivedBy: {
+        select: {
+          email: true,
+          staffProfile: { select: { displayName: true } }
+        }
+      }
     }
   }
 } as const;
@@ -138,6 +176,27 @@ export function requiresPrepaymentPenalty(options: {
   return options.appointmentStartsAt.getTime() - now.getTime() <= cutoff;
 }
 
+export function evaluateAppointmentClose(options: {
+  priceMinor: number;
+  payments: Array<{ amountMinor: number }>;
+  adjustmentReason?: string | null | undefined;
+}):
+  | { ok: true }
+  | { ok: false; error: "appointment_payment_mismatch" | "appointment_payment_required" } {
+  if (options.priceMinor > 0 && options.payments.length === 0) {
+    return { ok: false, error: "appointment_payment_required" };
+  }
+  const totalMinor = options.payments.reduce(
+    (sum, payment) => sum + payment.amountMinor,
+    0
+  );
+  const isBalanced = totalMinor === options.priceMinor;
+  if (!isBalanced && !options.adjustmentReason) {
+    return { ok: false, error: "appointment_payment_mismatch" };
+  }
+  return { ok: true };
+}
+
 async function conflictingAppointment(
   database: DatabaseClient,
   staffId: string,
@@ -178,6 +237,7 @@ export function registerAppointmentRoutes(
     UserRole.master
   ]);
   const adminGuard = authorize(database, [UserRole.owner, UserRole.admin]);
+  const ownerGuard = authorize(database, [UserRole.owner]);
 
   server.get(
     "/v1/admin/booking-options",
@@ -375,9 +435,6 @@ export function registerAppointmentRoutes(
             status,
             ...(status === AppointmentStatus.confirmed
               ? { adminConfirmedAt: now }
-              : {}),
-            ...(status === AppointmentStatus.completed
-              ? { completedAt: current.completedAt ?? now }
               : {}),
             ...(status === AppointmentStatus.canceled
               ? {
@@ -615,6 +672,124 @@ export function registerAppointmentRoutes(
       });
 
       return reply.code(201).send({ appointment });
+    }
+  );
+
+  server.post(
+    "/v1/admin/appointments/:id/close",
+    { preHandler: adminGuard },
+    async (request, reply) => {
+      const parameters = idSchema.safeParse(request.params);
+      const input = closeAppointmentSchema.safeParse(request.body);
+      if (!parameters.success || !input.success) return sendInvalidPayload(reply);
+
+      const current = await database!.appointment.findUnique({
+        where: { id: parameters.data.id }
+      });
+      if (!current) return reply.code(404).send({ error: "appointment_not_found" });
+      if (!activeAppointmentStatuses.includes(current.status)) {
+        return reply.code(409).send({ error: "appointment_not_closable" });
+      }
+
+      const evaluation = evaluateAppointmentClose({
+        priceMinor: current.priceMinor,
+        payments: input.data.payments,
+        adjustmentReason: input.data.adjustmentReason
+      });
+      if (!evaluation.ok) {
+        return reply.code(409).send({ error: evaluation.error });
+      }
+
+      const now = new Date();
+      const appointment = await database!.$transaction(async (transaction) => {
+        if (input.data.payments.length) {
+          await transaction.payment.createMany({
+            data: input.data.payments.map((payment) => ({
+              appointmentId: current.id,
+              method: PaymentMethod[payment.method],
+              amountMinor: payment.amountMinor,
+              currency: current.currency,
+              externalTransactionId: payment.externalTransactionId ?? null,
+              receivedByUserId: request.crmUser!.id,
+              occurredAt: now
+            }))
+          });
+        }
+        const updated = await transaction.appointment.update({
+          where: { id: current.id },
+          data: {
+            status: AppointmentStatus.completed,
+            completedAt: now,
+            closedByUserId: request.crmUser!.id
+          }
+        });
+        await transaction.appointmentEvent.create({
+          data: {
+            appointmentId: current.id,
+            fromStatus: current.status,
+            toStatus: AppointmentStatus.completed,
+            actorUserId: request.crmUser!.id,
+            note:
+              input.data.adjustmentReason ??
+              input.data.note ??
+              "Запись закрыта с фиксацией оплаты"
+          }
+        });
+        return transaction.appointment.findUniqueOrThrow({
+          where: { id: updated.id },
+          include: appointmentInclude
+        });
+      });
+
+      return { appointment };
+    }
+  );
+
+  server.post(
+    "/v1/admin/appointments/:id/reopen",
+    { preHandler: ownerGuard },
+    async (request, reply) => {
+      const parameters = idSchema.safeParse(request.params);
+      const input = reopenAppointmentSchema.safeParse(request.body);
+      if (!parameters.success || !input.success) return sendInvalidPayload(reply);
+
+      const current = await database!.appointment.findUnique({
+        where: { id: parameters.data.id }
+      });
+      if (!current) return reply.code(404).send({ error: "appointment_not_found" });
+      if (current.status !== AppointmentStatus.completed) {
+        return reply.code(409).send({ error: "appointment_not_completed" });
+      }
+
+      const appointment = await database!.$transaction(async (transaction) => {
+        await transaction.payment.updateMany({
+          where: { appointmentId: current.id, voidedAt: null },
+          data: { voidedAt: new Date() }
+        });
+        const updated = await transaction.appointment.update({
+          where: { id: current.id },
+          data: {
+            status: AppointmentStatus.confirmed,
+            completedAt: null,
+            closedByUserId: null
+          }
+        });
+        await transaction.appointmentEvent.create({
+          data: {
+            appointmentId: current.id,
+            fromStatus: current.status,
+            toStatus: AppointmentStatus.confirmed,
+            actorUserId: request.crmUser!.id,
+            note: input.data.reason
+          }
+        });
+        return transaction.appointment.findUniqueOrThrow({
+          where: { id: updated.id },
+          include: appointmentInclude
+        });
+      });
+
+      return { appointment };
     }
   );
 }

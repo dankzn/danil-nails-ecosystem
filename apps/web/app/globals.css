@@ -1602,6 +1602,21 @@ td strong {
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
+.close-payment-row {
+  align-items: end;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.payment-summary-list {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 13px;
+}
+
 .checkbox-field {
   min-height: 54px;
   display: flex;

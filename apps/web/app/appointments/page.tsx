@@ -27,6 +27,20 @@ type AttendanceStatus =
   | "pending"
   | "confirmed"
   | "declined";
+type PaymentMethod = "online_acquiring" | "cash" | "phone_transfer";
+
+type AppointmentPayment = {
+  id: string;
+  method: PaymentMethod;
+  amountMinor: number;
+  currency: string;
+  externalTransactionId: string | null;
+  occurredAt: string;
+  receivedBy: {
+    email: string | null;
+    staffProfile: { displayName: string } | null;
+  } | null;
+};
 
 type Appointment = {
   id: string;
@@ -38,6 +52,8 @@ type Appointment = {
   clientComment: string | null;
   internalNote: string | null;
   cancellationReason: string | null;
+  priceMinor: number;
+  currency: string;
   client: {
     id: string;
     fullName: string | null;
@@ -56,6 +72,11 @@ type Appointment = {
     email: string | null;
     staffProfile: { displayName: string } | null;
   } | null;
+  closedBy: {
+    email: string | null;
+    staffProfile: { displayName: string } | null;
+  } | null;
+  payments: AppointmentPayment[];
 };
 
 type BookingOptions = {
@@ -88,6 +109,26 @@ type BookingForm = {
   internalNote: string;
 };
 
+type ClosePaymentRow = {
+  method: PaymentMethod;
+  amount: string;
+  externalTransactionId: string;
+};
+
+function formatMoney(amountMinor: number, currency: string) {
+  return new Intl.NumberFormat("ru-RU", {
+    style: "currency",
+    currency,
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2
+  }).format(amountMinor / 100);
+}
+
+function minorAmount(value: string) {
+  const parsed = Number(value.replace(",", "."));
+  return Number.isFinite(parsed) ? Math.round(parsed * 100) : Number.NaN;
+}
+
 const statusMeta: Record<
   AppointmentStatus,
   { label: string; tone: string }
@@ -111,11 +152,17 @@ const attendanceMeta: Record<AttendanceStatus, string> = {
   declined: "Клиент не подтвердил"
 };
 
-const manageableStatuses = [
-  "confirmed",
-  "completed",
-  "canceled",
-  "no_show"
+const paymentMethodMeta: Record<PaymentMethod, string> = {
+  online_acquiring: "Онлайн-эквайринг",
+  cash: "Наличные",
+  phone_transfer: "Перевод по номеру телефона"
+};
+
+const manageableStatuses = ["confirmed", "canceled", "no_show"] as const;
+const closableStatuses = [
+  "draft",
+  "pending_admin_confirmation",
+  "confirmed"
 ] as const;
 
 const timeFormatter = new Intl.DateTimeFormat("ru-RU", {
@@ -277,6 +324,18 @@ function appointmentErrorMessage(error: unknown) {
     if (error.code === "client_not_found") return "Клиент больше не найден.";
     if (error.code === "service_not_found") return "Услуга недоступна.";
     if (error.code === "staff_not_found") return "Мастер недоступен.";
+    if (error.code === "appointment_not_closable") {
+      return "Эту запись нельзя закрыть в её текущем статусе.";
+    }
+    if (error.code === "appointment_payment_required") {
+      return "Добавьте хотя бы один платёж или укажите причину расхождения.";
+    }
+    if (error.code === "appointment_payment_mismatch") {
+      return "Сумма платежей не совпадает со стоимостью записи. Укажите причину расхождения (скидка, долг, возврат) или исправьте суммы.";
+    }
+    if (error.code === "appointment_not_completed") {
+      return "Запись ещё не закрыта.";
+    }
     if (error.status === 401 || error.status === 403) {
       return "Недостаточно прав или сессия завершилась.";
     }
@@ -331,6 +390,11 @@ export default function AppointmentsPage() {
     useState<"client" | "studio">("studio");
   const [formError, setFormError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [closePayments, setClosePayments] = useState<ClosePaymentRow[]>([]);
+  const [closeAdjustmentReason, setCloseAdjustmentReason] = useState("");
+  const [closeNote, setCloseNote] = useState("");
+  const [reopenReason, setReopenReason] = useState("");
+  const [isClosing, setIsClosing] = useState(false);
 
   const loadAppointments = useCallback(async (date: string) => {
     setIsLoading(true);
@@ -503,12 +567,20 @@ export default function AppointmentsPage() {
         : today;
     setSelectedAppointment(appointment);
     setStatus(
-      appointment.status === "completed" ||
-        appointment.status === "canceled" ||
-        appointment.status === "no_show"
+      appointment.status === "canceled" || appointment.status === "no_show"
         ? appointment.status
         : "confirmed"
     );
+    setClosePayments(
+      closableStatuses.includes(
+        appointment.status as (typeof closableStatuses)[number]
+      )
+        ? [{ method: "cash", amount: "", externalTransactionId: "" }]
+        : []
+    );
+    setCloseAdjustmentReason("");
+    setCloseNote("");
+    setReopenReason("");
     setAttendanceStatus(appointment.attendanceConfirmationStatus);
     setCancellationReason(appointment.cancellationReason ?? "");
     setCanceledBy("studio");
@@ -624,6 +696,96 @@ export default function AppointmentsPage() {
       setFormError(appointmentErrorMessage(error));
     } finally {
       setIsSaving(false);
+    }
+  }
+
+  function addClosePaymentRow() {
+    setClosePayments((current) => [
+      ...current,
+      { method: "cash", amount: "", externalTransactionId: "" }
+    ]);
+  }
+
+  function updateClosePaymentRow(
+    index: number,
+    patch: Partial<ClosePaymentRow>
+  ) {
+    setClosePayments((current) =>
+      current.map((row, rowIndex) =>
+        rowIndex === index ? { ...row, ...patch } : row
+      )
+    );
+  }
+
+  function removeClosePaymentRow(index: number) {
+    setClosePayments((current) =>
+      current.filter((_, rowIndex) => rowIndex !== index)
+    );
+  }
+
+  async function closeAppointment() {
+    if (!selectedAppointment) return;
+    const payments = [];
+    for (const row of closePayments) {
+      const amountMinor = minorAmount(row.amount);
+      if (!Number.isFinite(amountMinor) || amountMinor <= 0) {
+        setFormError("Проверьте суммы платежей — они должны быть больше нуля.");
+        return;
+      }
+      payments.push({
+        method: row.method,
+        amountMinor,
+        externalTransactionId: row.externalTransactionId.trim() || null
+      });
+    }
+
+    setIsClosing(true);
+    setFormError(null);
+    setNotice(null);
+    try {
+      await apiRequest(`/v1/admin/appointments/${selectedAppointment.id}/close`, {
+        method: "POST",
+        body: JSON.stringify({
+          payments,
+          note: closeNote.trim() || null,
+          adjustmentReason: closeAdjustmentReason.trim() || null
+        })
+      });
+      setSelectedAppointment(null);
+      setNotice("Запись закрыта, оплата зафиксирована.");
+      await refresh();
+    } catch (error) {
+      setFormError(appointmentErrorMessage(error));
+    } finally {
+      setIsClosing(false);
+    }
+  }
+
+  async function reopenAppointment() {
+    if (!selectedAppointment) return;
+    if (!reopenReason.trim()) {
+      setFormError("Укажите причину повторного открытия записи.");
+      return;
+    }
+
+    setIsClosing(true);
+    setFormError(null);
+    setNotice(null);
+    try {
+      await apiRequest(
+        `/v1/admin/appointments/${selectedAppointment.id}/reopen`,
+        {
+          method: "POST",
+          body: JSON.stringify({ reason: reopenReason.trim() })
+        }
+      );
+      setSelectedAppointment(null);
+      setNotice("Запись снова открыта.");
+      await refresh();
+    } catch (error) {
+      setFormError(appointmentErrorMessage(error));
+    } finally {
+      setIsClosing(false);
     }
   }
 
@@ -1039,6 +1201,15 @@ export default function AppointmentsPage() {
                 <dd>{appointmentSourceLabel(selectedAppointment)}</dd>
               </div>
               <div>
+                <dt>Стоимость</dt>
+                <dd>
+                  {formatMoney(
+                    selectedAppointment.priceMinor,
+                    selectedAppointment.currency
+                  )}
+                </dd>
+              </div>
+              <div>
                 <dt>Подтверждение визита</dt>
                 <dd>
                   {attendanceMeta[
@@ -1107,6 +1278,161 @@ export default function AppointmentsPage() {
                 Обновить статус
               </button>
             </section>
+
+            {closableStatuses.includes(
+              selectedAppointment.status as (typeof closableStatuses)[number]
+            ) ? (
+              <section className="editor-section">
+                <div className="editor-section-heading">
+                  <div>
+                    <p className="section-kicker">Визит состоялся</p>
+                    <h2>Закрыть запись с оплатой</h2>
+                  </div>
+                </div>
+                {closePayments.map((row, index) => (
+                  <div className="form-grid form-grid-two close-payment-row" key={index}>
+                    <label className="form-field">
+                      <span>Способ оплаты</span>
+                      <select
+                        onChange={(event) =>
+                          updateClosePaymentRow(index, {
+                            method: event.target.value as PaymentMethod
+                          })
+                        }
+                        value={row.method}
+                      >
+                        {Object.entries(paymentMethodMeta).map(
+                          ([value, label]) => (
+                            <option key={value} value={value}>
+                              {label}
+                            </option>
+                          )
+                        )}
+                      </select>
+                    </label>
+                    <label className="form-field">
+                      <span>Сумма</span>
+                      <input
+                        inputMode="decimal"
+                        onChange={(event) =>
+                          updateClosePaymentRow(index, {
+                            amount: event.target.value
+                          })
+                        }
+                        placeholder="0"
+                        value={row.amount}
+                      />
+                    </label>
+                    {row.method !== "cash" ? (
+                      <label className="form-field">
+                        <span>Номер транзакции</span>
+                        <input
+                          maxLength={200}
+                          onChange={(event) =>
+                            updateClosePaymentRow(index, {
+                              externalTransactionId: event.target.value
+                            })
+                          }
+                          value={row.externalTransactionId}
+                        />
+                      </label>
+                    ) : null}
+                    <button
+                      aria-label="Удалить платёж"
+                      className="secondary-button"
+                      onClick={() => removeClosePaymentRow(index)}
+                      type="button"
+                    >
+                      Убрать
+                    </button>
+                  </div>
+                ))}
+                <button
+                  className="secondary-button"
+                  onClick={addClosePaymentRow}
+                  type="button"
+                >
+                  Добавить платёж
+                </button>
+                <label className="form-field">
+                  <span>Причина расхождения (скидка, долг, возврат)</span>
+                  <input
+                    maxLength={1000}
+                    onChange={(event) =>
+                      setCloseAdjustmentReason(event.target.value)
+                    }
+                    placeholder="Заполните, если сумма платежей не равна стоимости"
+                    value={closeAdjustmentReason}
+                  />
+                </label>
+                <label className="form-field">
+                  <span>Комментарий к закрытию</span>
+                  <input
+                    maxLength={1000}
+                    onChange={(event) => setCloseNote(event.target.value)}
+                    value={closeNote}
+                  />
+                </label>
+                <button
+                  className="primary-button editor-action"
+                  disabled={isClosing}
+                  onClick={() => void closeAppointment()}
+                  type="button"
+                >
+                  {isClosing ? "Закрываем…" : "Закрыть запись"}
+                </button>
+              </section>
+            ) : null}
+
+            {selectedAppointment.status === "completed" ? (
+              <section className="editor-section">
+                <div className="editor-section-heading">
+                  <div>
+                    <p className="section-kicker">Оплата</p>
+                    <h2>Запись закрыта</h2>
+                  </div>
+                </div>
+                {selectedAppointment.payments.length ? (
+                  <ul className="payment-summary-list">
+                    {selectedAppointment.payments.map((payment) => (
+                      <li key={payment.id}>
+                        {paymentMethodMeta[payment.method]} ·{" "}
+                        {formatMoney(payment.amountMinor, payment.currency)}
+                        {payment.externalTransactionId
+                          ? ` · ${payment.externalTransactionId}`
+                          : ""}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="muted-label">
+                    Платежи не зафиксированы (закрыто с корректировкой).
+                  </p>
+                )}
+                <p className="muted-label">
+                  Закрыл:{" "}
+                  {selectedAppointment.closedBy?.staffProfile?.displayName ??
+                    selectedAppointment.closedBy?.email ??
+                    "—"}
+                </p>
+                <label className="form-field">
+                  <span>Причина повторного открытия</span>
+                  <input
+                    maxLength={1000}
+                    onChange={(event) => setReopenReason(event.target.value)}
+                    value={reopenReason}
+                  />
+                </label>
+                <button
+                  className="secondary-button editor-action"
+                  disabled={isClosing}
+                  onClick={() => void reopenAppointment()}
+                  type="button"
+                >
+                  Переоткрыть запись
+                </button>
+              </section>
+            ) : null}
 
             <section className="editor-section">
               <div className="editor-section-heading">

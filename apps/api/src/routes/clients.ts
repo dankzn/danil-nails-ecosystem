@@ -24,13 +24,6 @@ const listQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(50)
 });
 
-const defaultPrivateTagTitles = [
-  "скандальный",
-  "требовательный",
-  "доебистый",
-  "лапочка"
-];
-
 export function normalizeDictionaryTitles(titles: string[]) {
   const unique = new Map<string, string>();
 
@@ -162,10 +155,9 @@ export function registerClientRoutes(
           orderBy: { title: "asc" }
         })
       ]);
-      const privateTags = normalizeDictionaryTitles([
-        ...defaultPrivateTagTitles,
-        ...storedTags.map((tag) => tag.title)
-      ]).map((title) => ({ title }));
+      const privateTags = normalizeDictionaryTitles(
+        storedTags.map((tag) => tag.title)
+      ).map((title) => ({ title }));
 
       return { privateTags, allergens };
     }

@@ -123,6 +123,12 @@ enum PayrollEntryType {
   adjustment
 }
 
+enum PaymentMethod {
+  online_acquiring
+  cash
+  phone_transfer
+}
+
 model User {
   id           String   @id @default(cuid())
   role         UserRole
@@ -140,10 +146,12 @@ model User {
   employeeNotesAuthored  EmployeeNote[]  @relation("EmployeeNoteAuthor")
   employeeEventsAuthored EmployeeEvent[] @relation("EmployeeEventActor")
   appointmentsCreated    Appointment[]   @relation("AppointmentCreator")
+  appointmentsClosed     Appointment[]   @relation("AppointmentCloser")
   compensationRulesAuthored EmployeeCompensationRule[] @relation("CompensationRuleAuthor")
   payrollsCreated        EmployeePayroll[] @relation("PayrollCreator")
   payrollEntriesAuthored PayrollEntry[] @relation("PayrollEntryAuthor")
   payrollPaymentsAuthored PayrollPayment[] @relation("PayrollPaymentAuthor")
+  appointmentPaymentsReceived Payment[] @relation("PaymentReceiver")
 }
 
 model Session {
@@ -536,6 +544,7 @@ model Appointment {
   priceMinor        Int               @default(0)
   currency          Currency          @default(RUB)
   completedAt       DateTime?
+  closedByUserId    String?
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
 
@@ -543,11 +552,13 @@ model Appointment {
   staff            StaffProfile @relation(fields: [staffId], references: [id])
   service          Service      @relation(fields: [serviceId], references: [id])
   createdBy        User?        @relation("AppointmentCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  closedBy         User?        @relation("AppointmentCloser", fields: [closedByUserId], references: [id], onDelete: SetNull)
   events           AppointmentEvent[]
   visitNotes       VisitNote[]
   visitMaterials   VisitMaterial[]
   nailPhotos       NailPhoto[]
   payrollEntries   PayrollEntry[]
+  payments         Payment[]
 
   @@index([staffId, startsAt, endsAt])
   @@index([clientId, startsAt])
@@ -633,15 +644,21 @@ model NotificationJob {
 }
 
 model Payment {
-  id            String   @id @default(cuid())
-  appointmentId String?
-  clientId      String?
-  amount        Int
-  currency      Currency @default(RUB)
-  status        String
-  provider      String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id                    String        @id @default(cuid())
+  appointmentId         String
+  method                PaymentMethod
+  amountMinor           Int
+  currency              Currency      @default(RUB)
+  externalTransactionId String?
+  receivedByUserId      String?
+  occurredAt            DateTime      @default(now())
+  voidedAt              DateTime?
+  createdAt             DateTime      @default(now())
+
+  appointment           Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  receivedBy            User?       @relation("PaymentReceiver", fields: [receivedByUserId], references: [id], onDelete: SetNull)
+
+  @@index([appointmentId])
 }
 
 model Review {
