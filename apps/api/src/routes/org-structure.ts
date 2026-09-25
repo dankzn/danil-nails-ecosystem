@@ -283,7 +283,13 @@ export function registerOrgStructureRoutes(
 
       const manager = await database!.orgUnitManager.update({
         where: { id: current.id },
-        data: { endsAt: dateValue(input.data.endsAt) ?? new Date() },
+        data: {
+          // Omitting endsAt means "end it now" (what the CRM's single end
+          // button sends); an explicit null must clear/reopen the
+          // assignment instead of also collapsing to "now".
+          endsAt:
+            input.data.endsAt === undefined ? new Date() : dateValue(input.data.endsAt)
+        },
         include: {
           staff: { select: { id: true, displayName: true } },
           managerType: { select: { id: true, title: true } },

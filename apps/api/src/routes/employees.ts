@@ -193,6 +193,15 @@ function isUniqueConstraintError(error: unknown) {
   );
 }
 
+function isForeignKeyConstraintError(error: unknown) {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    error.code === "P2003"
+  );
+}
+
 function sendInvalidPayload(reply: FastifyReply) {
   return reply.code(400).send({ error: "invalid_employee_payload" });
 }
@@ -413,6 +422,9 @@ export function registerEmployeeRoutes(
         if (isUniqueConstraintError(error)) {
           return reply.code(409).send({ error: "employee_contact_already_exists" });
         }
+        if (isForeignKeyConstraintError(error)) {
+          return reply.code(404).send({ error: "employee_reference_not_found" });
+        }
         throw error;
       }
     }
@@ -522,6 +534,9 @@ export function registerEmployeeRoutes(
       } catch (error) {
         if (isUniqueConstraintError(error)) {
           return reply.code(409).send({ error: "employee_contact_already_exists" });
+        }
+        if (isForeignKeyConstraintError(error)) {
+          return reply.code(404).send({ error: "employee_reference_not_found" });
         }
         throw error;
       }
