@@ -395,7 +395,7 @@ export default function ClientsPage() {
           </div>
         ) : (
           <div className="table-scroll">
-            <table>
+            <table className="clients-table">
               <thead>
                 <tr>
                   <th>Клиент</th>

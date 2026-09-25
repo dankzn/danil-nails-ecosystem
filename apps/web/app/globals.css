@@ -512,9 +512,7 @@ h2 {
 .appointment-time,
 .appointment-client,
 .agenda-time,
-.agenda-content > div,
-table td:first-child,
-table td:nth-child(2) {
+.agenda-content > div {
   display: grid;
   gap: 4px;
 }
@@ -532,6 +530,20 @@ table td:nth-child(2) {
 table small {
   color: var(--text-muted);
   font-size: 11px;
+}
+
+/*
+ * table td:first-child/nth-child(2) used to get `display: grid` here to
+ * stack a <strong> name over a <small> subtitle. Overriding `display` on a
+ * <td> un-does its table-cell box type, which table-layout: fixed (and even
+ * auto, more subtly) relies on for column sizing — it was quietly shifting
+ * every column after the first two. Get the same stacked look through
+ * normal block flow instead, which never touches the cell's display type.
+ */
+table td:first-child small,
+table td:nth-child(2) small {
+  display: block;
+  margin-top: 4px;
 }
 
 .appointment-client strong,
@@ -597,12 +609,54 @@ table small {
   color: var(--red);
 }
 
+.clients-table {
+  table-layout: fixed;
+}
+
+.clients-table th:nth-child(1) {
+  width: 17%;
+}
+
+.clients-table th:nth-child(2) {
+  width: 15%;
+}
+
+.clients-table th:nth-child(3) {
+  width: 10%;
+}
+
+.clients-table th:nth-child(4) {
+  width: 9%;
+}
+
+.clients-table th:nth-child(5) {
+  width: 21%;
+}
+
+.clients-table th:nth-child(6) {
+  width: 17%;
+}
+
+.clients-table th:nth-child(7) {
+  width: 9%;
+}
+
+.clients-table th:nth-child(8) {
+  width: 58px;
+}
+
 .tag-cell {
-  max-width: 240px;
+  overflow: hidden;
+}
+
+.tag-cell .private-tag-list {
+  min-width: 0;
 }
 
 .tag-cell .allergen-badge,
 .tag-cell .private-badge {
+  display: block;
+  min-width: 0;
   max-width: 100%;
   overflow: hidden;
   text-overflow: ellipsis;
