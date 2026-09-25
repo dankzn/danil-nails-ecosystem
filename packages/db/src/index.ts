@@ -11,10 +11,13 @@ export {
   EmploymentStatus,
   EmploymentType,
   Locale,
+  MaterialUnit,
   PaymentMethod,
   PayrollEntryType,
   PayrollStatus,
   Prisma,
+  StockMovementType,
   TrainingStatus,
-  UserRole
+  UserRole,
+  WaitlistStatus
 } from "./generated/client/client.js";

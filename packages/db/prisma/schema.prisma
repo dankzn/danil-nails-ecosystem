@@ -152,6 +152,8 @@ model User {
   payrollEntriesAuthored PayrollEntry[] @relation("PayrollEntryAuthor")
   payrollPaymentsAuthored PayrollPayment[] @relation("PayrollPaymentAuthor")
   appointmentPaymentsReceived Payment[] @relation("PaymentReceiver")
+  stockMovementsRecorded StockMovement[] @relation("StockMovementActor")
+  waitlistEntriesCreated WaitlistEntry[] @relation("WaitlistCreator")
 }
 
 model Session {
@@ -196,6 +198,7 @@ model Client {
   visitMaterials        VisitMaterial[]
   nailPhotos            NailPhoto[]
   consentRecords        ConsentRecord[]
+  waitlistEntries       WaitlistEntry[]
 
   @@index([telegramUsername])
 }
@@ -302,6 +305,7 @@ model StaffProfile {
   compensationRules EmployeeCompensationRule[]
   payrolls       EmployeePayroll[]
   orgUnitManagerAssignments OrgUnitManager[]
+  waitlistEntries WaitlistEntry[]
 }
 
 model Position {
@@ -592,6 +596,8 @@ model Service {
   staffServices          StaffService[]
   appointments           Appointment[]
   prices                 ServicePrice[]
+  materials              ServiceMaterial[]
+  waitlistEntries        WaitlistEntry[]
 }
 
 model ServicePrice {
@@ -681,6 +687,7 @@ model Appointment {
   nailPhotos       NailPhoto[]
   payrollEntries   PayrollEntry[]
   payments         Payment[]
+  stockMovements   StockMovement[]
 
   @@index([staffId, startsAt, endsAt])
   @@index([clientId, startsAt])
@@ -805,4 +812,94 @@ model ConsentRecord {
   client      Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
 
   @@index([clientId, type])
+}
+
+enum MaterialUnit {
+  piece
+  ml
+  g
+}
+
+enum StockMovementType {
+  receipt
+  consumption
+  adjustment
+  write_off
+}
+
+enum WaitlistStatus {
+  waiting
+  notified
+  booked
+  canceled
+}
+
+model Material {
+  id               String       @id @default(cuid())
+  title            String       @unique
+  sku              String?
+  unit             MaterialUnit @default(piece)
+  reorderThreshold Float        @default(0)
+  isArchived       Boolean      @default(false)
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  serviceLinks     ServiceMaterial[]
+  stockMovements   StockMovement[]
+}
+
+model ServiceMaterial {
+  id         String @id @default(cuid())
+  serviceId  String
+  materialId String
+  quantity   Float
+
+  service    Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  material   Material @relation(fields: [materialId], references: [id], onDelete: Cascade)
+
+  @@unique([serviceId, materialId])
+  @@index([materialId])
+}
+
+model StockMovement {
+  id            String            @id @default(cuid())
+  materialId    String
+  appointmentId String?
+  type          StockMovementType
+  quantity      Float
+  note          String?
+  actorUserId   String?
+  occurredAt    DateTime          @default(now())
+  createdAt     DateTime          @default(now())
+
+  material    Material     @relation(fields: [materialId], references: [id], onDelete: Cascade)
+  appointment Appointment? @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+  actor       User?        @relation("StockMovementActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([materialId, occurredAt])
+  @@index([appointmentId])
+}
+
+model WaitlistEntry {
+  id              String         @id @default(cuid())
+  clientId        String
+  serviceId       String
+  staffId         String?
+  preferredFrom   DateTime
+  preferredTo     DateTime
+  status          WaitlistStatus @default(waiting)
+  note            String?
+  createdByUserId String?
+  notifiedAt      DateTime?
+  resolvedAt      DateTime?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  client    Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  service   Service       @relation(fields: [serviceId], references: [id])
+  staff     StaffProfile? @relation(fields: [staffId], references: [id])
+  createdBy User?         @relation("WaitlistCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+
+  @@index([status, preferredFrom])
+  @@index([clientId])
 }

@@ -4,6 +4,7 @@ import {
   BookingSource,
   Currency,
   PaymentMethod,
+  StockMovementType,
   UserRole,
   type DatabaseClient
 } from "@danil-nails/db";
@@ -735,6 +736,21 @@ export function registerAppointmentRoutes(
               "Запись закрыта с фиксацией оплаты"
           }
         });
+        const recipe = await transaction.serviceMaterial.findMany({
+          where: { serviceId: current.serviceId }
+        });
+        if (recipe.length) {
+          await transaction.stockMovement.createMany({
+            data: recipe.map((item) => ({
+              materialId: item.materialId,
+              appointmentId: current.id,
+              type: StockMovementType.consumption,
+              quantity: -item.quantity,
+              actorUserId: request.crmUser!.id,
+              occurredAt: now
+            }))
+          });
+        }
         return transaction.appointment.findUniqueOrThrow({
           where: { id: updated.id },
           include: appointmentInclude
@@ -766,6 +782,22 @@ export function registerAppointmentRoutes(
           where: { appointmentId: current.id, voidedAt: null },
           data: { voidedAt: new Date() }
         });
+        const consumedMaterials = await transaction.stockMovement.findMany({
+          where: { appointmentId: current.id, type: StockMovementType.consumption },
+          select: { materialId: true, quantity: true }
+        });
+        if (consumedMaterials.length) {
+          await transaction.stockMovement.createMany({
+            data: consumedMaterials.map((movement) => ({
+              materialId: movement.materialId,
+              appointmentId: current.id,
+              type: StockMovementType.adjustment,
+              quantity: -movement.quantity,
+              note: "Возврат материалов при переоткрытии записи",
+              actorUserId: request.crmUser!.id
+            }))
+          });
+        }
         const updated = await transaction.appointment.update({
           where: { id: current.id },
           data: {

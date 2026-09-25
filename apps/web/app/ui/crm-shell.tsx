@@ -6,10 +6,12 @@ import {
   ChevronDown,
   Clock3,
   ContactRound,
+  Hourglass,
   LayoutDashboard,
   LogOut,
   Scissors,
-  Users
+  Users,
+  Warehouse
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -28,6 +30,7 @@ type NavItem = {
 const navigation: NavItem[] = [
   { href: "/", label: "Обзор", icon: LayoutDashboard, ownerOnly: false },
   { href: "/appointments", label: "Записи", icon: CalendarDays, ownerOnly: false },
+  { href: "/waitlist", label: "Лист ожидания", icon: Hourglass, ownerOnly: false },
   { href: "/clients", label: "Клиенты", icon: Users, ownerOnly: false },
   {
     label: "Персонал",
@@ -41,6 +44,7 @@ const navigation: NavItem[] = [
   },
   { href: "/services", label: "Услуги", icon: Scissors, ownerOnly: false },
   { href: "/schedule", label: "Расписание", icon: Clock3, ownerOnly: false },
+  { href: "/inventory", label: "Склад", icon: Warehouse, ownerOnly: true },
   { href: "/directories", label: "Справочники", icon: BookOpen, ownerOnly: true }
 ];
 
