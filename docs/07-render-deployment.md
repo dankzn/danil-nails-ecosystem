@@ -18,6 +18,7 @@ CRM разворачивается как один бесплатный Render W
 - Region: Frankfurt (EU Central).
 - Root Directory: пусто.
 - Build Command: `pnpm install --frozen-lockfile && pnpm build`.
+- Pre-Deploy Command: `pnpm db:deploy` (применяет накопленные Prisma-миграции к боевой Supabase-базе перед тем, как новая версия начинает принимать трафик).
 - Start Command: `pnpm start:deploy`.
 - Health Check Path: `/ready`.
 - Compute: Free, `$0/month`.

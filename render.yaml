@@ -6,6 +6,7 @@ services:
     region: frankfurt
     branch: main
     buildCommand: pnpm install --frozen-lockfile && pnpm build
+    preDeployCommand: pnpm db:deploy
     startCommand: pnpm start:deploy
     healthCheckPath: /ready
     autoDeployTrigger: commit
