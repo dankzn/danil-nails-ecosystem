@@ -72,50 +72,64 @@ function withoutUndefined<T extends Record<string, unknown>>(value: T) {
   );
 }
 
-async function resolvePrivateTagIds(
-  transaction: Prisma.TransactionClient,
+type DictionaryDelegate = {
+  findFirst(args: {
+    where: { title: { equals: string; mode: "insensitive" } };
+    select: { id: true };
+  }): Promise<{ id: string } | null>;
+  create(args: {
+    data: { title: string };
+    select: { id: true };
+  }): Promise<{ id: string }>;
+};
+
+async function resolveDictionaryIds(
+  delegate: DictionaryDelegate,
   titles: string[]
 ) {
-  const tagIds: string[] = [];
+  const ids: string[] = [];
 
   for (const title of normalizeDictionaryTitles(titles)) {
-    const existing = await transaction.clientPrivateTag.findFirst({
-      where: { title: { equals: title, mode: "insensitive" } },
-      select: { id: true }
-    });
-    const tag =
-      existing ??
-      (await transaction.clientPrivateTag.create({
+    const where = { title: { equals: title, mode: "insensitive" as const } };
+    const existing = await delegate.findFirst({ where, select: { id: true } });
+    if (existing) {
+      ids.push(existing.id);
+      continue;
+    }
+
+    try {
+      const created = await delegate.create({
         data: { title },
         select: { id: true }
-      }));
-    tagIds.push(tag.id);
+      });
+      ids.push(created.id);
+    } catch (error) {
+      // Another concurrent request created the same new title first.
+      if (!isUniqueConstraintError(error)) throw error;
+      const raceWinner = await delegate.findFirst({
+        where,
+        select: { id: true }
+      });
+      if (!raceWinner) throw error;
+      ids.push(raceWinner.id);
+    }
   }
 
-  return tagIds;
+  return ids;
 }
 
-async function resolveAllergenIds(
+function resolvePrivateTagIds(
   transaction: Prisma.TransactionClient,
   titles: string[]
 ) {
-  const allergenIds: string[] = [];
+  return resolveDictionaryIds(transaction.clientPrivateTag, titles);
+}
 
-  for (const title of normalizeDictionaryTitles(titles)) {
-    const existing = await transaction.allergen.findFirst({
-      where: { title: { equals: title, mode: "insensitive" } },
-      select: { id: true }
-    });
-    const allergen =
-      existing ??
-      (await transaction.allergen.create({
-        data: { title },
-        select: { id: true }
-      }));
-    allergenIds.push(allergen.id);
-  }
-
-  return allergenIds;
+function resolveAllergenIds(
+  transaction: Prisma.TransactionClient,
+  titles: string[]
+) {
+  return resolveDictionaryIds(transaction.allergen, titles);
 }
 
 const adminClientInclude = {
@@ -246,7 +260,6 @@ export function registerClientRoutes(
           const clientData = withoutUndefined({
             ...clientFields,
             phone: normalizePhone(clientFields.phone),
-            allergies: allergens.length ? null : clientFields.allergies,
             telegramUsername: normalizeTelegramUsername(
               clientFields.telegramUsername
             ),
@@ -307,7 +320,6 @@ export function registerClientRoutes(
               : await resolveAllergenIds(transaction, allergens);
           const data = withoutUndefined({
             ...clientFields,
-            ...(allergens !== undefined ? { allergies: null } : {}),
             ...(clientFields.phone
               ? { phone: normalizePhone(clientFields.phone) }
               : undefined),

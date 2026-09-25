@@ -660,6 +660,16 @@ table small {
   color: var(--amber);
 }
 
+.legacy-allergy-note {
+  margin: 0;
+  border-radius: 6px;
+  background: var(--amber-soft);
+  padding: 8px 10px;
+  color: var(--amber);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
 .tag-create-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;

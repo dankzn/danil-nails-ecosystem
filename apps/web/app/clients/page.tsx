@@ -194,12 +194,9 @@ export default function ClientsPage() {
       email: client.email ?? "",
       telegramUsername: client.telegramUsername ?? "",
       whatsappPhone: client.whatsappPhone ?? "",
-      allergens: uniqueDictionaryTitles([
-        ...client.allergenAssignments.map(
-          ({ allergen }) => allergen.title
-        ),
-        ...legacyAllergens(client.allergies)
-      ]),
+      allergens: uniqueDictionaryTitles(
+        client.allergenAssignments.map(({ allergen }) => allergen.title)
+      ),
       notes: client.notes ?? "",
       privateTags: client.privateTagAssignments.map(({ tag }) => tag.title),
       requiresPrepayment: client.requiresPrepayment,
@@ -569,6 +566,13 @@ export default function ClientsPage() {
 
             <fieldset className="tag-fieldset allergen-fieldset">
               <legend>Аллергии и чувствительность</legend>
+              {editingClient?.allergies ? (
+                <p className="legacy-allergy-note">
+                  Старая свободная запись об аллергии (сохранена как есть,
+                  перенесите нужное в теги ниже вручную):{" "}
+                  {editingClient.allergies}
+                </p>
+              ) : null}
               <div className="tag-cloud" aria-label="Аллергены клиента">
                 {visibleAllergenOptions.map((allergen) => {
                   const isSelected = form.allergens.some((title) =>
