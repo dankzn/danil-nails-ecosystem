@@ -18,10 +18,13 @@ CRM разворачивается как один бесплатный Render W
 - Region: Frankfurt (EU Central).
 - Root Directory: пусто.
 - Build Command: `pnpm install --frozen-lockfile && pnpm build`.
-- Pre-Deploy Command: `pnpm db:deploy` (применяет накопленные Prisma-миграции к боевой Supabase-базе перед тем, как новая версия начинает принимать трафик).
 - Start Command: `pnpm start:deploy`.
 - Health Check Path: `/ready`.
 - Compute: Free, `$0/month`.
+
+`pnpm start:deploy` сначала выполняет `pnpm db:deploy` (`prisma migrate deploy` — применяет накопленные миграции к боевой Supabase-базе) и только затем запускает API. Миграции применяются при каждом старте процесса, поэтому это работает вне зависимости от того, как настроен Web Service в Render (Blueprint из `render.yaml` или служба, заведённая вручную через дашборд, где правки `render.yaml` не действуют). Если Web Service всё же является Blueprint-сервисом, `render.yaml` дополнительно объявляет `preDeployCommand: pnpm db:deploy` — он избыточен, но не вредит (`migrate deploy` идемпотентен).
+
+Если после пуша в `main` изменения не появляются на проде, в первую очередь проверьте в дашборде Render: (1) действительно ли триггернулся новый deploy, (2) не разошлись ли реальные Build/Start Command сервиса с `render.yaml` — при расхождении реальные значения в дашборде побеждают.
 
 ## Environment Variables
 
