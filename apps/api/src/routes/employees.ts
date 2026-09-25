@@ -40,7 +40,11 @@ const employeeCreateSchema = z.object({
   email: optionalEmailSchema,
   phone: z.string().trim().max(30).nullable().optional(),
   role: staffRoleSchema.default("master"),
-  position: z.string().trim().max(120).nullable().optional(),
+  positionId: z.string().cuid().nullable().optional(),
+  primaryOrgUnitId: z.string().cuid().nullable().optional(),
+  primaryOrganizationId: z.string().cuid().nullable().optional(),
+  cityId: z.string().cuid().nullable().optional(),
+  countryId: z.string().cuid().nullable().optional(),
   employmentStatus: employmentStatusSchema.default("active"),
   employmentType: employmentTypeSchema.default("full_time"),
   hiredAt: dateSchema,
@@ -57,9 +61,19 @@ const employeeCreateSchema = z.object({
 });
 
 const employeeUpdateSchema = employeeCreateSchema
-  .omit({ serviceIds: true })
+  .omit({ serviceIds: true, role: true, employmentStatus: true, employmentType: true, isBookable: true })
   .partial()
-  .extend({ serviceIds: z.array(z.string().cuid()).max(100).optional() });
+  .extend({
+    // z.default() survives .partial() (an omitted key still resolves to the
+    // default instead of undefined), which silently reset these fields to
+    // their create-time defaults on every single-field edit. Redeclare them
+    // without a default so "omitted" genuinely means "leave unchanged".
+    serviceIds: z.array(z.string().cuid()).max(100).optional(),
+    role: staffRoleSchema.optional(),
+    employmentStatus: employmentStatusSchema.optional(),
+    employmentType: employmentTypeSchema.optional(),
+    isBookable: z.boolean().optional()
+  });
 
 const dismissalSchema = z.object({
   dismissedAt: z.iso.date(),
@@ -120,6 +134,11 @@ const employeeListInclude = {
       passwordHash: true
     }
   },
+  position: { select: { id: true, title: true } },
+  primaryOrgUnit: { select: { id: true, title: true } },
+  primaryOrganization: { select: { id: true, title: true } },
+  city: { select: { id: true, title: true } },
+  country: { select: { id: true, title: true } },
   services: {
     include: {
       service: { select: { id: true, titleRu: true, isActive: true } }
@@ -186,7 +205,15 @@ function serializeEmployee<T extends { user: { passwordHash: string | null } }>(
 function profileData(input: z.infer<typeof employeeUpdateSchema>) {
   return {
     ...(input.legalName !== undefined ? { legalName: optionalText(input.legalName) } : {}),
-    ...(input.position !== undefined ? { position: optionalText(input.position) } : {}),
+    ...(input.positionId !== undefined ? { positionId: input.positionId } : {}),
+    ...(input.primaryOrgUnitId !== undefined
+      ? { primaryOrgUnitId: input.primaryOrgUnitId }
+      : {}),
+    ...(input.primaryOrganizationId !== undefined
+      ? { primaryOrganizationId: input.primaryOrganizationId }
+      : {}),
+    ...(input.cityId !== undefined ? { cityId: input.cityId } : {}),
+    ...(input.countryId !== undefined ? { countryId: input.countryId } : {}),
     ...(input.bio !== undefined ? { bio: optionalText(input.bio) } : {}),
     ...(input.employmentStatus !== undefined
       ? { employmentStatus: EmploymentStatus[input.employmentStatus] }
@@ -245,7 +272,7 @@ export function registerEmployeeRoutes(
               OR: [
                 { displayName: { contains: query.data.search, mode: "insensitive" } },
                 { legalName: { contains: query.data.search, mode: "insensitive" } },
-                { position: { contains: query.data.search, mode: "insensitive" } },
+                { position: { title: { contains: query.data.search, mode: "insensitive" } } },
                 { user: { email: { contains: query.data.search, mode: "insensitive" } } }
               ]
             }

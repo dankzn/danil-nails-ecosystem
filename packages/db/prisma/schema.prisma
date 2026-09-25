@@ -264,7 +264,11 @@ model StaffProfile {
   userId               String           @unique
   displayName          String
   legalName            String?
-  position             String?
+  positionId           String?
+  primaryOrgUnitId     String?
+  primaryOrganizationId String?
+  cityId               String?
+  countryId            String?
   bio                  String?
   employmentStatus     EmploymentStatus @default(active)
   employmentType       EmploymentType   @default(full_time)
@@ -282,6 +286,11 @@ model StaffProfile {
   updatedAt            DateTime         @updatedAt
 
   user         User                @relation(fields: [userId], references: [id])
+  position         Position?     @relation(fields: [positionId], references: [id])
+  primaryOrgUnit   OrgUnit?      @relation(fields: [primaryOrgUnitId], references: [id])
+  primaryOrganization Organization? @relation(fields: [primaryOrganizationId], references: [id])
+  city             City?         @relation(fields: [cityId], references: [id])
+  country          Country?      @relation(fields: [countryId], references: [id])
   services     StaffService[]
   workingHours WorkingHour[]
   exceptions   ScheduleException[]
@@ -292,6 +301,119 @@ model StaffProfile {
   employeeEvents EmployeeEvent[]
   compensationRules EmployeeCompensationRule[]
   payrolls       EmployeePayroll[]
+  orgUnitManagerAssignments OrgUnitManager[]
+}
+
+model Position {
+  id         String   @id @default(cuid())
+  title      String   @unique
+  isArchived Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  staffProfiles StaffProfile[]
+}
+
+model Country {
+  id         String   @id @default(cuid())
+  title      String   @unique
+  isArchived Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  cities        City[]
+  orgUnits      OrgUnit[]
+  staffProfiles StaffProfile[]
+}
+
+model City {
+  id         String   @id @default(cuid())
+  title      String
+  countryId  String
+  isArchived Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  country       Country        @relation(fields: [countryId], references: [id])
+  orgUnits      OrgUnit[]
+  staffProfiles StaffProfile[]
+
+  @@unique([countryId, title])
+}
+
+model Organization {
+  id         String   @id @default(cuid())
+  title      String   @unique
+  isArchived Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  orgUnits      OrgUnit[]
+  staffProfiles StaffProfile[]
+}
+
+model OrgUnitType {
+  id         String   @id @default(cuid())
+  title      String   @unique
+  isArchived Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  orgUnits OrgUnit[]
+}
+
+model ManagerType {
+  id         String   @id @default(cuid())
+  title      String   @unique
+  isArchived Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  assignments OrgUnitManager[]
+}
+
+model OrgUnit {
+  id             String    @id @default(cuid())
+  title          String
+  typeId         String
+  parentId       String?
+  organizationId String
+  cityId         String?
+  countryId      String?
+  isArchived     Boolean   @default(false)
+  effectiveFrom  DateTime?
+  effectiveTo    DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  type          OrgUnitType     @relation(fields: [typeId], references: [id])
+  parent        OrgUnit?        @relation("OrgUnitHierarchy", fields: [parentId], references: [id])
+  children      OrgUnit[]       @relation("OrgUnitHierarchy")
+  organization  Organization    @relation(fields: [organizationId], references: [id])
+  city          City?           @relation(fields: [cityId], references: [id])
+  country       Country?        @relation(fields: [countryId], references: [id])
+  managers      OrgUnitManager[]
+  staffProfiles StaffProfile[]
+
+  @@index([parentId])
+  @@index([organizationId])
+}
+
+model OrgUnitManager {
+  id            String    @id @default(cuid())
+  orgUnitId     String
+  staffId       String
+  managerTypeId String
+  startsAt      DateTime  @default(now())
+  endsAt        DateTime?
+  createdAt     DateTime  @default(now())
+
+  orgUnit     OrgUnit      @relation(fields: [orgUnitId], references: [id], onDelete: Cascade)
+  staff       StaffProfile @relation(fields: [staffId], references: [id])
+  managerType ManagerType  @relation(fields: [managerTypeId], references: [id])
+
+  @@index([orgUnitId])
+  @@index([staffId])
 }
 
 model EmployeeNote {

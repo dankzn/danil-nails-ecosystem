@@ -20,7 +20,9 @@ import { registerAuthRoutes } from "./routes/auth.js";
 import { registerAppointmentRoutes } from "./routes/appointments.js";
 import { registerClientRoutes } from "./routes/clients.js";
 import { registerDashboardRoutes } from "./routes/dashboard.js";
+import { registerDirectoryRoutes } from "./routes/directories.js";
 import { registerEmployeeRoutes } from "./routes/employees.js";
+import { registerOrgStructureRoutes } from "./routes/org-structure.js";
 import { registerPayrollRoutes } from "./routes/payroll.js";
 import { registerScheduleRoutes } from "./routes/schedule.js";
 import { registerServiceRoutes } from "./routes/services.js";
@@ -89,6 +91,8 @@ export async function buildServer(
   registerScheduleRoutes(server, database);
   registerEmployeeRoutes(server, database);
   registerPayrollRoutes(server, database);
+  registerDirectoryRoutes(server, database);
+  registerOrgStructureRoutes(server, database);
 
   if (environment.NODE_ENV === "production") {
     await server.register(staticFiles, {
