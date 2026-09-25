@@ -1,7 +1,9 @@
 "use client";
 
 import {
+  BookOpen,
   CalendarDays,
+  ChevronDown,
   Clock3,
   ContactRound,
   LayoutDashboard,
@@ -14,14 +16,42 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { apiUrl } from "../lib/api-url";
 
-const navigation = [
+type NavLeaf = { href: string; label: string };
+type NavItem = {
+  href?: string;
+  label: string;
+  icon: typeof LayoutDashboard;
+  ownerOnly: boolean;
+  items?: NavLeaf[];
+};
+
+const navigation: NavItem[] = [
   { href: "/", label: "Обзор", icon: LayoutDashboard, ownerOnly: false },
   { href: "/appointments", label: "Записи", icon: CalendarDays, ownerOnly: false },
   { href: "/clients", label: "Клиенты", icon: Users, ownerOnly: false },
-  { href: "/employees", label: "Сотрудники", icon: ContactRound, ownerOnly: true },
+  {
+    label: "Персонал",
+    icon: ContactRound,
+    ownerOnly: true,
+    items: [
+      { href: "/employees", label: "Сотрудники" },
+      { href: "/staff-structure", label: "Структура подразделений" },
+      { href: "/staff-managers", label: "Руководители" }
+    ]
+  },
   { href: "/services", label: "Услуги", icon: Scissors, ownerOnly: false },
-  { href: "/schedule", label: "Расписание", icon: Clock3, ownerOnly: false }
-] as const;
+  { href: "/schedule", label: "Расписание", icon: Clock3, ownerOnly: false },
+  { href: "/directories", label: "Справочники", icon: BookOpen, ownerOnly: true }
+];
+
+function isNavItemActive(item: NavItem, normalizedPathname: string) {
+  if (item.href) {
+    return item.href === "/"
+      ? normalizedPathname === item.href
+      : normalizedPathname.startsWith(item.href);
+  }
+  return (item.items ?? []).some((leaf) => normalizedPathname.startsWith(leaf.href));
+}
 
 export function CrmShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
@@ -36,6 +66,7 @@ export function CrmShell({ children }: { children: ReactNode }) {
     role: string;
   } | null>(null);
   const [isCheckingSession, setIsCheckingSession] = useState(!isLoginPage);
+  const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
   useEffect(() => {
     if (isLoginPage) {
       setIsCheckingSession(false);
@@ -123,23 +154,67 @@ export function CrmShell({ children }: { children: ReactNode }) {
         <nav className="nav-list" aria-label="Основная навигация">
           {navigation
             .filter((item) => !item.ownerOnly || user.role === "owner")
-            .map(({ href, label, icon: Icon }) => {
-            const isActive =
-              href === "/"
-                ? normalizedPathname === href
-                : normalizedPathname.startsWith(href);
+            .map((item) => {
+              const isActive = isNavItemActive(item, normalizedPathname);
+              const Icon = item.icon;
 
-            return (
-              <Link
-                className={`nav-item${isActive ? " nav-item-active" : ""}`}
-                href={href}
-                key={href}
-                ref={isActive ? activeNavItemRef : undefined}
-              >
-                <Icon aria-hidden="true" size={18} strokeWidth={1.8} />
-                <span>{label}</span>
-              </Link>
-            );
+              if (!item.items) {
+                return (
+                  <Link
+                    className={`nav-item${isActive ? " nav-item-active" : ""}`}
+                    href={item.href!}
+                    key={item.href}
+                    ref={isActive ? activeNavItemRef : undefined}
+                  >
+                    <Icon aria-hidden="true" size={18} strokeWidth={1.8} />
+                    <span>{item.label}</span>
+                  </Link>
+                );
+              }
+
+              const isOpen = openGroups[item.label] ?? isActive;
+
+              return (
+                <div className="nav-group" key={item.label}>
+                  <button
+                    aria-expanded={isOpen}
+                    className={`nav-item nav-group-toggle${isActive ? " nav-item-active" : ""}`}
+                    onClick={() =>
+                      setOpenGroups((current) => ({
+                        ...current,
+                        [item.label]: !isOpen
+                      }))
+                    }
+                    type="button"
+                  >
+                    <Icon aria-hidden="true" size={18} strokeWidth={1.8} />
+                    <span>{item.label}</span>
+                    <ChevronDown
+                      aria-hidden="true"
+                      className={`nav-group-chevron${isOpen ? " nav-group-chevron-open" : ""}`}
+                      size={15}
+                      strokeWidth={1.8}
+                    />
+                  </button>
+                  {isOpen ? (
+                    <div className="nav-sublist">
+                      {item.items.map((leaf) => {
+                        const isLeafActive = normalizedPathname.startsWith(leaf.href);
+                        return (
+                          <Link
+                            className={`nav-subitem${isLeafActive ? " nav-item-active" : ""}`}
+                            href={leaf.href}
+                            key={leaf.href}
+                            ref={isLeafActive ? activeNavItemRef : undefined}
+                          >
+                            <span>{leaf.label}</span>
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  ) : null}
+                </div>
+              );
             })}
         </nav>
 

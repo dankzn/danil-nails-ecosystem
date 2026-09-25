@@ -53,11 +53,22 @@ type PayrollEntryType =
   | "adjustment";
 type ServiceOption = { id: string; titleRu: string; isActive: boolean };
 
+type NamedRef = { id: string; title: string };
+
 type Employee = {
   id: string;
   displayName: string;
   legalName: string | null;
-  position: string | null;
+  positionId: string | null;
+  position: NamedRef | null;
+  primaryOrgUnitId: string | null;
+  primaryOrgUnit: NamedRef | null;
+  primaryOrganizationId: string | null;
+  primaryOrganization: NamedRef | null;
+  cityId: string | null;
+  city: NamedRef | null;
+  countryId: string | null;
+  country: NamedRef | null;
   bio: string | null;
   employmentStatus: EmploymentStatus;
   employmentType: EmploymentType;
@@ -191,7 +202,11 @@ type EmployeeForm = {
   email: string;
   phone: string;
   role: UserRole;
-  position: string;
+  positionId: string;
+  primaryOrgUnitId: string;
+  primaryOrganizationId: string;
+  cityId: string;
+  countryId: string;
   employmentStatus: Exclude<EmploymentStatus, "dismissed">;
   employmentType: EmploymentType;
   hiredAt: string;
@@ -318,7 +333,11 @@ function emptyEmployeeForm(): EmployeeForm {
     email: "",
     phone: "",
     role: "master",
-    position: "Мастер маникюра",
+    positionId: "",
+    primaryOrgUnitId: "",
+    primaryOrganizationId: "",
+    cityId: "",
+    countryId: "",
     employmentStatus: "active",
     employmentType: "full_time",
     hiredAt: today,
@@ -387,7 +406,11 @@ function employeeToForm(employee: Employee): EmployeeForm {
     email: employee.user.email ?? "",
     phone: employee.user.phone ?? "",
     role: employee.user.role,
-    position: employee.position ?? "",
+    positionId: employee.positionId ?? "",
+    primaryOrgUnitId: employee.primaryOrgUnitId ?? "",
+    primaryOrganizationId: employee.primaryOrganizationId ?? "",
+    cityId: employee.cityId ?? "",
+    countryId: employee.countryId ?? "",
     employmentStatus:
       employee.employmentStatus === "dismissed" ? "active" : employee.employmentStatus,
     employmentType: employee.employmentType,
@@ -408,6 +431,13 @@ function employeeToForm(employee: Employee): EmployeeForm {
 export default function EmployeesPage() {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [services, setServices] = useState<ServiceOption[]>([]);
+  const [directories, setDirectories] = useState<{
+    positions: NamedRef[];
+    countries: NamedRef[];
+    cities: Array<NamedRef & { countryId: string }>;
+    organizations: NamedRef[];
+  }>({ positions: [], countries: [], cities: [], organizations: [] });
+  const [orgUnits, setOrgUnits] = useState<NamedRef[]>([]);
   const [metrics, setMetrics] = useState<Metrics>({
     active: 0,
     probation: 0,
@@ -513,6 +543,27 @@ export default function EmployeesPage() {
     return () => window.clearTimeout(timeout);
   }, [loadEmployees, search, statusFilter]);
 
+  useEffect(() => {
+    void (async () => {
+      try {
+        const [directoriesResponse, orgUnitsResponse] = await Promise.all([
+          apiRequest<{
+            positions: NamedRef[];
+            countries: NamedRef[];
+            cities: Array<NamedRef & { countryId: string }>;
+            organizations: NamedRef[];
+          }>("/v1/owner/directories"),
+          apiRequest<{ orgUnits: NamedRef[] }>("/v1/owner/org-units")
+        ]);
+        setDirectories(directoriesResponse);
+        setOrgUnits(orgUnitsResponse.orgUnits);
+      } catch {
+        setDirectories({ positions: [], countries: [], cities: [], organizations: [] });
+        setOrgUnits([]);
+      }
+    })();
+  }, []);
+
   const loadEmployeeDetail = useCallback(async (employeeId: string) => {
     setIsDetailLoading(true);
     setFormError(null);
@@ -590,7 +641,11 @@ export default function EmployeesPage() {
       email: optionalValue(employeeForm.email),
       phone: optionalValue(employeeForm.phone),
       ...(!isOwner ? { role: employeeForm.role } : {}),
-      position: optionalValue(employeeForm.position),
+      positionId: optionalValue(employeeForm.positionId),
+      primaryOrgUnitId: optionalValue(employeeForm.primaryOrgUnitId),
+      primaryOrganizationId: optionalValue(employeeForm.primaryOrganizationId),
+      cityId: optionalValue(employeeForm.cityId),
+      countryId: optionalValue(employeeForm.countryId),
       employmentStatus: employeeForm.employmentStatus,
       ...(!isOwner ? { employmentType: employeeForm.employmentType } : {}),
       hiredAt: optionalValue(employeeForm.hiredAt),
@@ -1088,8 +1143,13 @@ export default function EmployeesPage() {
                         </div>
                       </td>
                       <td>
-                        <span>{employee.position ?? "Не указана"}</span>
-                        <small>{roleLabels[employee.user.role]}</small>
+                        <span>{employee.position?.title ?? "Не указана"}</span>
+                        <small>
+                          {roleLabels[employee.user.role]}
+                          {employee.primaryOrgUnit
+                            ? ` · ${employee.primaryOrgUnit.title}`
+                            : ""}
+                        </small>
                       </td>
                       <td>
                         <span className={`status status-${meta.tone}`}>{meta.label}</span>
@@ -1187,11 +1247,83 @@ export default function EmployeesPage() {
                 </label>
                 <label className="form-field">
                   <span>Должность</span>
-                  <input
-                    maxLength={120}
-                    onChange={(event) => updateEmployeeForm("position", event.target.value)}
-                    value={employeeForm.position}
-                  />
+                  <select
+                    onChange={(event) => updateEmployeeForm("positionId", event.target.value)}
+                    value={employeeForm.positionId}
+                  >
+                    <option value="">Не указана</option>
+                    {directories.positions.map((position) => (
+                      <option key={position.id} value={position.id}>
+                        {position.title}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="form-field">
+                  <span>Основное подразделение</span>
+                  <select
+                    onChange={(event) =>
+                      updateEmployeeForm("primaryOrgUnitId", event.target.value)
+                    }
+                    value={employeeForm.primaryOrgUnitId}
+                  >
+                    <option value="">Не указано</option>
+                    {orgUnits.map((unit) => (
+                      <option key={unit.id} value={unit.id}>
+                        {unit.title}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="form-field">
+                  <span>Основная организация</span>
+                  <select
+                    onChange={(event) =>
+                      updateEmployeeForm("primaryOrganizationId", event.target.value)
+                    }
+                    value={employeeForm.primaryOrganizationId}
+                  >
+                    <option value="">Не указана</option>
+                    {directories.organizations.map((org) => (
+                      <option key={org.id} value={org.id}>
+                        {org.title}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="form-field">
+                  <span>Страна</span>
+                  <select
+                    onChange={(event) => {
+                      updateEmployeeForm("countryId", event.target.value);
+                      updateEmployeeForm("cityId", "");
+                    }}
+                    value={employeeForm.countryId}
+                  >
+                    <option value="">Не указана</option>
+                    {directories.countries.map((country) => (
+                      <option key={country.id} value={country.id}>
+                        {country.title}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="form-field">
+                  <span>Город</span>
+                  <select
+                    disabled={!employeeForm.countryId}
+                    onChange={(event) => updateEmployeeForm("cityId", event.target.value)}
+                    value={employeeForm.cityId}
+                  >
+                    <option value="">Не указан</option>
+                    {directories.cities
+                      .filter((city) => city.countryId === employeeForm.countryId)
+                      .map((city) => (
+                        <option key={city.id} value={city.id}>
+                          {city.title}
+                        </option>
+                      ))}
+                  </select>
                 </label>
                 <label className="form-field">
                   <span>Дата рождения</span>
@@ -1412,7 +1544,7 @@ export default function EmployeesPage() {
         <Modal
           description={
             selectedEmployee
-              ? `${selectedEmployee.position ?? "Должность не указана"} · ${statusMeta[selectedEmployee.employmentStatus].label}`
+              ? `${selectedEmployee.position?.title ?? "Должность не указана"} · ${statusMeta[selectedEmployee.employmentStatus].label}`
               : "Загружаем личное дело"
           }
           onClose={() => setSelectedEmployee(null)}

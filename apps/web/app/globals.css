@@ -149,6 +149,58 @@ a {
   color: var(--sidebar);
 }
 
+.nav-group {
+  display: grid;
+  gap: 2px;
+}
+
+.nav-group-toggle {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+
+.nav-group-chevron {
+  margin-left: auto;
+  transition: transform 150ms ease;
+}
+
+.nav-group-chevron-open {
+  transform: rotate(180deg);
+}
+
+.nav-sublist {
+  display: grid;
+  gap: 3px;
+  padding-left: 29px;
+}
+
+.nav-subitem {
+  height: 36px;
+  display: flex;
+  align-items: center;
+  border-radius: 7px;
+  padding: 0 12px;
+  color: #c9ced3;
+  font-size: 13px;
+  font-weight: 550;
+  transition:
+    background-color 150ms ease,
+    color 150ms ease;
+}
+
+.nav-subitem.nav-item-active {
+  color: var(--sidebar);
+}
+
+.nav-subitem:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: #ffffff;
+}
+
 .account {
   margin-top: auto;
   padding: 17px 6px 0;
@@ -1346,6 +1398,121 @@ td strong {
 
 .rules-list-compact div {
   min-height: 44px;
+}
+
+.org-unit-tree {
+  padding: 10px 14px;
+}
+
+.org-unit-list {
+  display: grid;
+}
+
+.org-unit-row {
+  min-height: 52px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 6px;
+  border-bottom: 1px solid var(--border);
+}
+
+.org-unit-node:last-child > .org-unit-row {
+  border-bottom: 0;
+}
+
+.org-unit-collapse,
+.org-unit-collapse-spacer {
+  width: 22px;
+  height: 22px;
+  flex: 0 0 22px;
+}
+
+.org-unit-collapse {
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.org-unit-collapse:hover {
+  background: var(--surface-soft);
+}
+
+.org-unit-collapse-icon {
+  transition: transform 150ms ease;
+}
+
+.org-unit-collapse-icon-open {
+  transform: rotate(90deg);
+}
+
+.org-unit-copy {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.org-unit-copy strong {
+  font-size: 13px;
+}
+
+.org-unit-copy small {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.org-unit-copy small.org-unit-managers {
+  color: var(--accent-strong);
+}
+
+.org-unit-actions {
+  display: flex;
+  gap: 4px;
+  flex: 0 0 auto;
+}
+
+.tab-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.tab-button {
+  min-height: 36px;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  padding: 7px 14px;
+  background: var(--surface);
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.tab-button:hover {
+  border-color: var(--accent);
+}
+
+.tab-button-active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}
+
+.directory-add-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.directory-add-fields input,
+.directory-add-fields select {
+  min-width: 220px;
 }
 
 .segmented-control {
