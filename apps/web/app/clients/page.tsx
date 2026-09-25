@@ -445,11 +445,15 @@ export default function ClientsPage() {
                           {client.loyaltyStatus?.titleRu ?? "Без статуса"}
                         </span>
                       </td>
-                      <td>
+                      <td className="tag-cell">
                         {clientAllergens.length ? (
                           <div className="private-tag-list">
                             {clientAllergens.map((title) => (
-                              <span className="allergen-badge" key={title}>
+                              <span
+                                className="allergen-badge"
+                                key={title}
+                                title={title}
+                              >
                                 {title}
                               </span>
                             ))}
@@ -458,11 +462,15 @@ export default function ClientsPage() {
                           <span className="muted-label">Нет</span>
                         )}
                       </td>
-                      <td>
+                      <td className="tag-cell">
                         {privateTags.length ? (
                           <div className="private-tag-list">
                             {privateTags.map((title) => (
-                              <span className="private-badge" key={title}>
+                              <span
+                                className="private-badge"
+                                key={title}
+                                title={title}
+                              >
                                 {title}
                               </span>
                             ))}

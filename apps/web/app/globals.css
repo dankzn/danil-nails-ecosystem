@@ -597,6 +597,17 @@ table small {
   color: var(--red);
 }
 
+.tag-cell {
+  max-width: 240px;
+}
+
+.tag-cell .allergen-badge,
+.tag-cell .private-badge {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .private-tag-list,
 .tag-cloud {
   display: flex;
