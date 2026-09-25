@@ -10,6 +10,7 @@ const clientInputSchema = z.object({
   telegramUsername: z.string().trim().max(80).nullable().optional(),
   whatsappPhone: z.string().trim().max(30).nullable().optional(),
   allergies: z.string().trim().max(2000).nullable().optional(),
+  allergens: z.array(z.string().trim().min(1).max(120)).max(30).optional(),
   notes: z.string().trim().max(4000).nullable().optional(),
   privateTags: z.array(z.string().trim().min(1).max(80)).max(20).optional(),
   requiresPrepayment: z.boolean().default(false),
@@ -30,7 +31,7 @@ const defaultPrivateTagTitles = [
   "лапочка"
 ];
 
-export function normalizePrivateTagTitles(titles: string[]) {
+export function normalizeDictionaryTitles(titles: string[]) {
   const unique = new Map<string, string>();
 
   for (const value of titles) {
@@ -77,7 +78,7 @@ async function resolvePrivateTagIds(
 ) {
   const tagIds: string[] = [];
 
-  for (const title of normalizePrivateTagTitles(titles)) {
+  for (const title of normalizeDictionaryTitles(titles)) {
     const existing = await transaction.clientPrivateTag.findFirst({
       where: { title: { equals: title, mode: "insensitive" } },
       select: { id: true }
@@ -94,10 +95,36 @@ async function resolvePrivateTagIds(
   return tagIds;
 }
 
+async function resolveAllergenIds(
+  transaction: Prisma.TransactionClient,
+  titles: string[]
+) {
+  const allergenIds: string[] = [];
+
+  for (const title of normalizeDictionaryTitles(titles)) {
+    const existing = await transaction.allergen.findFirst({
+      where: { title: { equals: title, mode: "insensitive" } },
+      select: { id: true }
+    });
+    const allergen =
+      existing ??
+      (await transaction.allergen.create({
+        data: { title },
+        select: { id: true }
+      }));
+    allergenIds.push(allergen.id);
+  }
+
+  return allergenIds;
+}
+
 const adminClientInclude = {
   loyaltyStatus: true,
   privateTagAssignments: {
     include: { tag: true }
+  },
+  allergenAssignments: {
+    include: { allergen: true }
   }
 } as const;
 
@@ -111,16 +138,22 @@ export function registerClientRoutes(
     "/v1/admin/client-reference-data",
     { preHandler: adminGuard },
     async () => {
-      const storedTags = await database!.clientPrivateTag.findMany({
-        select: { title: true },
-        orderBy: { title: "asc" }
-      });
-      const privateTags = normalizePrivateTagTitles([
+      const [storedTags, allergens] = await Promise.all([
+        database!.clientPrivateTag.findMany({
+          select: { title: true },
+          orderBy: { title: "asc" }
+        }),
+        database!.allergen.findMany({
+          select: { title: true, description: true },
+          orderBy: { title: "asc" }
+        })
+      ]);
+      const privateTags = normalizeDictionaryTitles([
         ...defaultPrivateTagTitles,
         ...storedTags.map((tag) => tag.title)
       ]).map((title) => ({ title }));
 
-      return { privateTags };
+      return { privateTags, allergens };
     }
   );
 
@@ -202,12 +235,18 @@ export function registerClientRoutes(
       });
 
       try {
-        const { privateTags = [], ...clientFields } = input.data;
+        const {
+          privateTags = [],
+          allergens = [],
+          ...clientFields
+        } = input.data;
         const client = await database!.$transaction(async (transaction) => {
           const tagIds = await resolvePrivateTagIds(transaction, privateTags);
+          const allergenIds = await resolveAllergenIds(transaction, allergens);
           const clientData = withoutUndefined({
             ...clientFields,
             phone: normalizePhone(clientFields.phone),
+            allergies: allergens.length ? null : clientFields.allergies,
             telegramUsername: normalizeTelegramUsername(
               clientFields.telegramUsername
             ),
@@ -218,6 +257,13 @@ export function registerClientRoutes(
               ? {
                   privateTagAssignments: {
                     create: tagIds.map((tagId) => ({ tagId }))
+                  }
+                }
+              : {}),
+            ...(allergenIds.length
+              ? {
+                  allergenAssignments: {
+                    create: allergenIds.map((allergenId) => ({ allergenId }))
                   }
                 }
               : {})
@@ -249,14 +295,19 @@ export function registerClientRoutes(
       if (!parameters.success || !input.success) return sendInvalidPayload(reply);
 
       try {
-        const { privateTags, ...clientFields } = input.data;
+        const { privateTags, allergens, ...clientFields } = input.data;
         const client = await database!.$transaction(async (transaction) => {
           const tagIds =
             privateTags === undefined
               ? undefined
               : await resolvePrivateTagIds(transaction, privateTags);
+          const allergenIds =
+            allergens === undefined
+              ? undefined
+              : await resolveAllergenIds(transaction, allergens);
           const data = withoutUndefined({
             ...clientFields,
+            ...(allergens !== undefined ? { allergies: null } : {}),
             ...(clientFields.phone
               ? { phone: normalizePhone(clientFields.phone) }
               : undefined),
@@ -272,6 +323,14 @@ export function registerClientRoutes(
                   privateTagAssignments: {
                     deleteMany: {},
                     create: tagIds.map((tagId) => ({ tagId }))
+                  }
+                }
+              : {}),
+            ...(allergenIds !== undefined
+              ? {
+                  allergenAssignments: {
+                    deleteMany: {},
+                    create: allergenIds.map((allergenId) => ({ allergenId }))
                   }
                 }
               : {})

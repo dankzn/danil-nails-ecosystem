@@ -23,6 +23,9 @@ type Client = {
   prepaymentReason: string | null;
   loyaltyStatus: { titleRu: string } | null;
   privateTagAssignments: Array<{ tag: { id: string; title: string } }>;
+  allergenAssignments: Array<{
+    allergen: { id: string; title: string; description: string | null };
+  }>;
   appointments: Array<{ startsAt: string }>;
   _count: { appointments: number };
 };
@@ -33,7 +36,7 @@ type ClientForm = {
   email: string;
   telegramUsername: string;
   whatsappPhone: string;
-  allergies: string;
+  allergens: string[];
   notes: string;
   privateTags: string[];
   requiresPrepayment: boolean;
@@ -46,7 +49,7 @@ const emptyForm: ClientForm = {
   email: "",
   telegramUsername: "",
   whatsappPhone: "",
-  allergies: "",
+  allergens: [],
   notes: "",
   privateTags: [],
   requiresPrepayment: false,
@@ -73,18 +76,26 @@ function optionalValue(value: string) {
   return normalized ? normalized : null;
 }
 
-function samePrivateTagTitle(left: string, right: string) {
+function sameDictionaryTitle(left: string, right: string) {
   return (
     left.toLocaleLowerCase("ru-RU") === right.toLocaleLowerCase("ru-RU")
   );
 }
 
-function uniquePrivateTagTitles(titles: string[]) {
+function uniqueDictionaryTitles(titles: string[]) {
   return titles.filter(
     (title, index) =>
-      titles.findIndex((candidate) => samePrivateTagTitle(candidate, title)) ===
+      titles.findIndex((candidate) => sameDictionaryTitle(candidate, title)) ===
       index
   );
+}
+
+function legacyAllergens(value: string | null) {
+  if (!value) return [];
+  return value
+    .split(/[,;\n]/)
+    .map((item) => item.trim())
+    .filter(Boolean);
 }
 
 function clientErrorMessage(error: unknown) {
@@ -110,6 +121,10 @@ export default function ClientsPage() {
   const [form, setForm] = useState<ClientForm>(emptyForm);
   const [privateTagOptions, setPrivateTagOptions] = useState<string[]>([]);
   const [newPrivateTag, setNewPrivateTag] = useState("");
+  const [allergenOptions, setAllergenOptions] = useState<
+    Array<{ title: string; description: string | null }>
+  >([]);
+  const [newAllergen, setNewAllergen] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
@@ -136,10 +151,13 @@ export default function ClientsPage() {
     try {
       const response = await apiRequest<{
         privateTags: Array<{ title: string }>;
+        allergens: Array<{ title: string; description: string | null }>;
       }>("/v1/admin/client-reference-data");
       setPrivateTagOptions(response.privateTags.map((tag) => tag.title));
+      setAllergenOptions(response.allergens);
     } catch {
       setPrivateTagOptions([]);
+      setAllergenOptions([]);
     }
   }, []);
 
@@ -163,6 +181,7 @@ export default function ClientsPage() {
     setEditingClient(null);
     setForm(emptyForm);
     setNewPrivateTag("");
+    setNewAllergen("");
     setFormError(null);
     setIsFormOpen(true);
   }
@@ -175,7 +194,12 @@ export default function ClientsPage() {
       email: client.email ?? "",
       telegramUsername: client.telegramUsername ?? "",
       whatsappPhone: client.whatsappPhone ?? "",
-      allergies: client.allergies ?? "",
+      allergens: uniqueDictionaryTitles([
+        ...client.allergenAssignments.map(
+          ({ allergen }) => allergen.title
+        ),
+        ...legacyAllergens(client.allergies)
+      ]),
       notes: client.notes ?? "",
       privateTags: client.privateTagAssignments.map(({ tag }) => tag.title),
       requiresPrepayment: client.requiresPrepayment,
@@ -183,6 +207,7 @@ export default function ClientsPage() {
     });
     setFormError(null);
     setNewPrivateTag("");
+    setNewAllergen("");
     setIsFormOpen(true);
   }
 
@@ -197,9 +222,9 @@ export default function ClientsPage() {
     setForm((current) => ({
       ...current,
       privateTags: current.privateTags.some((tag) =>
-        samePrivateTagTitle(tag, title)
+        sameDictionaryTitle(tag, title)
       )
-        ? current.privateTags.filter((tag) => !samePrivateTagTitle(tag, title))
+        ? current.privateTags.filter((tag) => !sameDictionaryTitle(tag, title))
         : [...current.privateTags, title]
     }));
   }
@@ -208,19 +233,51 @@ export default function ClientsPage() {
     const title = newPrivateTag.trim().replace(/\s+/g, " ");
     if (!title) return;
     setPrivateTagOptions((current) =>
-      current.some((tag) => samePrivateTagTitle(tag, title))
+      current.some((tag) => sameDictionaryTitle(tag, title))
         ? current
         : [...current, title]
     );
     setForm((current) => ({
       ...current,
       privateTags: current.privateTags.some((tag) =>
-        samePrivateTagTitle(tag, title)
+        sameDictionaryTitle(tag, title)
       )
         ? current.privateTags
         : [...current.privateTags, title]
     }));
     setNewPrivateTag("");
+  }
+
+  function toggleAllergen(title: string) {
+    setForm((current) => ({
+      ...current,
+      allergens: current.allergens.some((item) =>
+        sameDictionaryTitle(item, title)
+      )
+        ? current.allergens.filter(
+            (item) => !sameDictionaryTitle(item, title)
+          )
+        : [...current.allergens, title]
+    }));
+  }
+
+  function addAllergen() {
+    const title = newAllergen.trim().replace(/\s+/g, " ");
+    if (!title) return;
+    setAllergenOptions((current) =>
+      current.some((item) => sameDictionaryTitle(item.title, title))
+        ? current
+        : [...current, { title, description: null }]
+    );
+    setForm((current) => ({
+      ...current,
+      allergens: current.allergens.some((item) =>
+        sameDictionaryTitle(item, title)
+      )
+        ? current.allergens
+        : [...current.allergens, title]
+    }));
+    setNewAllergen("");
   }
 
   async function submitClient(event: FormEvent<HTMLFormElement>) {
@@ -235,7 +292,7 @@ export default function ClientsPage() {
       email: optionalValue(form.email),
       telegramUsername: optionalValue(form.telegramUsername),
       whatsappPhone: optionalValue(form.whatsappPhone),
-      allergies: optionalValue(form.allergies),
+      allergens: form.allergens,
       notes: optionalValue(form.notes),
       privateTags: form.privateTags,
       requiresPrepayment: form.requiresPrepayment,
@@ -264,8 +321,17 @@ export default function ClientsPage() {
     }
   }
 
-  const visiblePrivateTagOptions = uniquePrivateTagTitles(
+  const visiblePrivateTagOptions = uniqueDictionaryTitles(
     [...privateTagOptions, ...form.privateTags]
+  );
+  const visibleAllergenOptions = uniqueDictionaryTitles([
+    ...allergenOptions.map((allergen) => allergen.title),
+    ...form.allergens
+  ]).map(
+    (title) =>
+      allergenOptions.find((allergen) =>
+        sameDictionaryTitle(allergen.title, title)
+      ) ?? { title, description: null }
   );
 
   return (
@@ -339,6 +405,7 @@ export default function ClientsPage() {
                   <th>Контакты</th>
                   <th>Последний визит</th>
                   <th>Лояльность</th>
+                  <th>Аллергии</th>
                   <th>Внутренняя метка</th>
                   <th>Предоплата</th>
                   <th aria-label="Действия" />
@@ -349,6 +416,12 @@ export default function ClientsPage() {
                   const privateTags = client.privateTagAssignments.map(
                     ({ tag }) => tag.title
                   );
+                  const clientAllergens = uniqueDictionaryTitles([
+                    ...client.allergenAssignments.map(
+                      ({ allergen }) => allergen.title
+                    ),
+                    ...legacyAllergens(client.allergies)
+                  ]);
                   const lastVisit = client.appointments[0]?.startsAt;
 
                   return (
@@ -374,6 +447,19 @@ export default function ClientsPage() {
                         <span className="loyalty-badge">
                           {client.loyaltyStatus?.titleRu ?? "Без статуса"}
                         </span>
+                      </td>
+                      <td>
+                        {clientAllergens.length ? (
+                          <div className="private-tag-list">
+                            {clientAllergens.map((title) => (
+                              <span className="allergen-badge" key={title}>
+                                {title}
+                              </span>
+                            ))}
+                          </div>
+                        ) : (
+                          <span className="muted-label">Нет</span>
+                        )}
                       </td>
                       <td>
                         {privateTags.length ? (
@@ -479,15 +565,63 @@ export default function ClientsPage() {
                   value={form.whatsappPhone}
                 />
               </label>
-              <label className="form-field">
-                <span>Аллергии</span>
-                <input
-                  maxLength={2000}
-                  onChange={(event) => updateForm("allergies", event.target.value)}
-                  value={form.allergies}
-                />
-              </label>
             </div>
+
+            <fieldset className="tag-fieldset allergen-fieldset">
+              <legend>Аллергии и чувствительность</legend>
+              <div className="tag-cloud" aria-label="Аллергены клиента">
+                {visibleAllergenOptions.map((allergen) => {
+                  const isSelected = form.allergens.some((title) =>
+                    sameDictionaryTitle(title, allergen.title)
+                  );
+                  return (
+                    <button
+                      aria-pressed={isSelected}
+                      className={`tag-option allergen-option${
+                        isSelected ? " allergen-option-selected" : ""
+                      }`}
+                      key={allergen.title}
+                      onClick={() => toggleAllergen(allergen.title)}
+                      title={allergen.description ?? undefined}
+                      type="button"
+                    >
+                      {allergen.title}
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="tag-create-row">
+                <label className="form-field">
+                  <span>Другой аллерген</span>
+                  <input
+                    maxLength={120}
+                    onChange={(event) => setNewAllergen(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") {
+                        event.preventDefault();
+                        addAllergen();
+                      }
+                    }}
+                    placeholder="Название вещества или материала"
+                    value={newAllergen}
+                  />
+                </label>
+                <button
+                  aria-label="Добавить аллерген"
+                  className="secondary-button"
+                  disabled={!newAllergen.trim()}
+                  onClick={addAllergen}
+                  type="button"
+                >
+                  <Plus aria-hidden="true" size={16} />
+                  Добавить
+                </button>
+              </div>
+              <small>
+                Сведения со слов клиента. При выраженной реакции требуется
+                уточнить рекомендации врача до процедуры.
+              </small>
+            </fieldset>
 
             <label className="form-field">
               <span>Внутренняя заметка</span>
@@ -504,7 +638,7 @@ export default function ClientsPage() {
               <div className="tag-cloud" aria-label="Внутренние метки клиента">
                 {visiblePrivateTagOptions.map((title) => {
                   const isSelected = form.privateTags.some((tag) =>
-                    samePrivateTagTitle(tag, title)
+                    sameDictionaryTitle(tag, title)
                   );
                   return (
                     <button

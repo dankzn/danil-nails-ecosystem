@@ -183,6 +183,7 @@ model Client {
   loyaltyStatus         ClientLoyaltyStatus?      @relation(fields: [loyaltyStatusId], references: [id])
   appointments          Appointment[]
   privateTagAssignments ClientPrivateTagAssignment[]
+  allergenAssignments   ClientAllergenAssignment[]
   visitNotes            VisitNote[]
   visitMaterials        VisitMaterial[]
   nailPhotos            NailPhoto[]
@@ -225,6 +226,29 @@ model ClientPrivateTagAssignment {
   tag       ClientPrivateTag @relation(fields: [tagId], references: [id], onDelete: Cascade)
 
   @@unique([clientId, tagId])
+}
+
+model Allergen {
+  id          String   @id @default(cuid())
+  title       String   @unique
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  assignments ClientAllergenAssignment[]
+}
+
+model ClientAllergenAssignment {
+  id         String   @id @default(cuid())
+  clientId   String
+  allergenId String
+  createdAt  DateTime @default(now())
+
+  client   Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  allergen Allergen @relation(fields: [allergenId], references: [id], onDelete: Cascade)
+
+  @@unique([clientId, allergenId])
+  @@index([allergenId])
 }
 
 model StaffProfile {

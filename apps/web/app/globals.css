@@ -541,7 +541,8 @@ table small {
 
 .status,
 .loyalty-badge,
-.private-badge {
+.private-badge,
+.allergen-badge {
   width: fit-content;
   max-width: 100%;
   display: inline-flex;
@@ -588,6 +589,12 @@ table small {
   border: 1px solid var(--border-strong);
   background: var(--surface-soft);
   color: #4f565d;
+}
+
+.allergen-badge {
+  border: 1px solid color-mix(in srgb, var(--red) 35%, var(--border));
+  background: var(--red-soft);
+  color: var(--red);
 }
 
 .private-tag-list,
@@ -641,6 +648,16 @@ table small {
   border-color: var(--accent);
   background: var(--accent-soft);
   color: var(--accent-strong);
+}
+
+.allergen-fieldset {
+  border-color: color-mix(in srgb, var(--amber) 32%, var(--border));
+}
+
+.allergen-option-selected {
+  border-color: var(--amber);
+  background: var(--amber-soft);
+  color: var(--amber);
 }
 
 .tag-create-row {
