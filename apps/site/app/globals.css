@@ -202,6 +202,12 @@ button {
 /* ---------- Header ---------- */
 
 .site-header {
+  --header-bg: var(--paper);
+  --header-border: var(--paper-line);
+  --header-ink: var(--ink);
+  --header-ink-soft: var(--ink-soft);
+  --header-ink-faint: var(--ink-faint);
+
   position: relative;
   z-index: 100;
   display: flex;
@@ -209,8 +215,9 @@ button {
   justify-content: space-between;
   gap: 24px;
   padding: 26px var(--edge);
-  border-bottom: 1px solid var(--paper-line);
-  background: var(--paper);
+  border-bottom: 1px solid var(--header-border);
+  background: var(--header-bg);
+  transition: background-color 250ms ease, border-color 250ms ease;
 }
 
 .site-header-fixed {
@@ -220,6 +227,36 @@ button {
   right: 0;
   padding-top: 16px;
   padding-bottom: 16px;
+}
+
+/* On the home page the header sits directly on the hero video: transparent
+   until hovered or until the page is scrolled (see .site-header-spacer). */
+.site-header:has(+ .has-hero-video) {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  --header-bg: transparent;
+  --header-border: transparent;
+  --header-ink: #f5f1e8;
+  --header-ink-soft: rgba(245, 241, 232, 0.82);
+  --header-ink-faint: rgba(245, 241, 232, 0.65);
+}
+
+.site-header:has(+ .has-hero-video):hover {
+  --header-bg: var(--paper);
+  --header-border: var(--paper-line);
+  --header-ink: var(--ink);
+  --header-ink-soft: var(--ink-soft);
+  --header-ink-faint: var(--ink-faint);
+}
+
+.site-header-spacer {
+  height: 82px;
+}
+
+.site-header-spacer:has(~ .has-hero-video) {
+  height: 0;
 }
 
 .site-brand {
@@ -232,14 +269,14 @@ button {
 .site-brand-mark {
   font-size: 20px;
   font-weight: 700;
-  color: var(--ink);
+  color: var(--header-ink);
 }
 
 .site-brand-copy {
   font-size: 12px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--ink-faint);
+  color: var(--header-ink-faint);
 }
 
 .site-nav {
@@ -248,7 +285,7 @@ button {
   gap: 36px;
   font-size: 13px;
   letter-spacing: 0.02em;
-  color: var(--ink-soft);
+  color: var(--header-ink-soft);
 }
 
 .site-nav a {
@@ -258,7 +295,7 @@ button {
 }
 
 .site-nav a:hover {
-  color: var(--ink);
+  color: var(--header-ink);
 }
 
 .site-nav a::after {
@@ -297,18 +334,31 @@ button {
   font-size: 10.5px;
   font-weight: 700;
   letter-spacing: 0.03em;
-  color: var(--ink-faint);
+  color: var(--header-ink-faint);
   border-bottom: 1px solid transparent;
   transition: color 200ms ease, border-color 200ms ease;
 }
 
 .locale-switcher-item:hover {
-  color: var(--ink);
+  color: var(--header-ink);
 }
 
 .locale-switcher-item-active {
-  color: var(--ink);
+  color: var(--header-ink);
   border-color: var(--clay);
+}
+
+.site-header .btn {
+  border-color: var(--header-ink);
+  color: var(--header-ink);
+}
+
+.site-header .btn::before {
+  background: var(--header-ink);
+}
+
+.site-header .btn:hover span {
+  color: var(--header-bg);
 }
 
 /* ---------- Hero (editorial masthead) ---------- */
@@ -1138,7 +1188,7 @@ button {
   }
 
   .hero-video-content {
-    padding: 40px 0 44px;
+    padding: 116px 0 44px;
   }
 
   .hero-video-content .hero-row .hero-meta {

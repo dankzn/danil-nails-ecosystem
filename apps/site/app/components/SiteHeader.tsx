@@ -46,7 +46,7 @@ export function SiteHeader({ lang, dict }: { lang: Locale; dict: Dictionary }) {
           </Button>
         </div>
       </header>
-      {isFixed ? <div aria-hidden="true" style={{ height: 82 }} /> : null}
+      {isFixed ? <div aria-hidden="true" className="site-header-spacer" /> : null}
     </>
   );
 }
