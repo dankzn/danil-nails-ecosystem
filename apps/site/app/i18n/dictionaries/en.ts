@@ -88,6 +88,10 @@ export const en: Dictionary = {
       { label: "Warm sand" }
     ]
   },
+  video: {
+    label: "Video",
+    note: "Studio footage will appear here after the first shoot"
+  },
   master: {
     kicker: "Master",
     headingPre: "One person, ",

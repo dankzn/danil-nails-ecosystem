@@ -595,6 +595,72 @@ button {
   text-transform: uppercase;
 }
 
+/* ---------- Horizontal video block ---------- */
+
+.video-block {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 21 / 8;
+  overflow: hidden;
+  background: var(--paper-deep);
+  border-top: 1px solid var(--paper-line);
+  border-bottom: 1px solid var(--paper-line);
+}
+
+.video-block-media {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.video-block-placeholder {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+}
+
+.video-block-play {
+  position: relative;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  border: 1px solid var(--ink-faint);
+}
+
+.video-block-play::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 55%;
+  transform: translate(-50%, -50%);
+  border-style: solid;
+  border-width: 8px 0 8px 13px;
+  border-color: transparent transparent transparent var(--ink-faint);
+}
+
+.video-block-label {
+  font-size: 11.5px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+.video-block-note {
+  font-size: 12.5px;
+  color: var(--ink-faint);
+}
+
+@media (max-width: 640px) {
+  .video-block {
+    aspect-ratio: 4 / 5;
+  }
+}
+
 /* ---------- Master ---------- */
 
 .master-block {

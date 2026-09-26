@@ -2,6 +2,7 @@ import type { CSSProperties } from "react";
 import { notFound } from "next/navigation";
 import { Button } from "../components/Button";
 import { Reveal } from "../components/Reveal";
+import { VideoBlock } from "../components/VideoBlock";
 import { getDictionary } from "../i18n/get-dictionary";
 import { isLocale } from "../i18n/locales";
 
@@ -101,6 +102,8 @@ export default async function HomePage({ params }: PageProps<"/[lang]">) {
           </div>
         </div>
       </section>
+
+      <VideoBlock label={dict.video.label} note={dict.video.note} />
 
       <section className="section">
         <div className="wrap">

@@ -54,6 +54,10 @@ export type Dictionary = {
     lede: string;
     items: { label: string }[];
   };
+  video: {
+    label: string;
+    note: string;
+  };
   master: {
     kicker: string;
     headingPre: string;
