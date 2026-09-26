@@ -4,6 +4,7 @@ import type { Dictionary } from "../i18n/dictionary";
 import type { Locale } from "../i18n/locales";
 import { apiUrl } from "../lib/api-url";
 import { useAuthStatus } from "../lib/use-auth";
+import { AllergiesEditor } from "./AllergiesEditor";
 
 export function AccountView({ dict, lang }: { dict: Dictionary["account"]; lang: Locale }) {
   const auth = useAuthStatus();
@@ -53,6 +54,8 @@ export function AccountView({ dict, lang }: { dict: Dictionary["account"]; lang:
         <h2>{dict.bookingsHeading}</h2>
         <p>{dict.bookingsPlaceholder}</p>
       </section>
+
+      <AllergiesEditor dict={dict} />
 
       <button type="button" className="btn account-logout" onClick={handleLogout}>
         <span>{dict.logoutLabel}</span>

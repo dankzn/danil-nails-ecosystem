@@ -335,7 +335,8 @@ export function registerClientRoutes(
                   allergenAssignments: {
                     deleteMany: {},
                     create: allergenIds.map((allergenId) => ({ allergenId }))
-                  }
+                  },
+                  ...(allergenIds.length ? { noKnownAllergies: false } : {})
                 }
               : {})
           }) as Prisma.ClientUpdateInput;

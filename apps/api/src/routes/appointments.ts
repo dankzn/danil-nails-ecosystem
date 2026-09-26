@@ -9,14 +9,13 @@ import {
   type DatabaseClient
 } from "@danil-nails/db";
 import { bookingRules, businessConfig } from "@danil-nails/shared";
-import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
+import type { FastifyInstance, FastifyReply } from "fastify";
 import { z } from "zod";
 import {
   findAvailableSlots,
   isDateWithinBookingHorizon
 } from "../availability.js";
-import { authorize, hashSessionToken } from "../auth/session.js";
-import { environment } from "../config.js";
+import { authorize, resolveSessionClient } from "../auth/session.js";
 import { isUniqueConstraintError, normalizePhone } from "./clients.js";
 
 const appointmentStatuses = ["confirmed", "canceled", "no_show"] as const;
@@ -230,25 +229,6 @@ async function conflictingAppointment(
     },
     select: { id: true }
   });
-}
-
-async function resolveSessionClient(
-  database: DatabaseClient,
-  request: FastifyRequest
-) {
-  const token = request.cookies[environment.SESSION_COOKIE_NAME];
-  if (!token) return null;
-
-  const session = await database.session.findUnique({
-    where: { tokenHash: hashSessionToken(token) },
-    include: { user: { include: { client: true } } }
-  });
-
-  if (!session || session.expiresAt <= new Date() || !session.user.isActive) {
-    return null;
-  }
-
-  return session.user.client ?? null;
 }
 
 function canManageAppointment(

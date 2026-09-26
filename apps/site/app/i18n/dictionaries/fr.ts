@@ -174,7 +174,18 @@ export const fr: Dictionary = {
     phoneLabel: "Téléphone",
     bookingsHeading: "Vos réservations",
     bookingsPlaceholder: "Vos réservations apparaîtront ici — cette partie de l'espace arrive à la prochaine étape.",
-    logoutLabel: "Se déconnecter"
+    logoutLabel: "Se déconnecter",
+    allergiesHeading: "Allergies et sensibilités",
+    allergiesLede: "L'administrateur et votre maître voient ceci avant votre visite — signalez tout ce qui compte pour une manucure sans risque.",
+    noKnownAllergiesLabel: "Je n'ai aucune allergie connue",
+    customAllergyLabel: "Autre allergène",
+    customAllergyPlaceholder: "Décrivez-le avec vos propres mots",
+    saveLabel: "Enregistrer",
+    savingLabel: "Enregistrement…",
+    savedLabel: "Enregistré",
+    allergiesErrorConflict: "Impossible de cocher « aucune allergie » avec un allergène précis",
+    allergiesErrorInvalid: "Impossible d'enregistrer — vérifiez les informations",
+    allergiesErrorNetwork: "Impossible de contacter le serveur — vérifiez votre connexion"
   },
   footer: {
     tagline: "Un travail précis et une attention minutieuse à chaque rendez-vous.",

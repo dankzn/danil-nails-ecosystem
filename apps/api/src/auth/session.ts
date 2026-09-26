@@ -39,6 +39,25 @@ export function clearSessionCookie(reply: FastifyReply) {
   reply.clearCookie(environment.SESSION_COOKIE_NAME, sessionCookieOptions);
 }
 
+export async function resolveSessionClient(
+  database: DatabaseClient,
+  request: FastifyRequest
+) {
+  const token = request.cookies[environment.SESSION_COOKIE_NAME];
+  if (!token) return null;
+
+  const session = await database.session.findUnique({
+    where: { tokenHash: hashSessionToken(token) },
+    include: { user: { include: { client: true } } }
+  });
+
+  if (!session || session.expiresAt <= new Date() || !session.user.isActive) {
+    return null;
+  }
+
+  return session.user.client ?? null;
+}
+
 export function authorize(
   database: DatabaseClient | null,
   allowedRoles?: readonly UserRole[]

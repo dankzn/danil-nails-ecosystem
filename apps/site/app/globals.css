@@ -1084,6 +1084,73 @@ button {
   justify-self: start;
 }
 
+.account-allergies h2 {
+  font-family: var(--font-grotesk);
+  font-weight: 500;
+  font-size: 20px;
+  margin: 0 0 12px;
+  color: var(--ink);
+}
+
+.account-allergies > p {
+  margin: 0 0 20px;
+  color: var(--ink-soft);
+  font-size: 15px;
+  line-height: 1.7;
+}
+
+.allergy-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 0 20px;
+  font-size: 14px;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.tag-cloud {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 0 0 20px;
+}
+
+.tag-cloud[aria-disabled="true"] {
+  opacity: 0.5;
+}
+
+.allergy-option {
+  height: 38px;
+  padding: 0 16px;
+  border: 1px solid var(--paper-line);
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-grotesk);
+  font-size: 13px;
+  cursor: pointer;
+  transition: border-color 200ms ease, background 200ms ease, color 200ms ease;
+}
+
+.allergy-option:hover:not(:disabled) {
+  border-color: var(--ink);
+}
+
+.allergy-option:disabled {
+  cursor: default;
+}
+
+.allergy-option-selected {
+  background: var(--clay);
+  border-color: var(--clay);
+  color: var(--paper);
+}
+
+.account-save {
+  justify-self: start;
+  margin-top: 4px;
+}
+
 /* ---------- Contact / closing statement ---------- */
 
 .contact-panel {

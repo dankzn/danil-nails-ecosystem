@@ -182,6 +182,8 @@ model Client {
   telegramChatId        String?
   whatsappPhone         String?
   allergies             String?
+  noKnownAllergies      Boolean  @default(false)
+  customAllergyNote     String?
   notes                 String?
   requiresPrepayment    Boolean  @default(false)
   prepaymentReason      String?

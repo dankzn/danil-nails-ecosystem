@@ -180,7 +180,18 @@ export const ru: Dictionary = {
     phoneLabel: "Телефон",
     bookingsHeading: "Мои записи",
     bookingsPlaceholder: "Здесь появится список ваших записей — эта часть кабинета подключается следующим шагом.",
-    logoutLabel: "Выйти"
+    logoutLabel: "Выйти",
+    allergiesHeading: "Аллергии и чувствительность",
+    allergiesLede: "Эти сведения видит администратор и мастер перед вашим визитом — отметьте всё, что важно для безопасного маникюра.",
+    noKnownAllergiesLabel: "У меня нет известных аллергий",
+    customAllergyLabel: "Другой аллерген",
+    customAllergyPlaceholder: "Опишите своими словами",
+    saveLabel: "Сохранить",
+    savingLabel: "Сохраняем…",
+    savedLabel: "Сохранено",
+    allergiesErrorConflict: "Нельзя одновременно указать «нет аллергий» и конкретный аллерген",
+    allergiesErrorInvalid: "Не удалось сохранить — проверьте данные",
+    allergiesErrorNetwork: "Не удалось связаться с сервером — проверьте соединение"
   },
   footer: {
     tagline: "Точная работа и внимание к деталям в каждой записи.",

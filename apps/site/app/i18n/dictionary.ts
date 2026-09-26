@@ -141,6 +141,17 @@ export type Dictionary = {
     bookingsHeading: string;
     bookingsPlaceholder: string;
     logoutLabel: string;
+    allergiesHeading: string;
+    allergiesLede: string;
+    noKnownAllergiesLabel: string;
+    customAllergyLabel: string;
+    customAllergyPlaceholder: string;
+    saveLabel: string;
+    savingLabel: string;
+    savedLabel: string;
+    allergiesErrorConflict: string;
+    allergiesErrorInvalid: string;
+    allergiesErrorNetwork: string;
   };
   footer: {
     tagline: string;

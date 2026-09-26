@@ -19,6 +19,7 @@ import { registerAvailabilityRoutes } from "./routes/availability.js";
 import { registerAuthRoutes } from "./routes/auth.js";
 import { registerAppointmentRoutes } from "./routes/appointments.js";
 import { registerClientRoutes } from "./routes/clients.js";
+import { registerClientProfileRoutes } from "./routes/client-profile.js";
 import { registerDashboardRoutes } from "./routes/dashboard.js";
 import { registerDirectoryRoutes } from "./routes/directories.js";
 import { registerEmployeeRoutes } from "./routes/employees.js";
@@ -101,6 +102,7 @@ export async function buildServer(
   registerAppointmentRoutes(server, database);
   registerServiceRoutes(server, database);
   registerClientRoutes(server, database);
+  registerClientProfileRoutes(server, database);
   registerDashboardRoutes(server, database);
   registerScheduleRoutes(server, database);
   registerEmployeeRoutes(server, database);

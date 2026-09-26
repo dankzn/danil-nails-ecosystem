@@ -18,6 +18,8 @@ type Client = {
   telegramUsername: string | null;
   whatsappPhone: string | null;
   allergies: string | null;
+  noKnownAllergies: boolean;
+  customAllergyNote: string | null;
   notes: string | null;
   requiresPrepayment: boolean;
   prepaymentReason: string | null;
@@ -446,7 +448,9 @@ export default function ClientsPage() {
                         </span>
                       </td>
                       <td className="tag-cell">
-                        {clientAllergens.length ? (
+                        {client.noKnownAllergies ? (
+                          <span className="muted-label">Нет известных аллергий</span>
+                        ) : clientAllergens.length || client.customAllergyNote ? (
                           <div className="private-tag-list">
                             {clientAllergens.map((title) => (
                               <span
@@ -457,9 +461,17 @@ export default function ClientsPage() {
                                 {title}
                               </span>
                             ))}
+                            {client.customAllergyNote ? (
+                              <span
+                                className="allergen-badge allergen-badge-custom"
+                                title={client.customAllergyNote}
+                              >
+                                Со слов клиента: {client.customAllergyNote}
+                              </span>
+                            ) : null}
                           </div>
                         ) : (
-                          <span className="muted-label">Нет</span>
+                          <span className="muted-label">Не указано</span>
                         )}
                       </td>
                       <td className="tag-cell">
@@ -574,6 +586,17 @@ export default function ClientsPage() {
 
             <fieldset className="tag-fieldset allergen-fieldset">
               <legend>Аллергии и чувствительность</legend>
+              {editingClient?.noKnownAllergies ? (
+                <p className="legacy-allergy-note">
+                  Клиент указал в личном кабинете: нет известных аллергий.
+                </p>
+              ) : null}
+              {editingClient?.customAllergyNote ? (
+                <p className="legacy-allergy-note">
+                  Свой аллерген со слов клиента (личный кабинет, не входит в
+                  общий справочник): {editingClient.customAllergyNote}
+                </p>
+              ) : null}
               {editingClient?.allergies ? (
                 <p className="legacy-allergy-note">
                   Старая свободная запись об аллергии (сохранена как есть,

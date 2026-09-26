@@ -174,7 +174,18 @@ export const en: Dictionary = {
     phoneLabel: "Phone",
     bookingsHeading: "Your bookings",
     bookingsPlaceholder: "Your bookings will appear here — this part of the cabinet is coming as the next step.",
-    logoutLabel: "Log out"
+    logoutLabel: "Log out",
+    allergiesHeading: "Allergies and sensitivities",
+    allergiesLede: "The admin and your master see this before your visit — flag anything that matters for a safe manicure.",
+    noKnownAllergiesLabel: "I have no known allergies",
+    customAllergyLabel: "Other allergen",
+    customAllergyPlaceholder: "Describe it in your own words",
+    saveLabel: "Save",
+    savingLabel: "Saving…",
+    savedLabel: "Saved",
+    allergiesErrorConflict: "You can't mark \"no allergies\" together with a specific allergen",
+    allergiesErrorInvalid: "Couldn't save — please check the details",
+    allergiesErrorNetwork: "Couldn't reach the server — check your connection"
   },
   footer: {
     tagline: "Precise work and close attention to detail in every appointment.",
