@@ -89,7 +89,6 @@ export function registerDashboardRoutes(
           database!.appointment.findMany({
             where: {
               ...appointmentScope,
-              startsAt: { gte: todayRange.startsAt, lt: attentionEndsAt },
               status: {
                 notIn: [
                   AppointmentStatus.canceled,
@@ -99,8 +98,18 @@ export function registerDashboardRoutes(
                 ]
               },
               OR: [
-                { status: AppointmentStatus.pending_admin_confirmation },
+                // Needs admin confirmation at all — not bounded to the next
+                // couple of days, since online bookings can land anywhere
+                // within the ~60-day booking horizon and still need a
+                // human to confirm them.
                 {
+                  status: AppointmentStatus.pending_admin_confirmation,
+                  startsAt: { gte: todayRange.startsAt }
+                },
+                // Attendance confirmation is genuinely only relevant close
+                // to the appointment itself, so this one stays windowed.
+                {
+                  startsAt: { gte: todayRange.startsAt, lt: attentionEndsAt },
                   attendanceConfirmationStatus: {
                     in: [
                       AttendanceConfirmationStatus.pending,
@@ -111,7 +120,8 @@ export function registerDashboardRoutes(
               ]
             },
             include: dashboardAppointmentInclude,
-            orderBy: { startsAt: "asc" }
+            orderBy: { startsAt: "asc" },
+            take: 100
           }),
           database!.service.count({ where: { isActive: true } }),
           database!.workingHour.count({

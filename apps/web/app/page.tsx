@@ -78,6 +78,23 @@ const timeFormatter = new Intl.DateTimeFormat("ru-RU", {
   hour: "2-digit",
   minute: "2-digit"
 });
+const alertDateFormatter = new Intl.DateTimeFormat("ru-RU", {
+  timeZone: "Europe/Moscow",
+  day: "numeric",
+  month: "long"
+});
+
+function moscowDateKey(date: Date) {
+  const parts = new Intl.DateTimeFormat("en", {
+    timeZone: "Europe/Moscow",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit"
+  }).formatToParts(date);
+  const part = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((item) => item.type === type)?.value ?? "";
+  return `${part("year")}-${part("month")}-${part("day")}`;
+}
 
 function formatBusyTime(minutes: number) {
   const hours = Math.floor(minutes / 60);
@@ -114,14 +131,16 @@ function alertCopy(alert: Dashboard["alerts"][number]) {
       href: "/schedule"
     };
   }
-  const time = timeFormatter.format(new Date(alert.startsAt));
+  const startsAt = new Date(alert.startsAt);
+  const time = timeFormatter.format(startsAt);
+  const date = alertDateFormatter.format(startsAt);
   return {
     title:
       alert.type === "appointment_confirmation"
         ? "Подтвердить новую запись"
         : "Проверить ответ клиента",
-    detail: `${alert.clientName}, ${time} · ${alert.serviceName}`,
-    href: "/appointments"
+    detail: `${alert.clientName}, ${date}, ${time} · ${alert.serviceName}`,
+    href: `/appointments?date=${moscowDateKey(startsAt)}`
   };
 }
 

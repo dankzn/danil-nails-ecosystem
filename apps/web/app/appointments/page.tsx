@@ -205,6 +205,8 @@ function moscowDateTimeInput(date: Date) {
   return `${part("year")}-${part("month")}-${part("day")}T${part("hour")}:${part("minute")}`;
 }
 
+const datePattern = /^\d{4}-\d{2}-\d{2}$/;
+
 function moveDate(date: string, days: number) {
   const value = new Date(`${date}T12:00:00.000Z`);
   value.setUTCDate(value.getUTCDate() + days);
@@ -345,6 +347,18 @@ function appointmentErrorMessage(error: unknown) {
 
 export default function AppointmentsPage() {
   const [selectedDate, setSelectedDate] = useState(moscowDateKey);
+
+  useEffect(() => {
+    // Read this from the real, committed navigation rather than at initial
+    // render: Next prefetches Link targets speculatively, rendering (and
+    // running lazy useState initializers) against the *previous* page's
+    // window.location before the URL actually changes. Effects only run
+    // once a navigation is actually committed, so this reliably sees the
+    // destination URL's query string.
+    const requested = new URLSearchParams(window.location.search).get("date");
+    if (requested && datePattern.test(requested)) setSelectedDate(requested);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [options, setOptions] = useState<BookingOptions | null>(null);
   const [bookingDate, setBookingDate] = useState(moscowDateKey);
