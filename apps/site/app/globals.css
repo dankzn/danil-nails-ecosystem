@@ -5,18 +5,14 @@
   --paper-line: rgba(26, 24, 19, 0.13);
   --paper-line-soft: rgba(26, 24, 19, 0.06);
 
-  --ink: #1a1814;
-  --ink-soft: #57544a;
-  --ink-faint: #8f8b7e;
+  --ink: #262420;
+  --ink-soft: #5a5648;
+  --ink-faint: #938d7c;
 
-  --clay: #a3401f;
-  --clay-deep: #6b2712;
+  --clay: #4a463b;
+  --clay-deep: #35322a;
 
   --bronze: #8a6a3a;
-
-  --bone-dark: #17150f;
-  --on-dark: #efece3;
-  --on-dark-soft: #a7a294;
 
   --font-grotesk: "Golos Text", "Segoe UI", sans-serif;
 
@@ -96,9 +92,8 @@ button {
 }
 
 .section-dark {
-  background: var(--bone-dark);
-  color: var(--on-dark);
-  border-bottom-color: rgba(242, 233, 216, 0.12);
+  background: var(--paper-raised);
+  color: var(--ink);
 }
 
 .section-kicker {
@@ -114,10 +109,6 @@ button {
   color: var(--clay);
 }
 
-.section-dark .section-kicker {
-  color: var(--on-dark-soft);
-}
-
 .section-kicker::before {
   content: "";
   width: 30px;
@@ -128,15 +119,11 @@ button {
 .section-heading {
   margin: 0 0 20px;
   font-family: var(--font-grotesk);
-  font-weight: 700;
-  font-size: clamp(32px, 4.6vw, 54px);
-  line-height: 1.05;
-  letter-spacing: -0.02em;
+  font-weight: 500;
+  font-size: clamp(24px, 2.6vw, 32px);
+  line-height: 1.25;
+  letter-spacing: -0.005em;
   color: var(--ink);
-}
-
-.section-dark .section-heading {
-  color: var(--on-dark);
 }
 
 .section-heading em {
@@ -151,23 +138,20 @@ button {
   line-height: 1.7;
 }
 
-.section-dark .section-lede {
-  color: var(--on-dark-soft);
-}
-
 /* ---------- Buttons ---------- */
 
 .btn {
   position: relative;
   display: inline-flex;
   align-items: center;
-  height: 50px;
-  padding: 0 30px;
+  height: 46px;
+  padding: 0 26px;
   border: 1px solid var(--ink);
   color: var(--ink);
-  font-size: 13px;
-  font-weight: 700;
-  letter-spacing: 0.03em;
+  font-size: 12.5px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
   white-space: nowrap;
   overflow: hidden;
   background: transparent;
@@ -207,19 +191,6 @@ button {
 
 .btn-solid span {
   color: var(--paper);
-}
-
-.section-dark .btn {
-  border-color: var(--on-dark);
-  color: var(--on-dark);
-}
-
-.section-dark .btn::before {
-  background: var(--on-dark);
-}
-
-.section-dark .btn:hover span {
-  color: var(--bone-dark);
 }
 
 .header-cta {
@@ -382,10 +353,10 @@ button {
 .hero-title {
   margin: 0;
   font-family: var(--font-grotesk);
-  font-weight: 700;
-  font-size: clamp(44px, 7.6vw, 108px);
-  line-height: 0.96;
-  letter-spacing: -0.025em;
+  font-weight: 500;
+  font-size: clamp(32px, 4.4vw, 56px);
+  line-height: 1.18;
+  letter-spacing: -0.01em;
   color: var(--ink);
 }
 
@@ -420,8 +391,8 @@ button {
 }
 
 .hero-lede {
-  max-width: 48ch;
-  font-size: 18px;
+  max-width: 46ch;
+  font-size: 15.5px;
   line-height: 1.75;
   color: var(--ink-soft);
 }
@@ -516,9 +487,9 @@ button {
 .philosophy-row h3 {
   margin: 0;
   font-family: var(--font-grotesk);
-  font-weight: 700;
-  font-size: clamp(24px, 3.2vw, 38px);
-  letter-spacing: -0.01em;
+  font-weight: 500;
+  font-size: clamp(19px, 1.8vw, 22px);
+  letter-spacing: -0.005em;
   color: var(--ink);
 }
 
@@ -734,53 +705,53 @@ button {
   align-items: center;
   height: 50px;
   padding: 0 28px;
-  border: 1px dashed rgba(242, 233, 216, 0.4);
-  color: var(--on-dark-soft);
+  border: 1px dashed var(--paper-line);
+  color: var(--ink-faint);
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 500;
   letter-spacing: 0.03em;
 }
 
 .site-footer {
-  background: var(--bone-dark);
-  color: var(--on-dark-soft);
+  background: var(--paper);
+  color: var(--ink-soft);
   padding-top: clamp(56px, 8vw, 96px);
+  border-top: 1px solid var(--paper-line);
 }
 
 .footer-grid {
   display: grid;
   grid-template-columns: minmax(0, 1.4fr) minmax(0, 0.8fr) minmax(0, 0.8fr) minmax(0, 0.6fr);
   gap: 40px;
-  padding-bottom: clamp(48px, 7vw, 88px);
-  border-bottom: 1px solid rgba(239, 236, 227, 0.12);
+  padding-bottom: clamp(40px, 6vw, 64px);
 }
 
 .footer-brand {
   display: block;
   font-family: var(--font-grotesk);
-  font-weight: 700;
-  font-size: 20px;
-  letter-spacing: -0.01em;
-  color: var(--on-dark);
+  font-weight: 500;
+  font-size: 16px;
+  letter-spacing: -0.005em;
+  color: var(--ink);
   margin-bottom: 14px;
 }
 
 .footer-tagline {
   margin: 0;
   max-width: 32ch;
-  font-size: 14px;
+  font-size: 13.5px;
   line-height: 1.6;
-  color: var(--on-dark-soft);
+  color: var(--ink-faint);
 }
 
 .footer-col-label {
   display: block;
   margin-bottom: 18px;
   font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.14em;
+  font-weight: 500;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: var(--on-dark-soft);
+  color: var(--ink-faint);
 }
 
 .footer-links {
@@ -792,50 +763,37 @@ button {
 }
 
 .footer-links a {
-  font-size: 14px;
-  color: var(--on-dark);
+  font-size: 13.5px;
+  color: var(--ink-soft);
   transition: color 200ms ease;
 }
 
 .footer-links a:hover {
-  color: var(--clay);
+  color: var(--ink);
 }
 
 .footer-note {
   margin: 0 0 6px;
-  font-size: 14px;
-  color: var(--on-dark);
+  font-size: 13.5px;
+  color: var(--ink-soft);
 }
 
 .footer-note-faint {
-  color: var(--on-dark-soft);
-  font-size: 13px;
+  color: var(--ink-faint);
+  font-size: 12.5px;
   line-height: 1.6;
 }
 
 .footer-col .locale-switcher-item {
-  color: var(--on-dark-soft);
+  color: var(--ink-faint);
 }
 
 .footer-col .locale-switcher-item:hover {
-  color: var(--on-dark);
+  color: var(--ink);
 }
 
 .footer-col .locale-switcher-item-active {
-  color: var(--on-dark);
-}
-
-.footer-wordmark {
-  padding: clamp(28px, 5vw, 56px) 0;
-  font-family: var(--font-grotesk);
-  font-weight: 700;
-  letter-spacing: -0.03em;
-  line-height: 0.9;
-  font-size: clamp(48px, 11vw, 168px);
-  color: transparent;
-  -webkit-text-stroke: 1px rgba(239, 236, 227, 0.5);
-  white-space: nowrap;
-  overflow: hidden;
+  color: var(--ink);
 }
 
 .footer-bottom {
@@ -844,19 +802,19 @@ button {
   justify-content: space-between;
   gap: 16px;
   flex-wrap: wrap;
-  padding: 24px 0 40px;
-  border-top: 1px solid rgba(239, 236, 227, 0.12);
-  font-size: 12.5px;
-  color: var(--on-dark-soft);
+  padding: 22px 0 40px;
+  border-top: 1px solid var(--paper-line);
+  font-size: 12px;
+  color: var(--ink-faint);
 }
 
 .footer-bottom a {
-  color: var(--on-dark);
+  color: var(--ink-soft);
   transition: color 200ms ease;
 }
 
 .footer-bottom a:hover {
-  color: var(--clay);
+  color: var(--ink);
 }
 
 /* ---------- Inner pages ---------- */

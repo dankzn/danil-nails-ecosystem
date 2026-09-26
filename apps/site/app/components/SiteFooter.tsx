@@ -43,10 +43,6 @@ export function SiteFooter({ lang, dict }: { lang: Locale; dict: Dictionary }) {
           </div>
         </div>
 
-        <div className="footer-wordmark" aria-hidden="true">
-          Danil Nails
-        </div>
-
         <div className="footer-bottom">
           <span>
             © {new Date().getFullYear()} {dict.footer.rights}
