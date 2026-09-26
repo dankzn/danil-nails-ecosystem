@@ -9,7 +9,7 @@ export default async function MasterPage({ params }: PageProps<"/[lang]/master">
   const dict = getDictionary(lang);
 
   return (
-    <main className="inner-page">
+    <main>
       <section className="section section-first">
         <div className="wrap">
           <Reveal>

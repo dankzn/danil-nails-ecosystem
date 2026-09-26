@@ -1,8 +1,6 @@
 import type { CSSProperties } from "react";
 import { notFound } from "next/navigation";
-import { HeroBlob } from "../components/HeroBlob";
-import { MagneticButton } from "../components/MagneticButton";
-import { Marquee } from "../components/Marquee";
+import { Button } from "../components/Button";
 import { Reveal } from "../components/Reveal";
 import { getDictionary } from "../i18n/get-dictionary";
 import { isLocale } from "../i18n/locales";
@@ -19,15 +17,18 @@ export default async function HomePage({ params }: PageProps<"/[lang]">) {
   return (
     <main id="top">
       <section className="hero">
-        <HeroBlob />
-
-        <div className="wrap hero-content">
-          <Reveal>
-            <span className="hero-eyebrow">
-              <span className="dot" />
-              {dict.hero.eyebrow}
-            </span>
-          </Reveal>
+        <div className="wrap">
+          <div className="hero-kicker-row">
+            <Reveal>
+              <span className="hero-eyebrow">
+                <span className="dot" />
+                {dict.hero.eyebrow}
+              </span>
+            </Reveal>
+            <Reveal delay={80}>
+              <span className="hero-folio">N&deg;01 &mdash; Moscow</span>
+            </Reveal>
+          </div>
 
           <h1 className="hero-title">
             {dict.hero.titleLines.map((line, index) => (
@@ -37,38 +38,44 @@ export default async function HomePage({ params }: PageProps<"/[lang]">) {
             ))}
           </h1>
 
-          <Reveal delay={200}>
-            <p className="hero-lede">{dict.hero.lede}</p>
-          </Reveal>
+          <div className="hero-rule" />
 
-          <Reveal delay={320}>
-            <div className="hero-actions">
-              <MagneticButton href={`/${lang}/contact/`}>{dict.hero.ctaPrimary}</MagneticButton>
-              <MagneticButton className="magnetic-button-outline" href={`/${lang}/services/`}>
-                {dict.hero.ctaSecondary}
-              </MagneticButton>
-            </div>
-          </Reveal>
+          <div className="hero-row">
+            <Reveal delay={120}>
+              <p className="hero-lede">{dict.hero.lede}</p>
+              <div className="hero-actions">
+                <Button variant="solid" href={`/${lang}/contact/`}>
+                  {dict.hero.ctaPrimary}
+                </Button>
+                <Button href={`/${lang}/services/`}>{dict.hero.ctaSecondary}</Button>
+              </div>
+            </Reveal>
 
-          <Reveal delay={420}>
-            <div className="hero-meta">
-              {dict.hero.meta.map((item) => (
-                <div key={item.label}>
-                  <strong>{item.value}</strong>
-                  <span>{item.label}</span>
-                </div>
-              ))}
-            </div>
-          </Reveal>
-        </div>
-
-        <div className="hero-scroll-cue">
-          <span className="line" />
-          {dict.hero.scrollCue}
+            <Reveal delay={200}>
+              <div className="hero-meta">
+                {dict.hero.meta.map((item) => (
+                  <div key={item.label}>
+                    <strong>{item.value}</strong>
+                    <span>{item.label}</span>
+                  </div>
+                ))}
+              </div>
+            </Reveal>
+          </div>
         </div>
       </section>
 
-      <Marquee items={dict.marquee} />
+      <div className="index-strip">
+        <div className="wrap">
+          <div className="index-strip-track">
+            {dict.marquee.map((item) => (
+              <span className="index-strip-item" key={item}>
+                {item}
+              </span>
+            ))}
+          </div>
+        </div>
+      </div>
 
       <section className="section">
         <div className="wrap">
@@ -79,12 +86,14 @@ export default async function HomePage({ params }: PageProps<"/[lang]">) {
               <em>{dict.philosophy.headingEm}</em>
             </h2>
           </Reveal>
-          <div className="philosophy-grid">
+          <div className="philosophy-list">
             {dict.philosophy.items.map((item, index) => (
-              <Reveal as="div" delay={index * 80} key={item.index}>
-                <div className="philosophy-card">
-                  <div className="philosophy-index">{item.index}</div>
-                  <h3>{item.title}</h3>
+              <Reveal delay={index * 70} key={item.index}>
+                <div className="philosophy-row">
+                  <div className="philosophy-row-head">
+                    <span className="philosophy-index">{item.index}</span>
+                    <h3>{item.title}</h3>
+                  </div>
                   <p>{item.body}</p>
                 </div>
               </Reveal>
@@ -93,7 +102,7 @@ export default async function HomePage({ params }: PageProps<"/[lang]">) {
         </div>
       </section>
 
-      <section className="section section-paper">
+      <section className="section">
         <div className="wrap">
           <Reveal>
             <p className="section-kicker">{dict.home.servicesKicker}</p>
@@ -106,19 +115,18 @@ export default async function HomePage({ params }: PageProps<"/[lang]">) {
 
           <div className="services-list">
             {dict.services.items.map((service, index) => (
-              <Reveal as="div" delay={index * 70} key={service.title}>
+              <Reveal delay={index * 70} key={service.title}>
                 <div className="service-row">
                   <span className="service-index">0{index + 1}</span>
                   <div>
                     <div className="service-name">{service.title}</div>
                     <div className="service-meta">
                       <span>{service.duration}</span>
-                      <span>·</span>
+                      <span>&middot;</span>
                       <span>{service.note}</span>
                     </div>
                   </div>
                   <span className="service-price">{dict.services.priceLabel}</span>
-                  <span className="service-arrow">→</span>
                 </div>
               </Reveal>
             ))}
@@ -126,28 +134,26 @@ export default async function HomePage({ params }: PageProps<"/[lang]">) {
 
           <Reveal delay={100}>
             <div className="home-cta-row">
-              <MagneticButton className="magnetic-button-outline" href={`/${lang}/services/`}>
-                {dict.home.servicesCta}
-              </MagneticButton>
+              <Button href={`/${lang}/services/`}>{dict.home.servicesCta}</Button>
             </div>
           </Reveal>
         </div>
       </section>
 
-      <section className="section">
+      <section className="section section-dark">
         <div className="wrap">
           <Reveal>
             <div className="contact-panel">
-              <p className="section-kicker" style={{ justifyContent: "center" }}>
-                {dict.home.contactKicker}
-              </p>
+              <p className="section-kicker">{dict.home.contactKicker}</p>
               <h2 className="contact-heading">
                 {dict.home.contactHeadingPre}
                 <em>{dict.home.contactHeadingEm}</em>
               </h2>
               <p className="contact-lede">{dict.home.contactLede}</p>
               <div className="contact-actions">
-                <MagneticButton href={`/${lang}/contact/`}>{dict.home.contactCta}</MagneticButton>
+                <Button variant="solid" href={`/${lang}/contact/`}>
+                  {dict.home.contactCta}
+                </Button>
               </div>
             </div>
           </Reveal>

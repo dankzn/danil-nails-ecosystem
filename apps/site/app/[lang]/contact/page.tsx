@@ -9,14 +9,12 @@ export default async function ContactPage({ params }: PageProps<"/[lang]/contact
   const dict = getDictionary(lang);
 
   return (
-    <main className="inner-page">
-      <section className="section section-first">
+    <main>
+      <section className="section section-first section-dark">
         <div className="wrap">
           <Reveal>
             <div className="contact-panel">
-              <p className="section-kicker" style={{ justifyContent: "center" }}>
-                {dict.contact.kicker}
-              </p>
+              <p className="section-kicker">{dict.contact.kicker}</p>
               <h1 className="contact-heading">
                 {dict.contact.headingPre}
                 <em>{dict.contact.headingEm}</em>

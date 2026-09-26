@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { CursorGlow } from "../components/CursorGlow";
 import { SetHtmlLang } from "../components/SetHtmlLang";
 import { SiteHeader } from "../components/SiteHeader";
 import { getDictionary } from "../i18n/get-dictionary";
@@ -30,7 +29,6 @@ export default async function LangLayout({ children, params }: LayoutProps<"/[la
   return (
     <>
       <SetHtmlLang lang={lang} />
-      <CursorGlow />
       <SiteHeader lang={lang} dict={dict} />
       {children}
       <footer className="site-footer">

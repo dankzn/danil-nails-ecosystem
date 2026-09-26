@@ -9,7 +9,7 @@ export default async function ServicesPage({ params }: PageProps<"/[lang]/servic
   const dict = getDictionary(lang);
 
   return (
-    <main className="inner-page">
+    <main>
       <section className="section section-first">
         <div className="wrap">
           <Reveal>
@@ -23,19 +23,18 @@ export default async function ServicesPage({ params }: PageProps<"/[lang]/servic
 
           <div className="services-list">
             {dict.services.items.map((service, index) => (
-              <Reveal as="div" delay={index * 70} key={service.title}>
+              <Reveal delay={index * 70} key={service.title}>
                 <div className="service-row">
                   <span className="service-index">0{index + 1}</span>
                   <div>
                     <div className="service-name">{service.title}</div>
                     <div className="service-meta">
                       <span>{service.duration}</span>
-                      <span>·</span>
+                      <span>&middot;</span>
                       <span>{service.note}</span>
                     </div>
                   </div>
                   <span className="service-price">{dict.services.priceLabel}</span>
-                  <span className="service-arrow">→</span>
                 </div>
               </Reveal>
             ))}

@@ -1,17 +1,11 @@
 import type { Metadata } from "next";
-import { Manrope, Playfair_Display } from "next/font/google";
+import { Golos_Text } from "next/font/google";
 import "./globals.css";
 
-const displaySerif = Playfair_Display({
+const grotesk = Golos_Text({
   subsets: ["latin", "cyrillic"],
-  weight: ["400", "500"],
-  style: ["normal", "italic"],
-  variable: "--font-display"
-});
-
-const bodySans = Manrope({
-  subsets: ["latin", "cyrillic"],
-  variable: "--font-body"
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-grotesk"
 });
 
 export const metadata: Metadata = {
@@ -25,7 +19,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="ru" className={`${displaySerif.variable} ${bodySans.variable}`}>
+    <html lang="ru" className={grotesk.variable}>
       <body>{children}</body>
     </html>
   );
