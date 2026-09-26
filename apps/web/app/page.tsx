@@ -9,6 +9,7 @@ import {
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { apiRequest } from "./lib/api";
+import { ArrivalTracker } from "./components/ArrivalTracker";
 
 type AppointmentStatus =
   | "draft"
@@ -149,20 +150,26 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const loadDashboard = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
+  const loadDashboard = useCallback(async (options: { silent?: boolean } = {}) => {
+    if (!options.silent) {
+      setIsLoading(true);
+      setError(null);
+    }
     try {
-      setDashboard(await apiRequest<Dashboard>("/v1/admin/dashboard"));
+      const data = await apiRequest<Dashboard>("/v1/admin/dashboard");
+      setDashboard(data);
+      if (options.silent) setError(null);
     } catch {
-      setError("Не удалось загрузить сводку CRM.");
+      if (!options.silent) setError("Не удалось загрузить сводку CRM.");
     } finally {
-      setIsLoading(false);
+      if (!options.silent) setIsLoading(false);
     }
   }, []);
 
   useEffect(() => {
     void loadDashboard();
+    const interval = setInterval(() => void loadDashboard({ silent: true }), 60000);
+    return () => clearInterval(interval);
   }, [loadDashboard]);
 
   const name = dashboard?.displayName?.split(" ")[0] ?? "Данил";
@@ -237,6 +244,8 @@ export default function Home() {
           <span className="metric-note">Активны для записи</span>
         </article>
       </section>
+
+      <ArrivalTracker appointments={dashboard?.appointments ?? []} />
 
       <section className="content-grid content-grid-wide">
         <article className="panel">

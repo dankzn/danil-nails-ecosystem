@@ -836,6 +836,83 @@ table td:nth-child(2) small {
   line-height: 1.45;
 }
 
+.arrival-groups {
+  display: grid;
+  gap: 4px;
+  padding: 4px 20px 12px;
+}
+
+.arrival-group-label {
+  margin: 16px 0 6px;
+  font-size: 11px;
+  font-weight: 750;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.arrival-group-label:first-child {
+  margin-top: 8px;
+}
+
+.arrival-group-15 {
+  color: var(--red);
+}
+
+.arrival-group-60 {
+  color: var(--amber);
+}
+
+.arrival-group-90 {
+  color: var(--blue);
+}
+
+.arrival-list {
+  display: grid;
+}
+
+.arrival-row {
+  min-height: 60px;
+  display: grid;
+  grid-template-columns: 84px minmax(160px, 1fr) auto;
+  align-items: center;
+  gap: 16px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.arrival-row:last-child {
+  border-bottom: 0;
+}
+
+.arrival-countdown,
+.arrival-client {
+  display: grid;
+  gap: 3px;
+}
+
+.arrival-countdown strong {
+  font-size: 15px;
+}
+
+.arrival-countdown span,
+.arrival-client span {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.arrival-client strong {
+  font-size: 13px;
+}
+
+.arrival-master {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+
 .calendar-summary {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -2813,6 +2890,16 @@ td strong {
   }
 
   .appointment-row .status {
+    grid-column: 2;
+  }
+
+  .arrival-row {
+    grid-template-columns: 64px minmax(0, 1fr);
+    gap: 12px;
+    padding: 10px 0;
+  }
+
+  .arrival-master {
     grid-column: 2;
   }
 
