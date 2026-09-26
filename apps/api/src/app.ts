@@ -38,8 +38,20 @@ export async function buildServer(
   server.decorateRequest("crmUser", null);
 
   await server.register(cookie);
+  const allowedOrigins = new Set(
+    [environment.APP_PUBLIC_URL, environment.SITE_PUBLIC_URL].filter(
+      (value): value is string => Boolean(value)
+    )
+  );
+
   await server.register(cors, {
-    origin: environment.APP_PUBLIC_URL,
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.has(origin)) {
+        callback(null, true);
+        return;
+      }
+      callback(new Error("origin_not_allowed"), false);
+    },
     credentials: true,
     methods: ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
   });

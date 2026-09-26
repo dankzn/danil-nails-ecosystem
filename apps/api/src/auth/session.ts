@@ -6,7 +6,7 @@ import { environment } from "../config.js";
 const sessionCookieOptions = {
   httpOnly: true,
   path: "/",
-  sameSite: "lax" as const,
+  sameSite: environment.NODE_ENV === "production" ? ("none" as const) : ("lax" as const),
   secure: environment.NODE_ENV === "production"
 };
 

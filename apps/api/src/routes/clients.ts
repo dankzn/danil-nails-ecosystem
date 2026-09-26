@@ -37,7 +37,7 @@ export function normalizeDictionaryTitles(titles: string[]) {
   return [...unique.values()];
 }
 
-function normalizePhone(phone: string) {
+export function normalizePhone(phone: string) {
   return phone.replace(/[^\d+]/g, "");
 }
 
@@ -46,7 +46,7 @@ function normalizeTelegramUsername(username: string | null | undefined) {
   return username.replace(/^@/, "").toLowerCase();
 }
 
-function isUniqueConstraintError(error: unknown) {
+export function isUniqueConstraintError(error: unknown) {
   return (
     typeof error === "object" &&
     error !== null &&
