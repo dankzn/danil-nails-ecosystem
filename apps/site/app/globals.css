@@ -318,6 +318,99 @@ button {
   border-bottom: 1px solid var(--paper-line);
 }
 
+.hero-video {
+  position: relative;
+  padding: 0;
+  border-bottom: none;
+  min-height: 82vh;
+  display: flex;
+  align-items: flex-end;
+  overflow: hidden;
+  background: var(--paper-deep);
+}
+
+.hero-bg-video {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.hero-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: linear-gradient(180deg, rgba(20, 18, 14, 0.12) 0%, rgba(20, 18, 14, 0.72) 100%);
+}
+
+.hero-video-content {
+  position: relative;
+  z-index: 2;
+  padding: 64px 0 72px;
+}
+
+.hero-video-content .hero-eyebrow,
+.hero-video-content .hero-folio {
+  color: rgba(245, 241, 232, 0.75);
+}
+
+.hero-video-content .hero-title,
+.hero-video-content .hero-meta div strong {
+  color: #f5f1e8;
+}
+
+.hero-video-content .hero-title em {
+  color: #e9c9a8;
+}
+
+.hero-video-content .hero-rule {
+  background: rgba(245, 241, 232, 0.22);
+}
+
+.hero-video-content .hero-lede {
+  color: rgba(245, 241, 232, 0.82);
+}
+
+.hero-video-content .hero-meta div {
+  border-bottom-color: rgba(245, 241, 232, 0.22);
+}
+
+.hero-video-content .hero-meta div span {
+  color: rgba(245, 241, 232, 0.62);
+}
+
+.hero-video-content .btn {
+  border-color: #f5f1e8;
+  color: #f5f1e8;
+}
+
+.hero-video-content .btn::before {
+  background: #f5f1e8;
+}
+
+.hero-video-content .btn:hover span {
+  color: var(--ink);
+}
+
+.hero-video-content .btn-solid {
+  background: #f5f1e8;
+  color: var(--ink);
+}
+
+.hero-video-content .btn-solid span {
+  color: var(--ink);
+}
+
+.hero-video-content .btn-solid::before {
+  background: var(--clay);
+}
+
+.hero-video-content .btn-solid:hover span {
+  color: #f5f1e8;
+}
+
 .hero-kicker-row {
   display: flex;
   align-items: baseline;
@@ -918,6 +1011,10 @@ button {
 /* ---------- Responsive ---------- */
 
 @media (max-width: 980px) {
+  .hero-video {
+    min-height: 74vh;
+  }
+
   .hero-row {
     grid-template-columns: 1fr;
     gap: 40px;
@@ -998,6 +1095,14 @@ button {
 }
 
 @media (max-width: 640px) {
+  .hero-meta {
+    grid-auto-flow: row;
+  }
+
+  .hero-folio {
+    display: none;
+  }
+
   .service-row {
     grid-template-columns: 28px 1fr;
     row-gap: 10px;
@@ -1052,5 +1157,9 @@ button {
   .hero-title .line span {
     animation: none;
     transform: translateY(0);
+  }
+
+  .hero-bg-video {
+    display: none;
   }
 }
