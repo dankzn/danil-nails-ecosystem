@@ -15,9 +15,8 @@ const bodySans = Manrope({
 });
 
 export const metadata: Metadata = {
-  title: "Danil Nails Studio — премиальный маникюр в Москве",
-  description:
-    "Danil Nails Studio: приватная студия маникюра в Москве. Точная работа, стерильный протокол, запись через Telegram."
+  title: "Danil Nails Studio",
+  description: "Danil Nails Studio"
 };
 
 export default function RootLayout({
