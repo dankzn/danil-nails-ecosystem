@@ -1,6 +1,5 @@
 import { notFound } from "next/navigation";
 import { Reveal } from "../../components/Reveal";
-import { VideoBlock } from "../../components/VideoBlock";
 import { getDictionary } from "../../i18n/get-dictionary";
 import { isLocale } from "../../i18n/locales";
 
@@ -39,15 +38,6 @@ export default async function GalleryPage({ params }: PageProps<"/[lang]/gallery
           </div>
         </div>
       </section>
-
-      <VideoBlock
-        label={dict.video.label}
-        note={dict.video.note}
-        playLabel={dict.video.playLabel}
-        playNote={dict.video.playNote}
-        src="/videos/studio-2.mp4"
-        autoPlay={false}
-      />
     </main>
   );
 }

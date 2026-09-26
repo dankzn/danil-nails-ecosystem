@@ -411,6 +411,36 @@ button {
   color: #f5f1e8;
 }
 
+.hero-carousel-controls {
+  position: absolute;
+  z-index: 3;
+  right: var(--edge);
+  bottom: 28px;
+  display: flex;
+  gap: 10px;
+}
+
+.hero-carousel-arrow {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 1px solid rgba(245, 241, 232, 0.5);
+  background: rgba(20, 18, 14, 0.25);
+  color: #f5f1e8;
+  font-size: 20px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background-color 200ms ease, border-color 200ms ease;
+}
+
+.hero-carousel-arrow:hover {
+  background: rgba(20, 18, 14, 0.5);
+  border-color: #f5f1e8;
+}
+
 .hero-kicker-row {
   display: flex;
   align-items: baseline;

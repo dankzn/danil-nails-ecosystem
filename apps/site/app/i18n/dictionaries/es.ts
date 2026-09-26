@@ -88,12 +88,6 @@ export const es: Dictionary = {
       { label: "Arena cálida" }
     ]
   },
-  video: {
-    label: "Video",
-    note: "El vídeo del estudio aparecerá aquí después de la primera grabación",
-    playLabel: "Ver",
-    playNote: "Haz clic para reproducir el vídeo"
-  },
   master: {
     kicker: "Maestro",
     headingPre: "Una sola persona, ",

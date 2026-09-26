@@ -1,6 +1,7 @@
 import type { CSSProperties } from "react";
 import { notFound } from "next/navigation";
 import { Button } from "../components/Button";
+import { HeroCarousel } from "../components/HeroCarousel";
 import { Reveal } from "../components/Reveal";
 import { getDictionary } from "../i18n/get-dictionary";
 import { isLocale } from "../i18n/locales";
@@ -17,15 +18,7 @@ export default async function HomePage({ params }: PageProps<"/[lang]">) {
   return (
     <main id="top">
       <section className="hero hero-video">
-        <video
-          className="hero-bg-video"
-          src="/videos/studio-1.mp4"
-          autoPlay
-          muted
-          loop
-          playsInline
-          preload="auto"
-        />
+        <HeroCarousel sources={["/videos/studio-1.mp4", "/videos/studio-2.mp4"]} />
         <div className="hero-overlay" aria-hidden="true" />
         <div className="wrap hero-video-content">
           <div className="hero-kicker-row">

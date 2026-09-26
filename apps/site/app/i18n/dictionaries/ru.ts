@@ -94,12 +94,6 @@ export const ru: Dictionary = {
       { label: "Тёплый песок" }
     ]
   },
-  video: {
-    label: "Видео",
-    note: "Видео из студии появится здесь после первой съёмки",
-    playLabel: "Смотреть",
-    playNote: "Нажмите, чтобы включить видео"
-  },
   master: {
     kicker: "Мастер",
     headingPre: "Один человек, ",
