@@ -71,6 +71,12 @@ export type Dictionary = {
     soon: string;
   };
   footer: {
+    tagline: string;
+    navLabel: string;
+    studioLabel: string;
+    studioCity: string;
+    studioNote: string;
+    languageLabel: string;
     rights: string;
     toTop: string;
   };

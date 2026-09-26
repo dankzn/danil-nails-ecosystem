@@ -108,6 +108,12 @@ export const es: Dictionary = {
     soon: "Formulario de reserva — próximamente"
   },
   footer: {
+    tagline: "Un estudio privado de manicura. Un maestro, atención al detalle.",
+    navLabel: "Navegación",
+    studioLabel: "Estudio",
+    studioCity: "Moscú, Rusia",
+    studioNote: "Los datos de contacto y la dirección llegarán tras el lanzamiento",
+    languageLabel: "Idioma",
     rights: "Danil Nails Studio, Moscú",
     toTop: "Volver arriba ↑"
   }

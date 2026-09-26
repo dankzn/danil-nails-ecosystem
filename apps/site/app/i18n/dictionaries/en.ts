@@ -108,6 +108,12 @@ export const en: Dictionary = {
     soon: "Booking form — coming soon"
   },
   footer: {
+    tagline: "A private manicure studio. One master, close attention to detail.",
+    navLabel: "Navigation",
+    studioLabel: "Studio",
+    studioCity: "Moscow, Russia",
+    studioNote: "Contact details and address are coming after launch",
+    languageLabel: "Language",
     rights: "Danil Nails Studio, Moscow",
     toTop: "Back to top ↑"
   }

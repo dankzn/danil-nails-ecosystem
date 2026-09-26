@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { SetHtmlLang } from "../components/SetHtmlLang";
+import { SiteFooter } from "../components/SiteFooter";
 import { SiteHeader } from "../components/SiteHeader";
 import { getDictionary } from "../i18n/get-dictionary";
 import { isLocale, locales } from "../i18n/locales";
@@ -31,12 +32,7 @@ export default async function LangLayout({ children, params }: LayoutProps<"/[la
       <SetHtmlLang lang={lang} />
       <SiteHeader lang={lang} dict={dict} />
       {children}
-      <footer className="site-footer">
-        <span>
-          © {new Date().getFullYear()} {dict.footer.rights}
-        </span>
-        <a href={`/${lang}/`}>{dict.footer.toTop}</a>
-      </footer>
+      <SiteFooter lang={lang} dict={dict} />
     </>
   );
 }

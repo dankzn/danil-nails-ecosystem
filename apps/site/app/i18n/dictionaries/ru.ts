@@ -114,6 +114,12 @@ export const ru: Dictionary = {
     soon: "Форма записи — скоро"
   },
   footer: {
+    tagline: "Приватная студия маникюра. Один мастер, внимание к деталям.",
+    navLabel: "Навигация",
+    studioLabel: "Студия",
+    studioCity: "Москва, Россия",
+    studioNote: "Контакты и адрес появятся здесь после запуска",
+    languageLabel: "Язык",
     rights: "Danil Nails Studio, Москва",
     toTop: "Наверх ↑"
   }
