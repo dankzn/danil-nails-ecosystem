@@ -35,8 +35,11 @@ CRM разворачивается как один бесплатный Render W
 | `DATABASE_URL` | Supabase pooler URL; вводится только в Render как secret |
 | `SESSION_COOKIE_NAME` | `danil_nails_crm_session` |
 | `SESSION_TTL_DAYS` | `30` |
+| `SITE_PUBLIC_URL` | фактический HTTPS URL публичного сайта на Vercel (см. `docs/08-vercel-site-deployment.md`), без завершающего `/` |
 
 `NEXT_PUBLIC_API_URL` в production не задаётся: CRM обращается к API через тот же origin.
+
+`SITE_PUBLIC_URL` нужен для формы регистрации на публичном сайте (`POST /v1/auth/register`): сайт на Vercel — это отдельный origin от API, и без этой переменной CORS отклонит запрос с сайта. Session-cookie в production выставляется с `SameSite=None`, чтобы браузер отправлял её и с чужого origin.
 
 ## Проверка после deploy
 
