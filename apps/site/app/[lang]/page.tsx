@@ -21,18 +21,6 @@ export default async function HomePage({ params }: PageProps<"/[lang]">) {
         <HeroCarousel sources={["/videos/studio-1.mp4", "/videos/studio-2.mp4"]} />
         <div className="hero-overlay" aria-hidden="true" />
         <div className="wrap hero-video-content">
-          <div className="hero-kicker-row">
-            <Reveal>
-              <span className="hero-eyebrow">
-                <span className="dot" />
-                {dict.hero.eyebrow}
-              </span>
-            </Reveal>
-            <Reveal delay={80}>
-              <span className="hero-folio">N&deg;01</span>
-            </Reveal>
-          </div>
-
           <h1 className="hero-title">
             {dict.hero.titleLines.map((line, index) => (
               <span className="line" key={line}>

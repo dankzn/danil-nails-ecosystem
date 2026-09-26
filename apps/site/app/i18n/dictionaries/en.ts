@@ -16,7 +16,6 @@ export const en: Dictionary = {
     register: "Sign up"
   },
   hero: {
-    eyebrow: "Premium manicure",
     titleLines: ["Precision", "you can see", "on your fingertips"],
     lede: "Danil Nails Studio is precise work, close attention to detail, and a schedule with no rush — every client gets exactly as much time as it takes to get it right.",
     ctaPrimary: "Book a visit",
@@ -25,8 +24,7 @@ export const en: Dictionary = {
       { value: "3", label: "Service formats" },
       { value: "60–120", label: "Minutes per service" },
       { value: "100%", label: "Bookings confirmed by hand" }
-    ],
-    scrollCue: "Scroll"
+    ]
   },
   marquee: ["Manicure", "Gel polish", "Japanese manicure", "Sterility", "Confirmed bookings"],
   philosophy: {

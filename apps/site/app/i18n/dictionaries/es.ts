@@ -16,7 +16,6 @@ export const es: Dictionary = {
     register: "Registrarse"
   },
   hero: {
-    eyebrow: "Manicura premium",
     titleLines: ["Precisión", "que se nota", "en la punta de los dedos"],
     lede: "Danil Nails Studio es trabajo preciso, atención al detalle y una agenda sin prisas: cada clienta recibe exactamente el tiempo que hace falta para un trabajo impecable.",
     ctaPrimary: "Reservar",
@@ -25,8 +24,7 @@ export const es: Dictionary = {
       { value: "3", label: "Formatos de servicio" },
       { value: "60–120", label: "Minutos por servicio" },
       { value: "100%", label: "Reservas confirmadas a mano" }
-    ],
-    scrollCue: "Desliza"
+    ]
   },
   marquee: ["Manicura", "Esmalte semipermanente", "Manicura japonesa", "Esterilidad", "Reservas confirmadas"],
   philosophy: {

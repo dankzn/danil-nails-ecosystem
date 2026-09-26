@@ -13,13 +13,11 @@ export type Dictionary = {
     register: string;
   };
   hero: {
-    eyebrow: string;
     titleLines: string[];
     lede: string;
     ctaPrimary: string;
     ctaSecondary: string;
     meta: { value: string; label: string }[];
-    scrollCue: string;
   };
   marquee: string[];
   philosophy: {

@@ -410,12 +410,7 @@ button {
 .hero-video-content {
   position: relative;
   z-index: 2;
-  padding: 64px 0 72px;
-}
-
-.hero-video-content .hero-eyebrow,
-.hero-video-content .hero-folio {
-  color: rgba(245, 241, 232, 0.75);
+  padding: 140px 0 72px;
 }
 
 .hero-video-content .hero-title,
@@ -501,38 +496,6 @@ button {
 .hero-carousel-arrow:hover {
   background: rgba(20, 18, 14, 0.5);
   border-color: #f5f1e8;
-}
-
-.hero-kicker-row {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 24px;
-  margin-bottom: 36px;
-}
-
-.hero-eyebrow {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 11.5px;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  color: var(--ink-faint);
-}
-
-.hero-eyebrow .dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--clay);
-}
-
-.hero-folio {
-  font-family: var(--font-grotesk);
-  font-size: 13px;
-  letter-spacing: 0.04em;
-  color: var(--ink-faint);
 }
 
 .hero-title {
@@ -1272,10 +1235,6 @@ button {
 @media (max-width: 640px) {
   .hero-meta {
     grid-auto-flow: row;
-  }
-
-  .hero-folio {
-    display: none;
   }
 
   .hero-video {
