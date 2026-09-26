@@ -22,6 +22,18 @@ export function registerAvailabilityRoutes(
   server: FastifyInstance,
   database: DatabaseClient | null
 ) {
+  server.get("/v1/staff", async () => {
+    if (!database) return { staff: [] };
+
+    const staff = await database.staffProfile.findMany({
+      where: { isBookable: true },
+      select: { id: true, displayName: true },
+      orderBy: { displayName: "asc" }
+    });
+
+    return { staff };
+  });
+
   server.get("/v1/availability", async (request, reply) => {
     const query = availabilityQuerySchema.safeParse(request.query);
     if (!query.success) return sendInvalidPayload(reply);

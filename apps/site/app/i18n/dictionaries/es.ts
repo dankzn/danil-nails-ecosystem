@@ -59,10 +59,10 @@ export const es: Dictionary = {
     servicesLede: "El precio se confirma al reservar — lo actualizaremos aquí en cuanto quede definitivo.",
     servicesCta: "Ver todos los servicios",
     contactKicker: "Reserva",
-    contactHeadingPre: "Empecemos con ",
-    contactHeadingEm: "un mensaje",
-    contactLede: "La reserva online y el bot de Telegram llegan en el próximo paso — los datos de contacto del estudio aparecerán aquí justo después del lanzamiento.",
-    contactCta: "Ir a contacto"
+    contactHeadingPre: "Reserva ",
+    contactHeadingEm: "online",
+    contactLede: "Elige un servicio, un maestro y una hora que te convenga — la solicitud se envía al momento y la confirmamos a mano.",
+    contactCta: "Ir a la reserva"
   },
   services: {
     kicker: "Servicios",
@@ -101,16 +101,38 @@ export const es: Dictionary = {
   },
   contact: {
     kicker: "Reserva",
-    headingPre: "Empecemos con ",
-    headingEm: "un mensaje",
-    lede: "La reserva online y el bot de Telegram llegan en el próximo paso — los datos de contacto del estudio aparecerán aquí justo después del lanzamiento.",
-    soon: "Formulario de reserva — próximamente"
+    headingPre: "Reserva ",
+    headingEm: "online",
+    lede: "Elige un servicio, un maestro y una hora que te convenga. Cada reserva se confirma a mano, no automáticamente — te contactaremos para confirmar tu hora. El bot de reservas por Telegram llega en el próximo paso."
+  },
+  booking: {
+    serviceLabel: "Servicio",
+    servicePlaceholder: "Elige un servicio",
+    masterLabel: "Maestro",
+    dateLabel: "Fecha",
+    timeLabel: "Hora",
+    timePlaceholder: "Elige primero un servicio y una fecha",
+    loadingSlotsLabel: "Cargando horarios disponibles…",
+    noSlotsLabel: "No hay horarios libres ese día — prueba con otra fecha",
+    fullNameLabel: "Nombre completo",
+    phoneLabel: "Teléfono",
+    emailLabel: "Email (opcional)",
+    commentLabel: "Comentario (opcional)",
+    signedInAs: "Esta reserva se hará con tu cuenta",
+    submitLabel: "Enviar solicitud",
+    submittingLabel: "Enviando…",
+    successTitle: "Solicitud enviada",
+    successBody: "Te contactaremos para confirmar tu reserva — la hora final queda fijada tras la confirmación manual.",
+    errorInvalid: "Revisa, por favor, los campos completados",
+    errorSlotTaken: "Ese horario se acaba de ocupar — elige otro",
+    errorUnavailable: "El servicio no está disponible por ahora — inténtalo de nuevo en un momento",
+    errorNetwork: "No se pudo contactar con el servidor — revisa tu conexión"
   },
   register: {
     kicker: "Cuenta",
     headingPre: "Crea tu ",
     headingEm: "cuenta",
-    lede: "Con una cuenta puedes ver tus reservas e historial de visitas. También puedes reservar una manicura sin registrarte — el formulario de reserva llegará por separado.",
+    lede: "Con una cuenta puedes ver tus reservas e historial de visitas. También puedes reservar una manicura sin registrarte — en la página de reserva.",
     fullNameLabel: "Nombre completo",
     phoneLabel: "Teléfono",
     emailLabel: "Email",

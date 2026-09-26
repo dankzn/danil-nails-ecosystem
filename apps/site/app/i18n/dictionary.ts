@@ -70,7 +70,29 @@ export type Dictionary = {
     headingPre: string;
     headingEm: string;
     lede: string;
-    soon: string;
+  };
+  booking: {
+    serviceLabel: string;
+    servicePlaceholder: string;
+    masterLabel: string;
+    dateLabel: string;
+    timeLabel: string;
+    timePlaceholder: string;
+    loadingSlotsLabel: string;
+    noSlotsLabel: string;
+    fullNameLabel: string;
+    phoneLabel: string;
+    emailLabel: string;
+    commentLabel: string;
+    signedInAs: string;
+    submitLabel: string;
+    submittingLabel: string;
+    successTitle: string;
+    successBody: string;
+    errorInvalid: string;
+    errorSlotTaken: string;
+    errorUnavailable: string;
+    errorNetwork: string;
   };
   register: {
     kicker: string;

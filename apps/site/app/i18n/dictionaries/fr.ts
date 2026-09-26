@@ -59,10 +59,10 @@ export const fr: Dictionary = {
     servicesLede: "Le tarif est confirmé au moment de la réservation — nous le mettrons à jour ici dès qu'il sera fixé.",
     servicesCta: "Voir toutes les prestations",
     contactKicker: "Réservation",
-    contactHeadingPre: "Commençons par ",
-    contactHeadingEm: "un message",
-    contactLede: "La réservation en ligne et le bot Telegram arrivent à la prochaine étape — les coordonnées du studio apparaîtront ici juste après le lancement.",
-    contactCta: "Aller au contact"
+    contactHeadingPre: "Réservez ",
+    contactHeadingEm: "en ligne",
+    contactLede: "Choisissez une prestation, un maître et un horaire — la demande part tout de suite, et nous la confirmons en personne.",
+    contactCta: "Aller à la réservation"
   },
   services: {
     kicker: "Prestations",
@@ -101,16 +101,38 @@ export const fr: Dictionary = {
   },
   contact: {
     kicker: "Réservation",
-    headingPre: "Commençons par ",
-    headingEm: "un message",
-    lede: "La réservation en ligne et le bot Telegram arrivent à la prochaine étape — les coordonnées du studio apparaîtront ici juste après le lancement.",
-    soon: "Formulaire de réservation — bientôt disponible"
+    headingPre: "Réservez ",
+    headingEm: "en ligne",
+    lede: "Choisissez une prestation, un maître et un horaire. Chaque réservation est confirmée en personne, jamais automatiquement — nous vous contacterons pour confirmer l'heure. Le bot Telegram de réservation arrive à la prochaine étape."
+  },
+  booking: {
+    serviceLabel: "Prestation",
+    servicePlaceholder: "Choisissez une prestation",
+    masterLabel: "Maître",
+    dateLabel: "Date",
+    timeLabel: "Heure",
+    timePlaceholder: "Choisissez d'abord une prestation et une date",
+    loadingSlotsLabel: "Chargement des créneaux disponibles…",
+    noSlotsLabel: "Aucun créneau libre ce jour-là — essayez une autre date",
+    fullNameLabel: "Nom complet",
+    phoneLabel: "Téléphone",
+    emailLabel: "Email (facultatif)",
+    commentLabel: "Commentaire (facultatif)",
+    signedInAs: "Cette réservation sera faite avec votre compte",
+    submitLabel: "Envoyer la demande",
+    submittingLabel: "Envoi…",
+    successTitle: "Demande envoyée",
+    successBody: "Nous vous contacterons pour confirmer votre réservation — l'heure définitive est fixée après confirmation manuelle.",
+    errorInvalid: "Merci de vérifier les champs remplis",
+    errorSlotTaken: "Ce créneau vient d'être pris — choisissez-en un autre",
+    errorUnavailable: "Le service est temporairement indisponible — réessayez bientôt",
+    errorNetwork: "Impossible de contacter le serveur — vérifiez votre connexion"
   },
   register: {
     kicker: "Compte",
     headingPre: "Créer votre ",
     headingEm: "compte",
-    lede: "Un compte permet de voir vos réservations et votre historique de visites. Vous pouvez aussi réserver une manucure sans vous inscrire — un formulaire de réservation arrive séparément.",
+    lede: "Un compte permet de voir vos réservations et votre historique de visites. Vous pouvez aussi réserver une manucure sans vous inscrire — sur la page de réservation.",
     fullNameLabel: "Nom complet",
     phoneLabel: "Téléphone",
     emailLabel: "Email",

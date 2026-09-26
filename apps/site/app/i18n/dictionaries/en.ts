@@ -59,10 +59,10 @@ export const en: Dictionary = {
     servicesLede: "Pricing is confirmed at the time of booking — we'll update it here as soon as it's finalized.",
     servicesCta: "See all services",
     contactKicker: "Booking",
-    contactHeadingPre: "Let's start with ",
-    contactHeadingEm: "a message",
-    contactLede: "Online booking and a Telegram bot are coming as the next step — studio contacts will appear here right after launch.",
-    contactCta: "Go to contact"
+    contactHeadingPre: "Book ",
+    contactHeadingEm: "online",
+    contactLede: "Pick a service, a master, and a time that works — your request goes out right away, and we confirm it by hand.",
+    contactCta: "Go to booking"
   },
   services: {
     kicker: "Services",
@@ -101,16 +101,38 @@ export const en: Dictionary = {
   },
   contact: {
     kicker: "Booking",
-    headingPre: "Let's start with ",
-    headingEm: "a message",
-    lede: "Online booking and a Telegram bot are coming as the next step — studio contacts will appear here right after launch.",
-    soon: "Booking form — coming soon"
+    headingPre: "Book ",
+    headingEm: "online",
+    lede: "Pick a service, a master, and a time that works. Every booking is confirmed by hand, not automatically — we'll reach out to confirm your time. A Telegram booking bot is coming as the next step."
+  },
+  booking: {
+    serviceLabel: "Service",
+    servicePlaceholder: "Choose a service",
+    masterLabel: "Master",
+    dateLabel: "Date",
+    timeLabel: "Time",
+    timePlaceholder: "Choose a service and date first",
+    loadingSlotsLabel: "Loading available times…",
+    noSlotsLabel: "No free times that day — try another date",
+    fullNameLabel: "Full name",
+    phoneLabel: "Phone",
+    emailLabel: "Email (optional)",
+    commentLabel: "Comment (optional)",
+    signedInAs: "This booking will be made under your account",
+    submitLabel: "Send request",
+    submittingLabel: "Sending…",
+    successTitle: "Request sent",
+    successBody: "We'll reach out to confirm your booking — the final time is set once we confirm it by hand.",
+    errorInvalid: "Please check the fields you filled in",
+    errorSlotTaken: "That time was just taken — please pick another",
+    errorUnavailable: "The service is temporarily unavailable — please try again shortly",
+    errorNetwork: "Couldn't reach the server — check your connection"
   },
   register: {
     kicker: "Account",
     headingPre: "Create your ",
     headingEm: "account",
-    lede: "An account lets you see your bookings and visit history. You can still book a manicure without registering — a booking form is coming separately.",
+    lede: "An account lets you see your bookings and visit history. You can still book a manicure without registering — on the booking page.",
     fullNameLabel: "Full name",
     phoneLabel: "Phone",
     emailLabel: "Email",

@@ -9,13 +9,15 @@ import {
   type DatabaseClient
 } from "@danil-nails/db";
 import { bookingRules, businessConfig } from "@danil-nails/shared";
-import type { FastifyInstance, FastifyReply } from "fastify";
+import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
 import { z } from "zod";
 import {
   findAvailableSlots,
   isDateWithinBookingHorizon
 } from "../availability.js";
-import { authorize } from "../auth/session.js";
+import { authorize, hashSessionToken } from "../auth/session.js";
+import { environment } from "../config.js";
+import { isUniqueConstraintError, normalizePhone } from "./clients.js";
 
 const appointmentStatuses = ["confirmed", "canceled", "no_show"] as const;
 const paymentMethods = [
@@ -52,6 +54,19 @@ const createAppointmentSchema = z.object({
   startsAt: z.iso.datetime(),
   clientComment: z.string().trim().max(2000).nullable().optional(),
   internalNote: z.string().trim().max(4000).nullable().optional()
+});
+const publicBookingSchema = z.object({
+  serviceId: z.string().cuid(),
+  staffId: z.string().cuid(),
+  startsAt: z.iso.datetime(),
+  clientComment: z.string().trim().max(2000).nullable().optional(),
+  guest: z
+    .object({
+      fullName: z.string().trim().min(2).max(160),
+      phone: z.string().trim().min(7).max(30),
+      email: z.email().nullable().optional()
+    })
+    .optional()
 });
 const statusUpdateSchema = z.object({
   status: z.enum(appointmentStatuses),
@@ -217,6 +232,25 @@ async function conflictingAppointment(
   });
 }
 
+async function resolveSessionClient(
+  database: DatabaseClient,
+  request: FastifyRequest
+) {
+  const token = request.cookies[environment.SESSION_COOKIE_NAME];
+  if (!token) return null;
+
+  const session = await database.session.findUnique({
+    where: { tokenHash: hashSessionToken(token) },
+    include: { user: { include: { client: true } } }
+  });
+
+  if (!session || session.expiresAt <= new Date() || !session.user.isActive) {
+    return null;
+  }
+
+  return session.user.client ?? null;
+}
+
 function canManageAppointment(
   user: { id: string; role: UserRole },
   staffUserId: string
@@ -239,6 +273,137 @@ export function registerAppointmentRoutes(
   ]);
   const adminGuard = authorize(database, [UserRole.owner, UserRole.admin]);
   const ownerGuard = authorize(database, [UserRole.owner]);
+
+  server.post(
+    "/v1/appointments",
+    { config: { rateLimit: { max: 8, timeWindow: "1 minute" } } },
+    async (request, reply) => {
+      if (!database) {
+        return reply.code(503).send({ error: "database_not_configured" });
+      }
+
+      const input = publicBookingSchema.safeParse(request.body);
+      if (!input.success) return sendInvalidPayload(reply);
+
+      const sessionClient = await resolveSessionClient(database, request);
+
+      if (!sessionClient && !input.data.guest) {
+        return reply.code(400).send({ error: "guest_details_required" });
+      }
+
+      const startsAt = new Date(input.data.startsAt);
+      const [service, staff] = await Promise.all([
+        database.service.findFirst({
+          where: { id: input.data.serviceId, isActive: true },
+          include: { prices: { where: { currency: Currency.RUB }, take: 1 } }
+        }),
+        database.staffProfile.findFirst({
+          where: { id: input.data.staffId, isBookable: true }
+        })
+      ]);
+
+      if (!service) return reply.code(404).send({ error: "service_not_found" });
+      if (!staff) return reply.code(404).send({ error: "staff_not_found" });
+
+      if (!isDateWithinBookingHorizon(moscowDateKey(startsAt))) {
+        return reply.code(409).send({ error: "appointment_slot_unavailable" });
+      }
+
+      const availability = await findAvailableSlots(database, {
+        staffId: staff.id,
+        serviceId: service.id,
+        date: moscowDateKey(startsAt)
+      });
+      if (
+        !availability.ok ||
+        !availability.slots.some(
+          (slot) => slot.startsAt.getTime() === startsAt.getTime()
+        )
+      ) {
+        return reply.code(409).send({ error: "appointment_slot_unavailable" });
+      }
+
+      const endsAt = appointmentEnd(startsAt, service.durationMinutes);
+      if (await conflictingAppointment(database, staff.id, startsAt, endsAt)) {
+        return reply.code(409).send({ error: "appointment_time_conflict" });
+      }
+
+      try {
+        const appointment = await database.$transaction(async (transaction) => {
+          let clientId: string;
+
+          if (sessionClient) {
+            clientId = sessionClient.id;
+          } else {
+            const phone = normalizePhone(input.data.guest!.phone);
+            const existing = await transaction.client.findUnique({
+              where: { phone }
+            });
+
+            if (existing) {
+              clientId = existing.id;
+              if (!existing.fullName) {
+                await transaction.client.update({
+                  where: { id: existing.id },
+                  data: { fullName: input.data.guest!.fullName }
+                });
+              }
+            } else {
+              const created = await transaction.client.create({
+                data: {
+                  fullName: input.data.guest!.fullName,
+                  phone,
+                  email: input.data.guest!.email ?? null
+                }
+              });
+              clientId = created.id;
+            }
+          }
+
+          const created = await transaction.appointment.create({
+            data: {
+              clientId,
+              staffId: staff.id,
+              serviceId: service.id,
+              source: BookingSource.online,
+              priceMinor: service.prices[0]?.amountMinor ?? 0,
+              currency: Currency.RUB,
+              startsAt,
+              endsAt,
+              ...(input.data.clientComment !== undefined
+                ? { clientComment: input.data.clientComment }
+                : {})
+            }
+          });
+
+          await transaction.appointmentEvent.create({
+            data: {
+              appointmentId: created.id,
+              toStatus: created.status,
+              note: "Создана клиентом онлайн"
+            }
+          });
+
+          return transaction.appointment.findUniqueOrThrow({
+            where: { id: created.id },
+            include: {
+              service: {
+                select: { id: true, titleRu: true, durationMinutes: true }
+              },
+              staff: { select: { id: true, displayName: true } }
+            }
+          });
+        });
+
+        return reply.code(201).send({ appointment });
+      } catch (error) {
+        if (isUniqueConstraintError(error)) {
+          return reply.code(409).send({ error: "appointment_time_conflict" });
+        }
+        throw error;
+      }
+    }
+  );
 
   server.get(
     "/v1/admin/booking-options",

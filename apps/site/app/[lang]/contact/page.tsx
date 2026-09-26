@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { Reveal } from "../../components/Reveal";
+import { BookingForm } from "../../components/BookingForm";
 import { getDictionary } from "../../i18n/get-dictionary";
 import { isLocale } from "../../i18n/locales";
 
@@ -20,10 +21,11 @@ export default async function ContactPage({ params }: PageProps<"/[lang]/contact
                 <em>{dict.contact.headingEm}</em>
               </h1>
               <p className="contact-lede">{dict.contact.lede}</p>
-              <div className="contact-actions">
-                <span className="contact-soon">{dict.contact.soon}</span>
-              </div>
             </div>
+          </Reveal>
+
+          <Reveal delay={100}>
+            <BookingForm dict={dict.booking} lang={lang} />
           </Reveal>
         </div>
       </section>
