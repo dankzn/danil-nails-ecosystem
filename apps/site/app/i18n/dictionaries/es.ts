@@ -2,9 +2,9 @@ import type { Dictionary } from "../dictionary";
 
 export const es: Dictionary = {
   meta: {
-    title: "Danil Nails Studio — manicura premium en Moscú",
+    title: "Danil Nails Studio — manicura premium",
     description:
-      "Danil Nails Studio: un estudio privado de manicura en Moscú. Trabajo preciso, protocolo estéril, reservas — en el próximo paso."
+      "Danil Nails Studio: trabajo preciso, protocolo estéril, reservas — en el próximo paso."
   },
   nav: {
     home: "Inicio",
@@ -12,16 +12,17 @@ export const es: Dictionary = {
     gallery: "Trabajos",
     master: "Maestro",
     contact: "Contacto",
-    cta: "Reservar"
+    cta: "Reservar",
+    register: "Registrarse"
   },
   hero: {
-    eyebrow: "Moscú · estudio privado",
+    eyebrow: "Manicura premium",
     titleLines: ["Precisión", "que se nota", "en la punta de los dedos"],
-    lede: "Danil Nails Studio es un estudio íntimo de manicura en Moscú. Un solo maestro, atención al detalle y una agenda sin prisas: cada clienta recibe exactamente el tiempo que hace falta para un trabajo impecable.",
+    lede: "Danil Nails Studio es trabajo preciso, atención al detalle y una agenda sin prisas: cada clienta recibe exactamente el tiempo que hace falta para un trabajo impecable.",
     ctaPrimary: "Reservar",
     ctaSecondary: "Ver servicios",
     meta: [
-      { value: "1", label: "Maestro por turno" },
+      { value: "3", label: "Formatos de servicio" },
       { value: "60–120", label: "Minutos por servicio" },
       { value: "100%", label: "Reservas confirmadas a mano" }
     ],
@@ -35,7 +36,7 @@ export const es: Dictionary = {
     items: [
       {
         index: "01",
-        title: "Un solo maestro",
+        title: "Atención personal",
         body: "Sin cadena de producción ni recepcionistas entre tú y el maestro: trabajas directamente con quien hace tu manicura."
       },
       {
@@ -90,15 +91,12 @@ export const es: Dictionary = {
   },
   master: {
     kicker: "Maestro",
-    headingPre: "Una sola persona, ",
-    headingEm: "responsabilidad total",
+    headingPre: "Oficio, ",
+    headingEm: "visible en los detalles",
     name: "Danil Afliatov",
     role: "Fundador y maestro de manicura",
-    bio: "Dirige el estudio desde el primer día: atiende a las clientas en persona, lleva la agenda él mismo y responde por la calidad de cada manicura. A medida que el estudio crezca, se sumarán más maestros — por ahora, toda la responsabilidad recae en un solo nombre.",
-    facts: [
-      { value: "Moscú", label: "ciudad de trabajo" },
-      { value: "3", label: "formatos de servicio" }
-    ]
+    bio: "Atiende a las clientas en persona, lleva la agenda él mismo y responde por la calidad de cada manicura — desde la primera consulta hasta el acabado final.",
+    facts: [{ value: "3", label: "formatos de servicio" }]
   },
   contact: {
     kicker: "Reserva",
@@ -107,14 +105,35 @@ export const es: Dictionary = {
     lede: "La reserva online y el bot de Telegram llegan en el próximo paso — los datos de contacto del estudio aparecerán aquí justo después del lanzamiento.",
     soon: "Formulario de reserva — próximamente"
   },
+  register: {
+    kicker: "Cuenta",
+    headingPre: "Crea tu ",
+    headingEm: "cuenta",
+    lede: "Con una cuenta puedes ver tus reservas e historial de visitas. También puedes reservar una manicura sin registrarte — el formulario de reserva llegará por separado.",
+    fullNameLabel: "Nombre completo",
+    phoneLabel: "Teléfono",
+    emailLabel: "Email",
+    passwordLabel: "Contraseña",
+    passwordHint: "Al menos 12 caracteres",
+    confirmPasswordLabel: "Confirma la contraseña",
+    submitLabel: "Crear cuenta",
+    submittingLabel: "Creando cuenta…",
+    successTitle: "Cuenta creada",
+    successBody: "¡Bienvenida! Un panel personal con tus reservas aparecerá aquí en el próximo paso.",
+    errorPasswordMismatch: "Las contraseñas no coinciden",
+    errorInvalid: "Revisa, por favor, los campos completados",
+    errorExists: "Ya existe una cuenta con ese email o teléfono",
+    errorUnavailable: "El servicio no está disponible por ahora — inténtalo de nuevo en un momento",
+    errorNetwork: "No se pudo contactar con el servidor — revisa tu conexión"
+  },
   footer: {
-    tagline: "Un estudio privado de manicura. Un maestro, atención al detalle.",
+    tagline: "Trabajo preciso y atención al detalle en cada cita.",
     navLabel: "Navegación",
     studioLabel: "Estudio",
-    studioCity: "Moscú, Rusia",
+    studioCity: "",
     studioNote: "Los datos de contacto y la dirección llegarán tras el lanzamiento",
     languageLabel: "Idioma",
-    rights: "Danil Nails Studio, Moscú",
+    rights: "Danil Nails Studio",
     toTop: "Volver arriba ↑"
   }
 };

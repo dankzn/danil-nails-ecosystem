@@ -10,6 +10,7 @@ export type Dictionary = {
     master: string;
     contact: string;
     cta: string;
+    register: string;
   };
   hero: {
     eyebrow: string;
@@ -69,6 +70,27 @@ export type Dictionary = {
     headingEm: string;
     lede: string;
     soon: string;
+  };
+  register: {
+    kicker: string;
+    headingPre: string;
+    headingEm: string;
+    lede: string;
+    fullNameLabel: string;
+    phoneLabel: string;
+    emailLabel: string;
+    passwordLabel: string;
+    passwordHint: string;
+    confirmPasswordLabel: string;
+    submitLabel: string;
+    submittingLabel: string;
+    successTitle: string;
+    successBody: string;
+    errorPasswordMismatch: string;
+    errorInvalid: string;
+    errorExists: string;
+    errorUnavailable: string;
+    errorNetwork: string;
   };
   footer: {
     tagline: string;

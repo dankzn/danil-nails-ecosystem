@@ -8,7 +8,8 @@ export function SiteFooter({ lang, dict }: { lang: Locale; dict: Dictionary }) {
     { href: `/${lang}/services/`, label: dict.nav.services },
     { href: `/${lang}/gallery/`, label: dict.nav.gallery },
     { href: `/${lang}/master/`, label: dict.nav.master },
-    { href: `/${lang}/contact/`, label: dict.nav.contact }
+    { href: `/${lang}/contact/`, label: dict.nav.contact },
+    { href: `/${lang}/register/`, label: dict.nav.register }
   ];
 
   return (
@@ -33,7 +34,7 @@ export function SiteFooter({ lang, dict }: { lang: Locale; dict: Dictionary }) {
 
           <div className="footer-col">
             <span className="footer-col-label">{dict.footer.studioLabel}</span>
-            <p className="footer-note">{dict.footer.studioCity}</p>
+            {dict.footer.studioCity ? <p className="footer-note">{dict.footer.studioCity}</p> : null}
             <p className="footer-note footer-note-faint">{dict.footer.studioNote}</p>
           </div>
 

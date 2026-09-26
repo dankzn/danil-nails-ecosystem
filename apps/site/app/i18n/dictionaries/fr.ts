@@ -2,9 +2,9 @@ import type { Dictionary } from "../dictionary";
 
 export const fr: Dictionary = {
   meta: {
-    title: "Danil Nails Studio — manucure haut de gamme à Moscou",
+    title: "Danil Nails Studio — manucure haut de gamme",
     description:
-      "Danil Nails Studio : un studio de manucure privé à Moscou. Travail précis, protocole stérile, réservation — à la prochaine étape."
+      "Danil Nails Studio : travail précis, protocole stérile, réservation — à la prochaine étape."
   },
   nav: {
     home: "Accueil",
@@ -12,16 +12,17 @@ export const fr: Dictionary = {
     gallery: "Réalisations",
     master: "Maître",
     contact: "Contact",
-    cta: "Réserver"
+    cta: "Réserver",
+    register: "S'inscrire"
   },
   hero: {
-    eyebrow: "Moscou · studio privé",
+    eyebrow: "Manucure haut de gamme",
     titleLines: ["Une précision", "qui se voit", "au bout des doigts"],
-    lede: "Danil Nails Studio est un studio de manucure intimiste à Moscou. Un seul maître, une attention minutieuse aux détails et un planning sans précipitation : chaque cliente dispose exactement du temps nécessaire pour un résultat impeccable.",
+    lede: "Danil Nails Studio, c'est un travail précis, une attention minutieuse aux détails et un planning sans précipitation : chaque cliente dispose exactement du temps nécessaire pour un résultat impeccable.",
     ctaPrimary: "Réserver",
     ctaSecondary: "Voir les prestations",
     meta: [
-      { value: "1", label: "Maître par séance" },
+      { value: "3", label: "Formats de prestation" },
       { value: "60–120", label: "Minutes par prestation" },
       { value: "100%", label: "Réservations confirmées à la main" }
     ],
@@ -35,7 +36,7 @@ export const fr: Dictionary = {
     items: [
       {
         index: "01",
-        title: "Un seul maître",
+        title: "Attention personnelle",
         body: "Ni chaîne de production, ni réceptionniste entre vous et le maître — vous travaillez directement avec la personne qui réalise votre manucure."
       },
       {
@@ -90,15 +91,12 @@ export const fr: Dictionary = {
   },
   master: {
     kicker: "Maître",
-    headingPre: "Une seule personne, ",
-    headingEm: "une entière responsabilité",
+    headingPre: "Un savoir-faire ",
+    headingEm: "visible dans les détails",
     name: "Danil Afliatov",
     role: "Fondateur et maître manucure",
-    bio: "Dirige le studio depuis ses débuts : reçoit les clientes en personne, gère lui-même le planning et répond de la qualité de chaque manucure. À mesure que le studio grandira, d'autres maîtres le rejoindront — pour l'instant, toute la responsabilité repose sur un seul nom.",
-    facts: [
-      { value: "Moscou", label: "ville d'exercice" },
-      { value: "3", label: "formats de prestation" }
-    ]
+    bio: "Reçoit les clientes en personne, gère lui-même le planning et répond de la qualité de chaque manucure — de la première consultation jusqu'à la finition.",
+    facts: [{ value: "3", label: "formats de prestation" }]
   },
   contact: {
     kicker: "Réservation",
@@ -107,14 +105,35 @@ export const fr: Dictionary = {
     lede: "La réservation en ligne et le bot Telegram arrivent à la prochaine étape — les coordonnées du studio apparaîtront ici juste après le lancement.",
     soon: "Formulaire de réservation — bientôt disponible"
   },
+  register: {
+    kicker: "Compte",
+    headingPre: "Créer votre ",
+    headingEm: "compte",
+    lede: "Un compte permet de voir vos réservations et votre historique de visites. Vous pouvez aussi réserver une manucure sans vous inscrire — un formulaire de réservation arrive séparément.",
+    fullNameLabel: "Nom complet",
+    phoneLabel: "Téléphone",
+    emailLabel: "Email",
+    passwordLabel: "Mot de passe",
+    passwordHint: "12 caractères minimum",
+    confirmPasswordLabel: "Confirmez le mot de passe",
+    submitLabel: "Créer le compte",
+    submittingLabel: "Création du compte…",
+    successTitle: "Compte créé",
+    successBody: "Bienvenue ! Un espace personnel avec vos réservations arrivera ici à la prochaine étape.",
+    errorPasswordMismatch: "Les mots de passe ne correspondent pas",
+    errorInvalid: "Merci de vérifier les champs remplis",
+    errorExists: "Un compte avec cet email ou ce téléphone existe déjà",
+    errorUnavailable: "Le service est temporairement indisponible — réessayez bientôt",
+    errorNetwork: "Impossible de contacter le serveur — vérifiez votre connexion"
+  },
   footer: {
-    tagline: "Un studio de manucure privé. Un maître, une attention minutieuse.",
+    tagline: "Un travail précis et une attention minutieuse à chaque rendez-vous.",
     navLabel: "Navigation",
     studioLabel: "Studio",
-    studioCity: "Moscou, Russie",
+    studioCity: "",
     studioNote: "Les coordonnées et l'adresse arriveront après le lancement",
     languageLabel: "Langue",
-    rights: "Danil Nails Studio, Moscou",
+    rights: "Danil Nails Studio",
     toTop: "Haut de page ↑"
   }
 };

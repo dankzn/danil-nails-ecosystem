@@ -41,6 +41,9 @@ export function SiteHeader({ lang, dict }: { lang: Locale; dict: Dictionary }) {
         </nav>
         <div className="site-header-actions">
           <LocaleSwitcher current={lang} />
+          <a className="header-register" href={`/${lang}/register/`}>
+            {dict.nav.register}
+          </a>
           <Button className="header-cta" href={`/${lang}/contact/`}>
             {dict.nav.cta}
           </Button>

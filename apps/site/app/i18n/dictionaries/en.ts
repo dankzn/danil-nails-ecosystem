@@ -2,9 +2,9 @@ import type { Dictionary } from "../dictionary";
 
 export const en: Dictionary = {
   meta: {
-    title: "Danil Nails Studio — premium manicure in Moscow",
+    title: "Danil Nails Studio — premium manicure",
     description:
-      "Danil Nails Studio: a private manicure studio in Moscow. Precise work, a sterile protocol, booking — coming as the next step."
+      "Danil Nails Studio: precise work, a sterile protocol, booking — coming as the next step."
   },
   nav: {
     home: "Home",
@@ -12,16 +12,17 @@ export const en: Dictionary = {
     gallery: "Work",
     master: "Master",
     contact: "Contact",
-    cta: "Book a visit"
+    cta: "Book a visit",
+    register: "Sign up"
   },
   hero: {
-    eyebrow: "Moscow · private studio",
+    eyebrow: "Premium manicure",
     titleLines: ["Precision", "you can see", "on your fingertips"],
-    lede: "Danil Nails Studio is an intimate manicure studio in Moscow. One master, close attention to detail, and a schedule with no rush — every client gets exactly as much time as it takes to get it right.",
+    lede: "Danil Nails Studio is precise work, close attention to detail, and a schedule with no rush — every client gets exactly as much time as it takes to get it right.",
     ctaPrimary: "Book a visit",
     ctaSecondary: "See services",
     meta: [
-      { value: "1", label: "Master per session" },
+      { value: "3", label: "Service formats" },
       { value: "60–120", label: "Minutes per service" },
       { value: "100%", label: "Bookings confirmed by hand" }
     ],
@@ -35,7 +36,7 @@ export const en: Dictionary = {
     items: [
       {
         index: "01",
-        title: "One master",
+        title: "Personal attention",
         body: "No conveyor belt, no front-desk queue between you and the master — you work directly with the person doing your nails."
       },
       {
@@ -90,15 +91,12 @@ export const en: Dictionary = {
   },
   master: {
     kicker: "Master",
-    headingPre: "One person, ",
-    headingEm: "full accountability",
+    headingPre: "Craft, ",
+    headingEm: "visible in the details",
     name: "Danil Afliatov",
     role: "Founder and nail master",
-    bio: "Has run the studio since day one: takes clients personally, keeps the schedule himself, and answers for the quality of every single manicure. As the studio grows, other masters will join here — for now, all of it rests on one name.",
-    facts: [
-      { value: "Moscow", label: "city of work" },
-      { value: "3", label: "service formats" }
-    ]
+    bio: "Takes clients personally, keeps the schedule himself, and answers for the quality of every single manicure — from the first consultation to the final polish.",
+    facts: [{ value: "3", label: "service formats" }]
   },
   contact: {
     kicker: "Booking",
@@ -107,14 +105,35 @@ export const en: Dictionary = {
     lede: "Online booking and a Telegram bot are coming as the next step — studio contacts will appear here right after launch.",
     soon: "Booking form — coming soon"
   },
+  register: {
+    kicker: "Account",
+    headingPre: "Create your ",
+    headingEm: "account",
+    lede: "An account lets you see your bookings and visit history. You can still book a manicure without registering — a booking form is coming separately.",
+    fullNameLabel: "Full name",
+    phoneLabel: "Phone",
+    emailLabel: "Email",
+    passwordLabel: "Password",
+    passwordHint: "At least 12 characters",
+    confirmPasswordLabel: "Confirm password",
+    submitLabel: "Create account",
+    submittingLabel: "Creating account…",
+    successTitle: "Account created",
+    successBody: "Welcome! A personal cabinet with your bookings will appear here as the next step.",
+    errorPasswordMismatch: "Passwords don't match",
+    errorInvalid: "Please check the fields you filled in",
+    errorExists: "An account with that email or phone already exists",
+    errorUnavailable: "The service is temporarily unavailable — please try again shortly",
+    errorNetwork: "Couldn't reach the server — check your connection"
+  },
   footer: {
-    tagline: "A private manicure studio. One master, close attention to detail.",
+    tagline: "Precise work and close attention to detail in every appointment.",
     navLabel: "Navigation",
     studioLabel: "Studio",
-    studioCity: "Moscow, Russia",
+    studioCity: "",
     studioNote: "Contact details and address are coming after launch",
     languageLabel: "Language",
-    rights: "Danil Nails Studio, Moscow",
+    rights: "Danil Nails Studio",
     toTop: "Back to top ↑"
   }
 };

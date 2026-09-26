@@ -29,7 +29,7 @@ export default async function HomePage({ params }: PageProps<"/[lang]">) {
               </span>
             </Reveal>
             <Reveal delay={80}>
-              <span className="hero-folio">N&deg;01 &mdash; Moscow</span>
+              <span className="hero-folio">N&deg;01</span>
             </Reveal>
           </div>
 
