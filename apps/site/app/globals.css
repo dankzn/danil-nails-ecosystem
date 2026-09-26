@@ -613,6 +613,19 @@ button {
   object-fit: cover;
 }
 
+.video-block-trigger {
+  display: block;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+}
+
+.video-block-trigger:hover .video-block-play {
+  border-color: var(--ink-soft);
+}
+
 .video-block-placeholder {
   position: absolute;
   inset: 0;

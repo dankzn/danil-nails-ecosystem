@@ -103,7 +103,7 @@ export default async function HomePage({ params }: PageProps<"/[lang]">) {
         </div>
       </section>
 
-      <VideoBlock label={dict.video.label} note={dict.video.note} />
+      <VideoBlock label={dict.video.label} note={dict.video.note} src="/videos/studio-1.mp4" />
 
       <section className="section">
         <div className="wrap">

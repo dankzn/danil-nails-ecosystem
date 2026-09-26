@@ -57,6 +57,8 @@ export type Dictionary = {
   video: {
     label: string;
     note: string;
+    playLabel: string;
+    playNote: string;
   };
   master: {
     kicker: string;
