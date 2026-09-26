@@ -1127,6 +1127,20 @@ button {
     margin-top: 24px;
   }
 
+  .index-strip-track {
+    flex-direction: column;
+  }
+
+  .index-strip-item {
+    width: 100%;
+    border-right: none;
+    border-bottom: 1px solid var(--paper-line);
+  }
+
+  .index-strip-item:last-child {
+    border-bottom: none;
+  }
+
   .service-row {
     grid-template-columns: 28px 1fr;
     row-gap: 10px;
