@@ -1103,6 +1103,30 @@ button {
     display: none;
   }
 
+  .hero-video {
+    min-height: 60vh;
+  }
+
+  .hero-video-content {
+    padding: 40px 0 44px;
+  }
+
+  .hero-video-content .hero-row .hero-meta {
+    display: none;
+  }
+
+  .hero-video-content .hero-rule {
+    margin: 32px 0 28px;
+  }
+
+  .hero-video-content .hero-title {
+    font-size: 30px;
+  }
+
+  .hero-video-content .hero-actions {
+    margin-top: 24px;
+  }
+
   .service-row {
     grid-template-columns: 28px 1fr;
     row-gap: 10px;
