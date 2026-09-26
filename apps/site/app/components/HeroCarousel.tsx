@@ -1,6 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+
+const SLIDE_DURATION_MS = 8000;
 
 export function HeroCarousel({ sources }: { sources: string[] }) {
   const [index, setIndex] = useState(0);
@@ -13,6 +15,17 @@ export function HeroCarousel({ sources }: { sources: string[] }) {
   function goNext() {
     setIndex((current) => (current + 1) % total);
   }
+
+  useEffect(() => {
+    if (total <= 1) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+    const timeoutId = setTimeout(() => {
+      setIndex((current) => (current + 1) % total);
+    }, SLIDE_DURATION_MS);
+
+    return () => clearTimeout(timeoutId);
+  }, [index, total]);
 
   return (
     <>
