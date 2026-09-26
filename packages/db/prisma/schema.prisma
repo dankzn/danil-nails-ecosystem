@@ -829,6 +829,14 @@ enum StockMovementType {
   write_off
 }
 
+enum StockWriteOffReason {
+  defect
+  expired
+  damaged
+  lost
+  other
+}
+
 enum WaitlistStatus {
   waiting
   notified
@@ -868,6 +876,7 @@ model StockMovement {
   materialId    String
   appointmentId String?
   type          StockMovementType
+  writeOffReason StockWriteOffReason?
   quantity      Float
   note          String?
   actorUserId   String?

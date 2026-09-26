@@ -17,6 +17,7 @@ export {
   PayrollStatus,
   Prisma,
   StockMovementType,
+  StockWriteOffReason,
   TrainingStatus,
   UserRole,
   WaitlistStatus

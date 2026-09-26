@@ -1,6 +1,7 @@
 import {
   MaterialUnit,
   StockMovementType,
+  StockWriteOffReason,
   UserRole,
   type DatabaseClient
 } from "@danil-nails/db";
@@ -10,6 +11,7 @@ import { authorize } from "../auth/session.js";
 
 const materialUnits = ["piece", "ml", "g"] as const;
 const manualMovementTypes = ["receipt", "adjustment", "write_off"] as const;
+const writeOffReasons = ["defect", "expired", "damaged", "lost", "other"] as const;
 
 const idSchema = z.object({ id: z.string().cuid() });
 const materialCreateSchema = z.object({
@@ -31,11 +33,23 @@ const serviceLinksSchema = z.object({
     )
     .max(100)
 });
-const movementCreateSchema = z.object({
-  type: z.enum(manualMovementTypes),
-  quantity: z.number().positive(),
-  note: z.string().trim().max(1000).nullable().optional()
-});
+const movementCreateSchema = z
+  .object({
+    type: z.enum(manualMovementTypes),
+    quantity: z.number().positive(),
+    note: z.string().trim().max(1000).nullable().optional(),
+    writeOffReason: z.enum(writeOffReasons).nullable().optional()
+  })
+  .refine(
+    (value) =>
+      value.type === "write_off"
+        ? Boolean(value.writeOffReason)
+        : !value.writeOffReason,
+    {
+      message: "write_off_reason_required",
+      path: ["writeOffReason"]
+    }
+  );
 
 function sendInvalidPayload(reply: FastifyReply) {
   return reply.code(400).send({ error: "invalid_inventory_payload" });
@@ -258,6 +272,9 @@ export function registerInventoryRoutes(
           type: StockMovementType[input.data.type],
           quantity: movementSignedQuantity(input.data.type, input.data.quantity),
           note: input.data.note ?? null,
+          writeOffReason: input.data.writeOffReason
+            ? StockWriteOffReason[input.data.writeOffReason]
+            : null,
           actorUserId: request.crmUser!.id
         }
       });

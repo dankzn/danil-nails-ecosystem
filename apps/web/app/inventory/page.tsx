@@ -19,9 +19,11 @@ type Material = {
   isLow: boolean;
   serviceLinks: ServiceLink[];
 };
+type WriteOffReason = "defect" | "expired" | "damaged" | "lost" | "other";
 type Movement = {
   id: string;
   type: "receipt" | "consumption" | "adjustment" | "write_off";
+  writeOffReason: WriteOffReason | null;
   quantity: number;
   note: string | null;
   occurredAt: string;
@@ -43,6 +45,14 @@ const movementTypeLabels: Record<Movement["type"], string> = {
   consumption: "Списание (услуга)",
   adjustment: "Корректировка",
   write_off: "Порча/списание"
+};
+
+const writeOffReasonLabels: Record<WriteOffReason, string> = {
+  defect: "Брак",
+  expired: "Истёк срок годности",
+  damaged: "Повреждено",
+  lost: "Утеряно",
+  other: "Другое"
 };
 
 function inventoryErrorMessage(error: unknown) {
@@ -85,7 +95,8 @@ export default function InventoryPage() {
   const [movementForm, setMovementForm] = useState({
     type: "receipt" as "receipt" | "adjustment" | "write_off",
     quantity: "",
-    note: ""
+    note: "",
+    writeOffReason: "" as WriteOffReason | ""
   });
 
   const [linksMaterial, setLinksMaterial] = useState<Material | null>(null);
@@ -204,7 +215,7 @@ export default function InventoryPage() {
 
   function openMovementForm(material: Material) {
     setMovementMaterial(material);
-    setMovementForm({ type: "receipt", quantity: "", note: "" });
+    setMovementForm({ type: "receipt", quantity: "", note: "", writeOffReason: "" });
     setFormError(null);
   }
 
@@ -216,6 +227,10 @@ export default function InventoryPage() {
       setFormError("Укажите количество больше нуля.");
       return;
     }
+    if (movementForm.type === "write_off" && !movementForm.writeOffReason) {
+      setFormError("Укажите причину списания.");
+      return;
+    }
     setIsSaving(true);
     setFormError(null);
     try {
@@ -224,7 +239,9 @@ export default function InventoryPage() {
         body: JSON.stringify({
           type: movementForm.type,
           quantity,
-          note: movementForm.note.trim() || null
+          note: movementForm.note.trim() || null,
+          writeOffReason:
+            movementForm.type === "write_off" ? movementForm.writeOffReason : null
         })
       });
       setMovementMaterial(null);
@@ -607,6 +624,30 @@ export default function InventoryPage() {
                 <option value="write_off">Порча/списание</option>
               </select>
             </label>
+            {movementForm.type === "write_off" ? (
+              <label className="form-field">
+                <span>Причина списания</span>
+                <select
+                  onChange={(event) =>
+                    setMovementForm((current) => ({
+                      ...current,
+                      writeOffReason: event.target.value as WriteOffReason
+                    }))
+                  }
+                  required
+                  value={movementForm.writeOffReason}
+                >
+                  <option disabled value="">
+                    Выберите причину
+                  </option>
+                  {Object.entries(writeOffReasonLabels).map(([value, label]) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : null}
             <label className="form-field">
               <span>Количество ({unitLabels[movementMaterial.unit]})</span>
               <input
@@ -705,6 +746,9 @@ export default function InventoryPage() {
                   {movementTypeLabels[movement.type]} ·{" "}
                   {movement.quantity > 0 ? "+" : ""}
                   {movement.quantity} {unitLabels[historyMaterial.unit]}
+                  {movement.writeOffReason
+                    ? ` · ${writeOffReasonLabels[movement.writeOffReason]}`
+                    : ""}
                   {movement.note ? ` · ${movement.note}` : ""}
                   {movement.appointment
                     ? ` · запись клиента ${movement.appointment.client.fullName ?? movement.appointment.client.phone}`
