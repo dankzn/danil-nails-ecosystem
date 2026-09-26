@@ -13,7 +13,10 @@ export const en: Dictionary = {
     master: "Master",
     contact: "Contact",
     cta: "Book a visit",
-    register: "Sign up"
+    register: "Sign up",
+    account: "Account",
+    login: "Log in",
+    logout: "Log out"
   },
   hero: {
     titleLines: ["Precision", "you can see", "on your fingertips"],
@@ -123,6 +126,33 @@ export const en: Dictionary = {
     errorExists: "An account with that email or phone already exists",
     errorUnavailable: "The service is temporarily unavailable — please try again shortly",
     errorNetwork: "Couldn't reach the server — check your connection"
+  },
+  login: {
+    kicker: "Account",
+    headingPre: "Log in to your ",
+    headingEm: "account",
+    lede: "Enter the email and password you used when you registered.",
+    emailLabel: "Email",
+    passwordLabel: "Password",
+    submitLabel: "Log in",
+    submittingLabel: "Logging in…",
+    errorInvalid: "Incorrect email or password",
+    errorUnavailable: "The service is temporarily unavailable — please try again shortly",
+    errorNetwork: "Couldn't reach the server — check your connection",
+    registerPrompt: "Don't have an account yet?",
+    registerLink: "Create an account"
+  },
+  account: {
+    kicker: "Account",
+    heading: "Your account",
+    loadingLabel: "Loading…",
+    signedOutMessage: "Log in to see your personal cabinet.",
+    loginLink: "Log in",
+    emailLabel: "Email",
+    phoneLabel: "Phone",
+    bookingsHeading: "Your bookings",
+    bookingsPlaceholder: "Your bookings will appear here — this part of the cabinet is coming as the next step.",
+    logoutLabel: "Log out"
   },
   footer: {
     tagline: "Precise work and close attention to detail in every appointment.",

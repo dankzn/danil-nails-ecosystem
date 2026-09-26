@@ -13,7 +13,10 @@ export const ru: Dictionary = {
     master: "Мастер",
     contact: "Контакты",
     cta: "Записаться",
-    register: "Регистрация"
+    register: "Регистрация",
+    account: "Личный кабинет",
+    login: "Войти",
+    logout: "Выйти"
   },
   hero: {
     titleLines: ["Точность,", "которую видно", "на кончиках пальцев"],
@@ -129,6 +132,33 @@ export const ru: Dictionary = {
     errorExists: "Аккаунт с такой почтой или телефоном уже существует",
     errorUnavailable: "Сервис временно недоступен — попробуйте чуть позже",
     errorNetwork: "Не удалось связаться с сервером — проверьте соединение"
+  },
+  login: {
+    kicker: "Аккаунт",
+    headingPre: "Войти в ",
+    headingEm: "личный кабинет",
+    lede: "Введите почту и пароль, которые вы указали при регистрации.",
+    emailLabel: "Email",
+    passwordLabel: "Пароль",
+    submitLabel: "Войти",
+    submittingLabel: "Входим…",
+    errorInvalid: "Неверная почта или пароль",
+    errorUnavailable: "Сервис временно недоступен — попробуйте чуть позже",
+    errorNetwork: "Не удалось связаться с сервером — проверьте соединение",
+    registerPrompt: "Ещё нет аккаунта?",
+    registerLink: "Создать аккаунт"
+  },
+  account: {
+    kicker: "Аккаунт",
+    heading: "Личный кабинет",
+    loadingLabel: "Загружаем…",
+    signedOutMessage: "Чтобы увидеть личный кабинет, войдите в аккаунт.",
+    loginLink: "Войти",
+    emailLabel: "Email",
+    phoneLabel: "Телефон",
+    bookingsHeading: "Мои записи",
+    bookingsPlaceholder: "Здесь появится список ваших записей — эта часть кабинета подключается следующим шагом.",
+    logoutLabel: "Выйти"
   },
   footer: {
     tagline: "Точная работа и внимание к деталям в каждой записи.",

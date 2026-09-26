@@ -3,11 +3,13 @@
 import { useEffect, useState } from "react";
 import type { Dictionary } from "../i18n/dictionary";
 import type { Locale } from "../i18n/locales";
+import { useAuthStatus } from "../lib/use-auth";
 import { Button } from "./Button";
 import { LocaleSwitcher } from "./LocaleSwitcher";
 
 export function SiteHeader({ lang, dict }: { lang: Locale; dict: Dictionary }) {
   const [isFixed, setIsFixed] = useState(false);
+  const auth = useAuthStatus();
 
   useEffect(() => {
     function onScroll() {
@@ -41,9 +43,15 @@ export function SiteHeader({ lang, dict }: { lang: Locale; dict: Dictionary }) {
         </nav>
         <div className="site-header-actions">
           <LocaleSwitcher current={lang} />
-          <a className="header-register" href={`/${lang}/register/`}>
-            {dict.nav.register}
-          </a>
+          {auth.status === "signed-in" ? (
+            <a className="header-register" href={`/${lang}/account/`}>
+              {dict.nav.account}
+            </a>
+          ) : auth.status === "signed-out" ? (
+            <a className="header-register" href={`/${lang}/login/`}>
+              {dict.nav.login}
+            </a>
+          ) : null}
           <Button className="header-cta" href={`/${lang}/contact/`}>
             {dict.nav.cta}
           </Button>

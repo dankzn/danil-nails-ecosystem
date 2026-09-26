@@ -13,7 +13,10 @@ export const es: Dictionary = {
     master: "Maestro",
     contact: "Contacto",
     cta: "Reservar",
-    register: "Registrarse"
+    register: "Registrarse",
+    account: "Cuenta",
+    login: "Iniciar sesión",
+    logout: "Cerrar sesión"
   },
   hero: {
     titleLines: ["Precisión", "que se nota", "en la punta de los dedos"],
@@ -123,6 +126,33 @@ export const es: Dictionary = {
     errorExists: "Ya existe una cuenta con ese email o teléfono",
     errorUnavailable: "El servicio no está disponible por ahora — inténtalo de nuevo en un momento",
     errorNetwork: "No se pudo contactar con el servidor — revisa tu conexión"
+  },
+  login: {
+    kicker: "Cuenta",
+    headingPre: "Inicia sesión en tu ",
+    headingEm: "cuenta",
+    lede: "Introduce el email y la contraseña que usaste al registrarte.",
+    emailLabel: "Email",
+    passwordLabel: "Contraseña",
+    submitLabel: "Iniciar sesión",
+    submittingLabel: "Iniciando sesión…",
+    errorInvalid: "Email o contraseña incorrectos",
+    errorUnavailable: "El servicio no está disponible por ahora — inténtalo de nuevo en un momento",
+    errorNetwork: "No se pudo contactar con el servidor — revisa tu conexión",
+    registerPrompt: "¿Aún no tienes cuenta?",
+    registerLink: "Crear cuenta"
+  },
+  account: {
+    kicker: "Cuenta",
+    heading: "Tu cuenta",
+    loadingLabel: "Cargando…",
+    signedOutMessage: "Inicia sesión para ver tu espacio personal.",
+    loginLink: "Iniciar sesión",
+    emailLabel: "Email",
+    phoneLabel: "Teléfono",
+    bookingsHeading: "Tus reservas",
+    bookingsPlaceholder: "Tus reservas aparecerán aquí — esta parte de la cuenta llega en el próximo paso.",
+    logoutLabel: "Cerrar sesión"
   },
   footer: {
     tagline: "Trabajo preciso y atención al detalle en cada cita.",

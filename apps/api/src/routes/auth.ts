@@ -51,7 +51,7 @@ export function registerAuthRoutes(
 
       const user = await database.user.findUnique({
         where: { email: input.data.email },
-        include: { staffProfile: true }
+        include: { staffProfile: true, client: true }
       });
 
       const passwordIsValid =
@@ -92,7 +92,8 @@ export function registerAuthRoutes(
         user: {
           id: user.id,
           email: user.email,
-          displayName: user.staffProfile?.displayName ?? null,
+          phone: user.phone,
+          displayName: user.staffProfile?.displayName ?? user.client?.fullName ?? null,
           role: user.role
         }
       };
@@ -164,6 +165,7 @@ export function registerAuthRoutes(
           user: {
             id: user.id,
             email: user.email,
+            phone: user.phone,
             displayName: input.data.fullName,
             role: user.role
           }

@@ -11,6 +11,9 @@ export type Dictionary = {
     contact: string;
     cta: string;
     register: string;
+    account: string;
+    login: string;
+    logout: string;
   };
   hero: {
     titleLines: string[];
@@ -89,6 +92,33 @@ export type Dictionary = {
     errorExists: string;
     errorUnavailable: string;
     errorNetwork: string;
+  };
+  login: {
+    kicker: string;
+    headingPre: string;
+    headingEm: string;
+    lede: string;
+    emailLabel: string;
+    passwordLabel: string;
+    submitLabel: string;
+    submittingLabel: string;
+    errorInvalid: string;
+    errorUnavailable: string;
+    errorNetwork: string;
+    registerPrompt: string;
+    registerLink: string;
+  };
+  account: {
+    kicker: string;
+    heading: string;
+    loadingLabel: string;
+    signedOutMessage: string;
+    loginLink: string;
+    emailLabel: string;
+    phoneLabel: string;
+    bookingsHeading: string;
+    bookingsPlaceholder: string;
+    logoutLabel: string;
   };
   footer: {
     tagline: string;

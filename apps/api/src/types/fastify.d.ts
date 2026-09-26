@@ -5,6 +5,7 @@ declare module "fastify" {
     crmUser: {
       id: string;
       email: string | null;
+      phone: string | null;
       displayName: string | null;
       role: UserRole;
     } | null;

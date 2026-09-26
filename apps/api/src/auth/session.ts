@@ -62,7 +62,7 @@ export function authorize(
 
     const session = await database.session.findUnique({
       where: { tokenHash: hashSessionToken(token) },
-      include: { user: { include: { staffProfile: true } } }
+      include: { user: { include: { staffProfile: true, client: true } } }
     });
 
     if (!session || session.expiresAt <= new Date() || !session.user.isActive) {
@@ -73,7 +73,9 @@ export function authorize(
     request.crmUser = {
       id: session.user.id,
       email: session.user.email,
-      displayName: session.user.staffProfile?.displayName ?? null,
+      phone: session.user.phone ?? session.user.client?.phone ?? null,
+      displayName:
+        session.user.staffProfile?.displayName ?? session.user.client?.fullName ?? null,
       role: session.user.role
     };
 

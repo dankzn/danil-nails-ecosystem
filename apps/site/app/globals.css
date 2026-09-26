@@ -972,6 +972,67 @@ button {
   line-height: 1.7;
 }
 
+/* ---------- Account panel ---------- */
+
+.account-panel {
+  margin-top: 48px;
+  max-width: 480px;
+  display: grid;
+  gap: 40px;
+}
+
+.account-welcome {
+  margin: -24px 0 0;
+  font-family: var(--font-grotesk);
+  font-weight: 500;
+  font-size: 22px;
+  color: var(--ink);
+}
+
+.account-facts {
+  margin: 0;
+  display: grid;
+  gap: 16px;
+}
+
+.account-fact {
+  display: grid;
+  gap: 4px;
+}
+
+.account-fact dt {
+  font-size: 11.5px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+
+.account-fact dd {
+  margin: 0;
+  font-size: 15px;
+  color: var(--ink);
+}
+
+.account-bookings h2 {
+  font-family: var(--font-grotesk);
+  font-weight: 500;
+  font-size: 20px;
+  margin: 0 0 12px;
+  color: var(--ink);
+}
+
+.account-bookings p {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 15px;
+  line-height: 1.7;
+}
+
+.account-logout {
+  justify-self: start;
+}
+
 /* ---------- Contact / closing statement ---------- */
 
 .contact-panel {
