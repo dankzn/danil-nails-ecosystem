@@ -14,8 +14,6 @@
 
   --bronze: #8a6a3a;
 
-  --font-grotesk: "Golos Text", "Segoe UI", sans-serif;
-
   --container: 1220px;
   --edge: clamp(20px, 5vw, 64px);
 
