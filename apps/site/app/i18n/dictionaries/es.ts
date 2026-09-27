@@ -36,13 +36,13 @@ export const es: Dictionary = {
       },
       {
         index: "02",
-        title: "Un enfoque personalizado",
-        body: "La forma, el largo y el estilo se eligen cada vez para tu mano y tu gusto, nunca por plantilla"
+        title: "Un enfoque que recuerda",
+        body: "Tu forma, estilo e historial se guardan en tu perfil — tu manicura se elige para ti, no se empieza de cero cada vez"
       },
       {
         index: "03",
-        title: "Atención al detalle",
-        body: "La belleza está en los detalles — desde la preparación de la cutícula hasta el último toque de esmalte"
+        title: "Precisión que dura",
+        body: "Una preparación cuidadosa de la forma y la base al inicio es lo que evita que el esmalte se salte antes de tiempo"
       }
     ]
   },

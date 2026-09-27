@@ -36,13 +36,13 @@ export const fr: Dictionary = {
       },
       {
         index: "02",
-        title: "Une approche sur mesure",
-        body: "La forme, la longueur et le style sont choisis à chaque fois pour votre main et vos goûts, jamais selon un modèle"
+        title: "Une approche qui se souvient",
+        body: "Votre forme, votre style et votre historique sont conservés dans votre profil — votre manucure est pensée pour vous, jamais reprise de zéro"
       },
       {
         index: "03",
-        title: "Le souci du détail",
-        body: "La beauté se joue dans les détails — de la préparation des cuticules à la toute dernière touche de vernis"
+        title: "Une précision qui tient",
+        body: "Une préparation soignée de la forme et de la base au départ, c'est ce qui évite au vernis de s'écailler trop tôt"
       }
     ]
   },

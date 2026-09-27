@@ -36,13 +36,13 @@ export const en: Dictionary = {
       },
       {
         index: "02",
-        title: "A tailored approach",
-        body: "Shape, length, and style are chosen for your hand and your taste every time, never off a template"
+        title: "An approach that remembers",
+        body: "Your shape, style, and history are saved in your profile — your manicure is chosen for you, not started from scratch each time"
       },
       {
         index: "03",
-        title: "Attention to detail",
-        body: "Beauty is in the small things — from cuticle prep to the very last stroke of polish"
+        title: "Precision that holds",
+        body: "Careful shape and base prep at the start is what keeps a polish from chipping early"
       }
     ]
   },
