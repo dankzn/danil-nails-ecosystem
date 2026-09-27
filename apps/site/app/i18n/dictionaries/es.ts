@@ -20,7 +20,7 @@ export const es: Dictionary = {
   },
   hero: {
     titleLines: ["Precisión", "que se nota", "en cada detalle"],
-    lede: "Danil Nails Studio es trabajo preciso, atención al detalle y una agenda en la que cada clienta recibe exactamente el tiempo que hace falta para un trabajo impecable",
+    lede: "Danil Nails Studio es trabajo preciso, atención al detalle y cuidado personal para cada clienta",
     ctaPrimary: "Reservar",
     ctaSecondary: "Ver servicios"
   },

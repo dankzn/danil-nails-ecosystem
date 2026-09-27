@@ -20,7 +20,7 @@ export const fr: Dictionary = {
   },
   hero: {
     titleLines: ["Une précision", "qui se voit", "dans chaque détail"],
-    lede: "Danil Nails Studio, c'est un travail précis, une attention minutieuse aux détails et un planning où chaque cliente dispose exactement du temps nécessaire pour un résultat impeccable",
+    lede: "Danil Nails Studio, c'est un travail précis, une attention minutieuse aux détails et un soin personnel pour chaque cliente",
     ctaPrimary: "Réserver",
     ctaSecondary: "Voir les prestations"
   },

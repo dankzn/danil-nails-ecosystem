@@ -20,7 +20,7 @@ export const en: Dictionary = {
   },
   hero: {
     titleLines: ["Precision", "you can see", "in every detail"],
-    lede: "Danil Nails Studio is precise work, close attention to detail, and a schedule where every client gets exactly as much time as it takes to get it right",
+    lede: "Danil Nails Studio is precise work, close attention to detail, and personal care for every client",
     ctaPrimary: "Book a visit",
     ctaSecondary: "See services"
   },
