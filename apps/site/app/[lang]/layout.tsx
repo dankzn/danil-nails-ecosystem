@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { Preloader } from "../components/Preloader";
 import { SetHtmlLang } from "../components/SetHtmlLang";
 import { SiteFooter } from "../components/SiteFooter";
 import { SiteHeader } from "../components/SiteHeader";
@@ -29,6 +30,7 @@ export default async function LangLayout({ children, params }: LayoutProps<"/[la
 
   return (
     <>
+      <Preloader />
       <SetHtmlLang lang={lang} />
       <SiteHeader lang={lang} dict={dict} />
       {children}
