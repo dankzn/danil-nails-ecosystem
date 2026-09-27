@@ -21,29 +21,30 @@ export default async function HomePage({ params }: PageProps<"/[lang]">) {
         <HeroCarousel sources={["/videos/studio-1.mp4", "/videos/studio-2.mp4"]} />
         <div className="hero-overlay" aria-hidden="true" />
         <div className="wrap hero-video-content">
-          <div className="hero-copy-panel">
-            <h1 className="hero-title">
-              {dict.hero.titleLines.map((line, index) => (
-                <span className="line" key={line}>
-                  <span style={riseDelay(index * 90)}>{line}</span>
-                </span>
-              ))}
-            </h1>
+          <h1 className="hero-title">
+            {dict.hero.titleLines.map((line, index) => (
+              <span className="line" key={line}>
+                <span style={riseDelay(index * 90)}>{line}</span>
+              </span>
+            ))}
+          </h1>
 
-            <div className="hero-rule" />
-
-            <div className="hero-row">
-              <Reveal delay={120}>
-                <p className="hero-lede">{dict.hero.lede}</p>
-                <div className="hero-actions">
-                  <Button variant="solid" href={`/${lang}/contact/`}>
-                    {dict.hero.ctaPrimary}
-                  </Button>
-                  <Button href={`/${lang}/services/`}>{dict.hero.ctaSecondary}</Button>
-                </div>
-              </Reveal>
-            </div>
+          <div className="hero-actions hero-actions-video">
+            <Button variant="solid" href={`/${lang}/contact/`}>
+              {dict.hero.ctaPrimary}
+            </Button>
           </div>
+        </div>
+      </section>
+
+      <section className="hero-intro">
+        <div className="wrap hero-intro-row">
+          <Reveal>
+            <p className="hero-lede">{dict.hero.lede}</p>
+          </Reveal>
+          <Reveal delay={80}>
+            <Button href={`/${lang}/services/`}>{dict.hero.ctaSecondary}</Button>
+          </Reveal>
         </div>
       </section>
 

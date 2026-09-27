@@ -489,32 +489,16 @@ button {
 .hero-video-content {
   position: relative;
   z-index: 2;
-  padding: 140px 0 72px;
-}
-
-/* A dedicated, opaque-enough panel behind the hero copy: the video's subject
-   moves through the whole frame over time, so the text needs its own solid
-   ground rather than relying on the video ever looking calm behind it. */
-.hero-copy-panel {
-  display: inline-block;
-  max-width: 620px;
-  padding: 36px 40px;
-  background: rgba(15, 13, 10, 0.5);
-  backdrop-filter: blur(14px) saturate(1.15);
-  -webkit-backdrop-filter: blur(14px) saturate(1.15);
-  border: 1px solid rgba(245, 241, 232, 0.1);
+  padding: 140px 0 96px;
 }
 
 .hero-video-content .hero-title {
   color: #f5f1e8;
+  text-shadow: 0 2px 20px rgba(10, 9, 7, 0.45);
 }
 
-.hero-video-content .hero-rule {
-  background: rgba(245, 241, 232, 0.22);
-}
-
-.hero-video-content .hero-lede {
-  color: rgba(245, 241, 232, 0.88);
+.hero-actions-video {
+  margin-top: 36px;
 }
 
 .hero-video-content .btn {
@@ -569,29 +553,36 @@ button {
   animation-delay: var(--rise-delay, 0ms);
 }
 
-.hero-rule {
-  margin: 48px 0 40px;
-  height: 1px;
-  background: var(--paper-line);
-}
-
-.hero-row {
-  display: block;
-}
-
-.hero-lede {
-  max-width: 46ch;
-  font-size: 15.5px;
-  line-height: 1.75;
-  color: var(--ink-soft);
-}
-
 .hero-actions {
   display: flex;
   align-items: center;
   gap: 16px;
   margin-top: 34px;
   flex-wrap: wrap;
+}
+
+/* ---------- Hero intro band: the lede + secondary CTA live here, off the
+   video, on solid ground, right under the headline-only video hero. ---------- */
+
+.hero-intro {
+  background: var(--paper-raised);
+  border-bottom: 1px solid var(--paper-line);
+}
+
+.hero-intro-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 32px;
+  padding: 36px 0;
+  flex-wrap: wrap;
+}
+
+.hero-lede {
+  max-width: 56ch;
+  font-size: 15.5px;
+  line-height: 1.75;
+  color: var(--ink-soft);
 }
 
 /* ---------- Philosophy (numbered editorial list) ---------- */
@@ -1380,25 +1371,20 @@ button {
   }
 
   .hero-video-content {
-    padding: 116px 0 44px;
-  }
-
-  .hero-copy-panel {
-    display: block;
-    max-width: none;
-    padding: 24px 20px;
-  }
-
-  .hero-video-content .hero-rule {
-    margin: 32px 0 28px;
+    padding: 116px 0 56px;
   }
 
   .hero-video-content .hero-title {
     font-size: 30px;
   }
 
-  .hero-video-content .hero-actions {
+  .hero-actions-video {
     margin-top: 24px;
+  }
+
+  .hero-intro-row {
+    padding: 28px 0;
+    gap: 20px;
   }
 
   .service-row {
