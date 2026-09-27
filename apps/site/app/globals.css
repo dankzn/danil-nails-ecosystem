@@ -1,23 +1,28 @@
 :root {
-  --paper: #f5f4f2;
-  --paper-raised: #ecebe8;
-  --paper-deep: #dbd9d4;
-  --paper-line: rgba(20, 20, 19, 0.12);
-  --paper-line-soft: rgba(20, 20, 19, 0.06);
+  --paper: #1d1c1b;
+  --paper-raised: #262524;
+  --paper-deep: #121110;
+  --paper-line: rgba(243, 242, 239, 0.12);
+  --paper-line-soft: rgba(243, 242, 239, 0.06);
 
-  --ink: #211f1e;
-  --ink-soft: #524f4a;
-  --ink-faint: #8a8781;
+  --ink: #f3f2ef;
+  --ink-soft: #b9b6ae;
+  --ink-faint: #8f8c85;
 
-  --clay: #45433c;
-  --clay-deep: #322f2a;
+  --clay: #b8a888;
+  --clay-deep: #c9a883;
 
-  --bronze: #6e6a5e;
+  --bronze: #c7b494;
+
+  /* A fixed dark tone for text sitting on the light off-white chips used in
+     the hero-video header/buttons — those chips stay light regardless of the
+     page theme, so their text must stay dark rather than following --ink. */
+  --on-light: #181715;
 
   --container: 1220px;
   --edge: clamp(20px, 5vw, 64px);
 
-  color-scheme: light;
+  color-scheme: dark;
 }
 
 * {
@@ -257,7 +262,7 @@ button {
   --header-ink: var(--ink);
   --header-ink-soft: var(--ink-soft);
   --header-ink-faint: var(--ink-faint);
-  box-shadow: 0 8px 24px rgba(20, 18, 15, 0.08);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
 }
 
 .site-header-spacer {
@@ -405,7 +410,7 @@ button {
   list-style: none;
   border: 1px solid var(--paper-line);
   background: var(--paper);
-  box-shadow: 0 12px 32px rgba(20, 18, 15, 0.14);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
 }
 
 .locale-dropdown-item {
@@ -512,16 +517,16 @@ button {
 }
 
 .hero-video-content .btn:hover span {
-  color: var(--ink);
+  color: var(--on-light);
 }
 
 .hero-video-content .btn-solid {
   background: #f3f2ef;
-  color: var(--ink);
+  color: var(--on-light);
 }
 
 .hero-video-content .btn-solid span {
-  color: var(--ink);
+  color: var(--on-light);
 }
 
 .hero-video-content .btn-solid::before {
@@ -529,7 +534,7 @@ button {
 }
 
 .hero-video-content .btn-solid:hover span {
-  color: #f3f2ef;
+  color: var(--on-light);
 }
 
 .hero-title {

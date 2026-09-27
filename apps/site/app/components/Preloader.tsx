@@ -3,8 +3,8 @@
 import { useEffect, useState } from "react";
 
 const SESSION_KEY = "dns-preloaded";
-const EXIT_DURATION_MS = 750;
-const MIN_VISIBLE_MS = 900;
+const EXIT_DURATION_MS = 850;
+const MIN_VISIBLE_MS = 1500;
 
 export function Preloader() {
   const [visible, setVisible] = useState(true);

@@ -7,7 +7,7 @@ export const ru: Dictionary = {
       "Danil Nails Studio: точная работа, стерильный протокол, запись — следующим шагом"
   },
   nav: {
-    home: "Главная",
+    home: "О нас",
     services: "Услуги",
     gallery: "Работы",
     master: "Мастер",
