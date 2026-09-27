@@ -21,6 +21,7 @@ export function SiteHeader({ lang, dict }: { lang: Locale; dict: Dictionary }) {
   }, []);
 
   const links = [
+    { href: `/${lang}/`, label: dict.nav.home },
     { href: `/${lang}/services/`, label: dict.nav.services },
     { href: `/${lang}/gallery/`, label: dict.nav.gallery },
     { href: `/${lang}/master/`, label: dict.nav.master },
@@ -30,10 +31,6 @@ export function SiteHeader({ lang, dict }: { lang: Locale; dict: Dictionary }) {
   return (
     <>
       <header className={`site-header${isFixed ? " site-header-fixed" : ""}`}>
-        <a className="site-brand" href={`/${lang}/`}>
-          <span className="site-brand-mark">Danil Nails</span>
-          <span className="site-brand-copy">Studio</span>
-        </a>
         <nav className="site-nav" aria-label="Site sections">
           {links.map((link) => (
             <a href={link.href} key={link.href}>
@@ -41,8 +38,12 @@ export function SiteHeader({ lang, dict }: { lang: Locale; dict: Dictionary }) {
             </a>
           ))}
         </nav>
+        <a className="site-brand" href={`/${lang}/`}>
+          <span className="site-brand-mark">Danil Nails</span>
+          <span className="site-brand-copy">Studio</span>
+        </a>
         <div className="site-header-actions">
-          <LocaleSwitcher current={lang} />
+          <LocaleSwitcher current={lang} variant="compact" />
           {auth.status === "signed-in" ? (
             <a className="header-register" href={`/${lang}/account/`}>
               {dict.nav.account}
