@@ -489,7 +489,8 @@ button {
 .hero-video-content {
   position: relative;
   z-index: 2;
-  padding: 140px 0 96px;
+  width: 100%;
+  padding: 140px var(--edge) 96px;
 }
 
 .hero-video-content .hero-title {
@@ -1371,7 +1372,7 @@ button {
   }
 
   .hero-video-content {
-    padding: 116px 0 56px;
+    padding: 116px var(--edge) 56px;
   }
 
   .hero-video-content .hero-title {

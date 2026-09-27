@@ -20,7 +20,7 @@ export default async function HomePage({ params }: PageProps<"/[lang]">) {
       <section className="hero hero-video">
         <HeroCarousel sources={["/videos/studio-1.mp4", "/videos/studio-2.mp4"]} />
         <div className="hero-overlay" aria-hidden="true" />
-        <div className="wrap hero-video-content">
+        <div className="hero-video-content">
           <h1 className="hero-title">
             {dict.hero.titleLines.map((line, index) => (
               <span className="line" key={line}>
