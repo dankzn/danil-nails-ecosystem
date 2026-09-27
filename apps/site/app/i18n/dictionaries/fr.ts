@@ -25,24 +25,26 @@ export const fr: Dictionary = {
     ctaSecondary: "Voir les prestations"
   },
   philosophy: {
-    kicker: "Approche",
-    headingPre: "Trois piliers ",
-    headingEm: "qui font tout tenir",
-    items: [
+    kicker: "Philosophie",
+    headingLines: ["Une beauté où", "rien n'est laissé au hasard"],
+    formula: "Nothing accidental.",
+    manifesto:
+      "Pour nous, la manucure n'est pas un détail isolé du look. Elle fait partie du langage visuel d'une personne : forme, proportion, teinte, texture, et la façon dont tout cela se ressent, précisément sur vous. C'est pourquoi nous ne répétons pas les mêmes choix. Nous cherchons celui qui semble un prolongement naturel de vous",
+    principles: [
       {
         index: "01",
-        title: "Attention personnelle",
-        body: "Pendant votre rendez-vous, votre spécialiste ne travaille qu'avec vous — aucune cliente en parallèle, aucune précipitation entre deux rendez-vous"
+        title: "Ne pas décorer. Souligner",
+        body: "Il ne nous intéresse pas de vous faire ressembler à quelqu'un d'autre. La forme, la longueur, la couleur et le design doivent composer avec vos traits, votre style et votre caractère — jamais s'y opposer"
       },
       {
         index: "02",
-        title: "Une approche qui se souvient",
-        body: "Votre forme, votre style et votre historique sont conservés dans votre profil — votre manucure est pensée pour vous, jamais reprise de zéro"
+        title: "La précision est une esthétique",
+        body: "La beauté commence avant la couleur. Dans les proportions. Dans l'architecture de la forme. Dans la netteté de la ligne. Dans des millimètres presque impossibles à remarquer isolément, mais qui décident de l'impression d'ensemble"
       },
       {
         index: "03",
-        title: "Une précision qui tient",
-        body: "Une préparation soignée de la forme et de la base au départ, c'est ce qui évite au vernis de s'écailler trop tôt"
+        title: "Le luxe n'a pas besoin d'être bruyant",
+        body: "Pour nous, le premium n'est ni une démonstration de statut ni un excès. C'est du temps, de l'espace, des matières, de l'attention — et le sentiment que rien n'a jamais à être demandé deux fois"
       }
     ]
   },

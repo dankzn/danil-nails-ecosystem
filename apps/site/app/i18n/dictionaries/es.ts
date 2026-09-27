@@ -25,24 +25,26 @@ export const es: Dictionary = {
     ctaSecondary: "Ver servicios"
   },
   philosophy: {
-    kicker: "Enfoque",
-    headingPre: "Tres cosas ",
-    headingEm: "que lo sostienen todo",
-    items: [
+    kicker: "Filosofía",
+    headingLines: ["Una belleza en la que", "nada es casual"],
+    formula: "Nothing accidental.",
+    manifesto:
+      "Para nosotros, la manicura no es un detalle aislado del look. Es parte del lenguaje visual de una persona: forma, proporción, tono, textura y cómo se siente todo eso, exactamente en ti. Por eso no repetimos soluciones. Buscamos la que parece una extensión natural de ti",
+    principles: [
       {
         index: "01",
-        title: "Atención personal",
-        body: "Durante tu cita, tu especialista trabaja solo contigo — sin clientas en paralelo ni prisas entre una y otra"
+        title: "No decorar. Realzar",
+        body: "No nos interesa que te parezcas a otra persona. La forma, el largo, el color y el diseño deben trabajar junto a tus rasgos, tu estilo y tu carácter — nunca en su contra"
       },
       {
         index: "02",
-        title: "Un enfoque que recuerda",
-        body: "Tu forma, estilo e historial se guardan en tu perfil — tu manicura se elige para ti, no se empieza de cero cada vez"
+        title: "La precisión es una estética",
+        body: "La belleza empieza antes que el color. En las proporciones. En la arquitectura de la forma. En la limpieza de la línea. En milímetros casi imperceptibles por separado, pero que definen la impresión del resultado completo"
       },
       {
         index: "03",
-        title: "Precisión que dura",
-        body: "Una preparación cuidadosa de la forma y la base al inicio es lo que evita que el esmalte se salte antes de tiempo"
+        title: "El lujo no tiene que ser ruidoso",
+        body: "Para nosotros, lo premium no es exhibir estatus ni exceso. Es tiempo, espacio, materiales, atención — y la sensación de que nada hay que pedirlo dos veces"
       }
     ]
   },

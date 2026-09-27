@@ -23,9 +23,10 @@ export type Dictionary = {
   };
   philosophy: {
     kicker: string;
-    headingPre: string;
-    headingEm: string;
-    items: { index: string; title: string; body: string }[];
+    headingLines: string[];
+    formula: string;
+    manifesto: string;
+    principles: { index: string; title: string; body: string }[];
   };
   home: {
     servicesKicker: string;

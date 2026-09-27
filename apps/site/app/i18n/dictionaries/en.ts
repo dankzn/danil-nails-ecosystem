@@ -25,24 +25,26 @@ export const en: Dictionary = {
     ctaSecondary: "See services"
   },
   philosophy: {
-    kicker: "Approach",
-    headingPre: "Three things ",
-    headingEm: "everything rests on",
-    items: [
+    kicker: "Philosophy",
+    headingLines: ["Beauty with", "nothing left to chance"],
+    formula: "Nothing accidental.",
+    manifesto:
+      "A manicure, to us, isn't a separate detail of a look. It's part of a person's visual language — shape, proportion, tone, texture, and how all of it feels on you specifically. So we don't repeat the same solution. We look for the one that reads as a natural continuation of you",
+    principles: [
       {
         index: "01",
-        title: "Personal attention",
-        body: "During your appointment, your specialist works with you and only you — no parallel clients, no rushing between chairs"
+        title: "Not decoration. Emphasis",
+        body: "We're not interested in making you look like someone else. Shape, length, colour, and design should work with your features, your style, and your character — never argue with them"
       },
       {
         index: "02",
-        title: "An approach that remembers",
-        body: "Your shape, style, and history are saved in your profile — your manicure is chosen for you, not started from scratch each time"
+        title: "Precision is an aesthetic",
+        body: "Beauty begins before colour. In proportion. In the architecture of the shape. In the clarity of the line. In millimetres almost impossible to notice on their own, yet they decide the whole impression"
       },
       {
         index: "03",
-        title: "Precision that holds",
-        body: "Careful shape and base prep at the start is what keeps a polish from chipping early"
+        title: "Luxury doesn't have to be loud",
+        body: "For us, premium isn't a display of status or excess. It's time, space, materials, attention — and the feeling that nothing ever needs to be asked for twice"
       }
     ]
   },

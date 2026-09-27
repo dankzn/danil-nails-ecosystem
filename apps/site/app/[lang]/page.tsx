@@ -48,21 +48,33 @@ export default async function HomePage({ params }: PageProps<"/[lang]">) {
         </div>
       </section>
 
-      <section className="section">
+      <section className="philosophy">
         <div className="wrap">
-          <Reveal>
-            <p className="section-kicker">{dict.philosophy.kicker}</p>
-            <h2 className="section-heading">
-              {dict.philosophy.headingPre}
-              <em>{dict.philosophy.headingEm}</em>
-            </h2>
-          </Reveal>
-          <div className="philosophy-list">
-            {dict.philosophy.items.map((item, index) => (
-              <Reveal delay={index * 70} key={item.index} className="philosophy-row">
-                <span className="philosophy-index">{item.index}</span>
-                <h3>{item.title}</h3>
-                <p>{item.body}</p>
+          <div className="philosophy-head">
+            <Reveal>
+              <p className="section-kicker">{dict.philosophy.kicker}</p>
+              <h2 className="philosophy-heading">
+                {dict.philosophy.headingLines.map((line, index) => (
+                  <span className="line" key={line}>
+                    <span style={riseDelay(index * 90)}>{line}</span>
+                  </span>
+                ))}
+              </h2>
+            </Reveal>
+            <Reveal delay={140} className="philosophy-manifesto-col">
+              <p className="philosophy-formula">{dict.philosophy.formula}</p>
+              <p className="philosophy-manifesto">{dict.philosophy.manifesto}</p>
+            </Reveal>
+          </div>
+
+          <div className="philosophy-principles">
+            {dict.philosophy.principles.map((item, index) => (
+              <Reveal delay={index * 90} key={item.title} className="philosophy-principle">
+                <span className="philosophy-principle-index">{item.index}</span>
+                <div className="philosophy-principle-body">
+                  <h3>{item.title}</h3>
+                  <p>{item.body}</p>
+                </div>
               </Reveal>
             ))}
           </div>
