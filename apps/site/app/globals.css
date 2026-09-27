@@ -215,7 +215,15 @@ button {
   padding: 26px var(--edge);
   border-bottom: 1px solid var(--header-border);
   background: var(--header-bg);
-  transition: background-color 250ms ease, border-color 250ms ease;
+  transition:
+    background-color 300ms ease,
+    border-color 300ms ease,
+    box-shadow 300ms ease,
+    padding 300ms ease;
+}
+
+.site-header * {
+  transition: color 300ms ease, border-color 300ms ease;
 }
 
 .site-header-fixed {
@@ -228,7 +236,8 @@ button {
 }
 
 /* On the home page the header sits directly on the hero video: transparent
-   until hovered or until the page is scrolled (see .site-header-spacer). */
+   and overlaid until the page is scrolled, then it locks to the top with a
+   solid background — same pattern as aesop.com's header. */
 .site-header:has(+ .has-hero-video) {
   position: absolute;
   top: 0;
@@ -241,12 +250,14 @@ button {
   --header-ink-faint: rgba(245, 241, 232, 0.65);
 }
 
-.site-header:has(+ .has-hero-video):hover {
+.site-header-fixed:has(+ .has-hero-video) {
+  position: fixed;
   --header-bg: var(--paper);
   --header-border: var(--paper-line);
   --header-ink: var(--ink);
   --header-ink-soft: var(--ink-soft);
   --header-ink-faint: var(--ink-faint);
+  box-shadow: 0 8px 24px rgba(20, 18, 15, 0.08);
 }
 
 .site-header-spacer {
