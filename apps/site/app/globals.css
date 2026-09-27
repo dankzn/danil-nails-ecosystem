@@ -586,45 +586,45 @@ button {
   color: var(--ink-soft);
 }
 
-/* ---------- Philosophy (numbered editorial list) ---------- */
+/* ---------- Philosophy (numbered editorial grid) ---------- */
 
 .philosophy-list {
   margin-top: 52px;
-  border-top: 1px solid var(--paper-line);
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1px;
+  background: var(--paper-line);
+  border: 1px solid var(--paper-line);
 }
 
 .philosophy-row {
-  padding: 40px 0;
-  border-bottom: 1px solid var(--paper-line);
-}
-
-.philosophy-row-head {
-  display: flex;
-  align-items: baseline;
-  gap: 22px;
+  background: var(--paper);
+  padding: 44px 36px;
 }
 
 .philosophy-index {
+  display: block;
   font-family: var(--font-grotesk);
-  font-size: 13px;
-  color: var(--ink-faint);
+  font-size: 34px;
+  font-weight: 500;
+  color: var(--clay);
+  margin-bottom: 24px;
 }
 
 .philosophy-row h3 {
-  margin: 0;
+  margin: 0 0 14px;
   font-family: var(--font-grotesk);
   font-weight: 500;
-  font-size: clamp(19px, 1.8vw, 22px);
+  font-size: clamp(19px, 1.6vw, 21px);
   letter-spacing: -0.005em;
   color: var(--ink);
 }
 
 .philosophy-row p {
-  margin: 14px 0 0 42px;
+  margin: 0;
   color: var(--ink-soft);
-  font-size: 15px;
-  line-height: 1.75;
-  max-width: 56ch;
+  font-size: 14.5px;
+  line-height: 1.7;
 }
 
 /* ---------- Services ---------- */
@@ -1294,8 +1294,8 @@ button {
     min-height: 74vh;
   }
 
-  .philosophy-row p {
-    margin-left: 0;
+  .philosophy-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
   .master-block {
@@ -1400,6 +1400,14 @@ button {
 
   .gallery-grid {
     grid-template-columns: 1fr;
+  }
+
+  .philosophy-list {
+    grid-template-columns: 1fr;
+  }
+
+  .philosophy-row {
+    padding: 32px 24px;
   }
 
   .contact-actions {

@@ -59,14 +59,10 @@ export default async function HomePage({ params }: PageProps<"/[lang]">) {
           </Reveal>
           <div className="philosophy-list">
             {dict.philosophy.items.map((item, index) => (
-              <Reveal delay={index * 70} key={item.index}>
-                <div className="philosophy-row">
-                  <div className="philosophy-row-head">
-                    <span className="philosophy-index">{item.index}</span>
-                    <h3>{item.title}</h3>
-                  </div>
-                  <p>{item.body}</p>
-                </div>
+              <Reveal delay={index * 70} key={item.index} className="philosophy-row">
+                <span className="philosophy-index">{item.index}</span>
+                <h3>{item.title}</h3>
+                <p>{item.body}</p>
               </Reveal>
             ))}
           </div>
