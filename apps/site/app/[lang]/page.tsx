@@ -24,7 +24,7 @@ export default async function HomePage({ params }: PageProps<"/[lang]">) {
           <h1 className="hero-title">
             {dict.hero.titleLines.map((line, index) => (
               <span className="line" key={line}>
-                <span style={riseDelay(index * 90)}>{index === 1 ? <em>{line}</em> : line}</span>
+                <span style={riseDelay(index * 90)}>{line}</span>
               </span>
             ))}
           </h1>
@@ -39,17 +39,6 @@ export default async function HomePage({ params }: PageProps<"/[lang]">) {
                   {dict.hero.ctaPrimary}
                 </Button>
                 <Button href={`/${lang}/services/`}>{dict.hero.ctaSecondary}</Button>
-              </div>
-            </Reveal>
-
-            <Reveal delay={200}>
-              <div className="hero-meta">
-                {dict.hero.meta.map((item) => (
-                  <div key={item.label}>
-                    <strong>{item.value}</strong>
-                    <span>{item.label}</span>
-                  </div>
-                ))}
               </div>
             </Reveal>
           </div>

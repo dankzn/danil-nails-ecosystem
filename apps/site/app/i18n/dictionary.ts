@@ -20,7 +20,6 @@ export type Dictionary = {
     lede: string;
     ctaPrimary: string;
     ctaSecondary: string;
-    meta: { value: string; label: string }[];
   };
   marquee: string[];
   philosophy: {

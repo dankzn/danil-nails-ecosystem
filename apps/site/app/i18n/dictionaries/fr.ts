@@ -4,7 +4,7 @@ export const fr: Dictionary = {
   meta: {
     title: "Danil Nails Studio — manucure haut de gamme",
     description:
-      "Danil Nails Studio : travail précis, protocole stérile, réservation — à la prochaine étape."
+      "Danil Nails Studio : travail précis, protocole stérile, réservation — à la prochaine étape"
   },
   nav: {
     home: "Accueil",
@@ -19,15 +19,10 @@ export const fr: Dictionary = {
     logout: "Se déconnecter"
   },
   hero: {
-    titleLines: ["Une précision", "qui se voit", "au bout des doigts"],
-    lede: "Danil Nails Studio, c'est un travail précis, une attention minutieuse aux détails et un planning sans précipitation : chaque cliente dispose exactement du temps nécessaire pour un résultat impeccable.",
+    titleLines: ["Une précision", "qui se voit", "dans chaque détail"],
+    lede: "Danil Nails Studio, c'est un travail précis, une attention minutieuse aux détails et un planning où chaque cliente dispose exactement du temps nécessaire pour un résultat impeccable",
     ctaPrimary: "Réserver",
-    ctaSecondary: "Voir les prestations",
-    meta: [
-      { value: "3", label: "Formats de prestation" },
-      { value: "60–120", label: "Minutes par prestation" },
-      { value: "100%", label: "Réservations confirmées à la main" }
-    ]
+    ctaSecondary: "Voir les prestations"
   },
   marquee: ["Manucure", "Vernis semi-permanent", "Manucure japonaise", "Stérilité", "Réservations confirmées"],
   philosophy: {
@@ -38,17 +33,17 @@ export const fr: Dictionary = {
       {
         index: "01",
         title: "Attention personnelle",
-        body: "Ni chaîne de production, ni réceptionniste entre vous et le maître — vous travaillez directement avec la personne qui réalise votre manucure."
+        body: "Ni chaîne de production, ni réceptionniste entre vous et le maître — vous travaillez directement avec la personne qui réalise votre manucure"
       },
       {
         index: "02",
         title: "Réservations validées à la main",
-        body: "Chaque réservation est confirmée en personne, jamais automatiquement — c'est ainsi que le planning reste sans chevauchement ni précipitation."
+        body: "Chaque réservation est confirmée en personne, jamais automatiquement — c'est ainsi que le planning reste sans chevauchement"
       },
       {
         index: "03",
         title: "Protocole stérile",
-        body: "Les instruments sont traités entre chaque cliente selon le protocole standard du studio — c'est la base, pas une option."
+        body: "Les instruments sont traités entre chaque cliente selon le protocole standard du studio — c'est la base, pas une option"
       }
     ]
   },
@@ -56,19 +51,19 @@ export const fr: Dictionary = {
     servicesKicker: "Prestations",
     servicesHeadingPre: "Trois formats, ",
     servicesHeadingEm: "sans superflu",
-    servicesLede: "Le tarif est confirmé au moment de la réservation — nous le mettrons à jour ici dès qu'il sera fixé.",
+    servicesLede: "Le tarif est confirmé au moment de la réservation — nous le mettrons à jour ici dès qu'il sera fixé",
     servicesCta: "Voir toutes les prestations",
     contactKicker: "Réservation",
     contactHeadingPre: "Réservez ",
     contactHeadingEm: "en ligne",
-    contactLede: "Choisissez une prestation, un maître et un horaire — la demande part tout de suite, et nous la confirmons en personne.",
+    contactLede: "Choisissez une prestation, un maître et un horaire — la demande part tout de suite, et nous la confirmons en personne",
     contactCta: "Aller à la réservation"
   },
   services: {
     kicker: "Prestations",
     headingPre: "Trois formats, ",
     headingEm: "sans superflu",
-    lede: "Le tarif est confirmé au moment de la réservation — nous le mettrons à jour ici dès qu'il sera fixé.",
+    lede: "Le tarif est confirmé au moment de la réservation — nous le mettrons à jour ici dès qu'il sera fixé",
     priceLabel: "Sur réservation",
     items: [
       { title: "Manucure sans vernis", duration: "60 min", note: "Forme, cuticules, soin" },
@@ -80,7 +75,7 @@ export const fr: Dictionary = {
     kicker: "Réalisations",
     headingPre: "Une palette ",
     headingEm: "que nous aimons",
-    lede: "Les photos des réalisations apparaîtront ici au fil des prises de vue. Pour l'instant, les teintes que le studio utilise le plus souvent.",
+    lede: "Les photos des réalisations apparaîtront ici au fil des prises de vue. Pour l'instant, les teintes que le studio utilise le plus souvent",
     items: [
       { label: "Grenat chaud" },
       { label: "Porcelaine lait" },
@@ -96,14 +91,14 @@ export const fr: Dictionary = {
     headingEm: "visible dans les détails",
     name: "Danil Afliatov",
     role: "Fondateur et maître manucure",
-    bio: "Reçoit les clientes en personne, gère lui-même le planning et répond de la qualité de chaque manucure — de la première consultation jusqu'à la finition.",
+    bio: "Reçoit les clientes en personne, gère lui-même le planning et répond de la qualité de chaque manucure — de la première consultation jusqu'à la finition",
     facts: [{ value: "3", label: "formats de prestation" }]
   },
   contact: {
     kicker: "Réservation",
     headingPre: "Réservez ",
     headingEm: "en ligne",
-    lede: "Choisissez une prestation, un maître et un horaire. Chaque réservation est confirmée en personne, jamais automatiquement — nous vous contacterons pour confirmer l'heure. Le bot Telegram de réservation arrive à la prochaine étape."
+    lede: "Choisissez une prestation, un maître et un horaire. Chaque réservation est confirmée en personne, jamais automatiquement — nous vous contacterons pour confirmer l'heure. Le bot Telegram de réservation arrive à la prochaine étape"
   },
   booking: {
     serviceLabel: "Prestation",
@@ -122,7 +117,7 @@ export const fr: Dictionary = {
     submitLabel: "Envoyer la demande",
     submittingLabel: "Envoi…",
     successTitle: "Demande envoyée",
-    successBody: "Nous vous contacterons pour confirmer votre réservation — l'heure définitive est fixée après confirmation manuelle.",
+    successBody: "Nous vous contacterons pour confirmer votre réservation — l'heure définitive est fixée après confirmation manuelle",
     errorInvalid: "Merci de vérifier les champs remplis",
     errorSlotTaken: "Ce créneau vient d'être pris — choisissez-en un autre",
     errorUnavailable: "Le service est temporairement indisponible — réessayez bientôt",
@@ -132,7 +127,7 @@ export const fr: Dictionary = {
     kicker: "Compte",
     headingPre: "Créer votre ",
     headingEm: "compte",
-    lede: "Un compte permet de voir vos réservations et votre historique de visites. Vous pouvez aussi réserver une manucure sans vous inscrire — sur la page de réservation.",
+    lede: "Un compte permet de voir vos réservations et votre historique de visites. Vous pouvez aussi réserver une manucure sans vous inscrire — sur la page de réservation",
     fullNameLabel: "Nom complet",
     phoneLabel: "Téléphone",
     emailLabel: "Email",
@@ -142,7 +137,7 @@ export const fr: Dictionary = {
     submitLabel: "Créer le compte",
     submittingLabel: "Création du compte…",
     successTitle: "Compte créé",
-    successBody: "Bienvenue ! Un espace personnel avec vos réservations arrivera ici à la prochaine étape.",
+    successBody: "Bienvenue ! Un espace personnel avec vos réservations arrivera ici à la prochaine étape",
     errorPasswordMismatch: "Les mots de passe ne correspondent pas",
     errorInvalid: "Merci de vérifier les champs remplis",
     errorExists: "Un compte avec cet email ou ce téléphone existe déjà",
@@ -153,7 +148,7 @@ export const fr: Dictionary = {
     kicker: "Compte",
     headingPre: "Connectez-vous à votre ",
     headingEm: "compte",
-    lede: "Saisissez l'email et le mot de passe utilisés lors de l'inscription.",
+    lede: "Saisissez l'email et le mot de passe utilisés lors de l'inscription",
     emailLabel: "Email",
     passwordLabel: "Mot de passe",
     submitLabel: "Se connecter",
@@ -168,15 +163,15 @@ export const fr: Dictionary = {
     kicker: "Compte",
     heading: "Votre compte",
     loadingLabel: "Chargement…",
-    signedOutMessage: "Connectez-vous pour voir votre espace personnel.",
+    signedOutMessage: "Connectez-vous pour voir votre espace personnel",
     loginLink: "Se connecter",
     emailLabel: "Email",
     phoneLabel: "Téléphone",
     bookingsHeading: "Vos réservations",
-    bookingsPlaceholder: "Vos réservations apparaîtront ici — cette partie de l'espace arrive à la prochaine étape.",
+    bookingsPlaceholder: "Vos réservations apparaîtront ici — cette partie de l'espace arrive à la prochaine étape",
     logoutLabel: "Se déconnecter",
     allergiesHeading: "Allergies et sensibilités",
-    allergiesLede: "L'administrateur et votre maître voient ceci avant votre visite — signalez tout ce qui compte pour une manucure sans risque.",
+    allergiesLede: "L'administrateur et votre maître voient ceci avant votre visite — signalez tout ce qui compte pour une manucure sans risque",
     noKnownAllergiesLabel: "Je n'ai aucune allergie connue",
     customAllergyLabel: "Autre allergène",
     customAllergyPlaceholder: "Décrivez-le avec vos propres mots",
@@ -188,7 +183,7 @@ export const fr: Dictionary = {
     allergiesErrorNetwork: "Impossible de contacter le serveur — vérifiez votre connexion"
   },
   footer: {
-    tagline: "Un travail précis et une attention minutieuse à chaque rendez-vous.",
+    tagline: "Un travail précis et une attention minutieuse à chaque rendez-vous",
     navLabel: "Navigation",
     studioLabel: "Studio",
     studioCity: "",
