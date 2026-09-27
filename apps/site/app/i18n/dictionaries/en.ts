@@ -24,7 +24,6 @@ export const en: Dictionary = {
     ctaPrimary: "Book a visit",
     ctaSecondary: "See services"
   },
-  marquee: ["Manicure", "Gel polish", "Japanese manicure", "Sterility", "Confirmed bookings"],
   philosophy: {
     kicker: "Approach",
     headingPre: "Three things ",

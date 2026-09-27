@@ -24,7 +24,6 @@ export const fr: Dictionary = {
     ctaPrimary: "Réserver",
     ctaSecondary: "Voir les prestations"
   },
-  marquee: ["Manucure", "Vernis semi-permanent", "Manucure japonaise", "Stérilité", "Réservations confirmées"],
   philosophy: {
     kicker: "Approche",
     headingPre: "Trois piliers ",

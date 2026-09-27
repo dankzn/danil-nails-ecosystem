@@ -21,7 +21,6 @@ export type Dictionary = {
     ctaPrimary: string;
     ctaSecondary: string;
   };
-  marquee: string[];
   philosophy: {
     kicker: string;
     headingPre: string;

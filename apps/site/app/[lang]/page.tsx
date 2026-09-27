@@ -45,18 +45,6 @@ export default async function HomePage({ params }: PageProps<"/[lang]">) {
         </div>
       </section>
 
-      <div className="index-strip">
-        <div className="wrap">
-          <div className="index-strip-track">
-            {dict.marquee.map((item) => (
-              <span className="index-strip-item" key={item}>
-                {item}
-              </span>
-            ))}
-          </div>
-        </div>
-      </div>
-
       <section className="section">
         <div className="wrap">
           <Reveal>

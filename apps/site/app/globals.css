@@ -476,13 +476,16 @@ button {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  filter: saturate(0.72) brightness(0.86) contrast(1.02);
 }
 
 .hero-overlay {
   position: absolute;
   inset: 0;
   z-index: 1;
-  background: linear-gradient(180deg, rgba(20, 18, 14, 0.12) 0%, rgba(20, 18, 14, 0.72) 100%);
+  background:
+    linear-gradient(180deg, rgba(20, 18, 14, 0.18) 0%, rgba(20, 18, 14, 0.4) 32%, rgba(20, 18, 14, 0.78) 62%, rgba(20, 18, 14, 0.88) 100%),
+    linear-gradient(100deg, rgba(20, 18, 14, 0.55) 0%, rgba(20, 18, 14, 0.22) 46%, rgba(20, 18, 14, 0) 72%);
 }
 
 .hero-video-content {
@@ -493,6 +496,7 @@ button {
 
 .hero-video-content .hero-title {
   color: #f5f1e8;
+  text-shadow: 0 4px 24px rgba(10, 9, 7, 0.4);
 }
 
 .hero-video-content .hero-rule {
@@ -500,7 +504,8 @@ button {
 }
 
 .hero-video-content .hero-lede {
-  color: rgba(245, 241, 232, 0.82);
+  color: rgba(245, 241, 232, 0.88);
+  text-shadow: 0 2px 16px rgba(10, 9, 7, 0.35);
 }
 
 .hero-video-content .btn {
@@ -578,32 +583,6 @@ button {
   gap: 16px;
   margin-top: 34px;
   flex-wrap: wrap;
-}
-
-/* ---------- Index strip (replaces the marquee) ---------- */
-
-.index-strip {
-  border-bottom: 1px solid var(--paper-line);
-  background: var(--paper-raised);
-}
-
-.index-strip-track {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0;
-}
-
-.index-strip-item {
-  padding: 20px 28px;
-  font-size: 12.5px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--ink-soft);
-  border-right: 1px solid var(--paper-line);
-}
-
-.index-strip-item:last-child {
-  border-right: none;
 }
 
 /* ---------- Philosophy (numbered editorial list) ---------- */
@@ -1405,20 +1384,6 @@ button {
 
   .hero-video-content .hero-actions {
     margin-top: 24px;
-  }
-
-  .index-strip-track {
-    flex-direction: column;
-  }
-
-  .index-strip-item {
-    width: 100%;
-    border-right: none;
-    border-bottom: 1px solid var(--paper-line);
-  }
-
-  .index-strip-item:last-child {
-    border-bottom: none;
   }
 
   .service-row {

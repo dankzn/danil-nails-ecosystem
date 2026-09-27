@@ -24,7 +24,6 @@ export const es: Dictionary = {
     ctaPrimary: "Reservar",
     ctaSecondary: "Ver servicios"
   },
-  marquee: ["Manicura", "Esmalte semipermanente", "Manicura japonesa", "Esterilidad", "Reservas confirmadas"],
   philosophy: {
     kicker: "Enfoque",
     headingPre: "Tres cosas ",
