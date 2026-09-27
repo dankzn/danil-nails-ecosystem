@@ -1,18 +1,18 @@
 :root {
-  --paper: #f4f2ec;
-  --paper-raised: #ece8de;
-  --paper-deep: #ddd7c8;
-  --paper-line: rgba(26, 24, 19, 0.13);
-  --paper-line-soft: rgba(26, 24, 19, 0.06);
+  --paper: #f5f4f2;
+  --paper-raised: #ecebe8;
+  --paper-deep: #dbd9d4;
+  --paper-line: rgba(20, 20, 19, 0.12);
+  --paper-line-soft: rgba(20, 20, 19, 0.06);
 
-  --ink: #262420;
-  --ink-soft: #5a5648;
-  --ink-faint: #938d7c;
+  --ink: #211f1e;
+  --ink-soft: #524f4a;
+  --ink-faint: #8a8781;
 
-  --clay: #4a463b;
-  --clay-deep: #35322a;
+  --clay: #45433c;
+  --clay-deep: #322f2a;
 
-  --bronze: #8a6a3a;
+  --bronze: #6e6a5e;
 
   --container: 1220px;
   --edge: clamp(20px, 5vw, 64px);
@@ -245,9 +245,9 @@ button {
   right: 0;
   --header-bg: transparent;
   --header-border: transparent;
-  --header-ink: #f5f1e8;
-  --header-ink-soft: rgba(245, 241, 232, 0.82);
-  --header-ink-faint: rgba(245, 241, 232, 0.65);
+  --header-ink: #f3f2ef;
+  --header-ink-soft: rgba(243, 242, 239, 0.82);
+  --header-ink-faint: rgba(243, 242, 239, 0.65);
 }
 
 .site-header-fixed:has(+ .has-hero-video) {
@@ -483,7 +483,7 @@ button {
   position: absolute;
   inset: 0;
   z-index: 1;
-  background: linear-gradient(180deg, rgba(20, 18, 14, 0.1) 0%, rgba(20, 18, 14, 0.45) 100%);
+  background: linear-gradient(180deg, rgba(18, 17, 16, 0.1) 0%, rgba(18, 17, 16, 0.45) 100%);
 }
 
 .hero-video-content {
@@ -494,8 +494,8 @@ button {
 }
 
 .hero-video-content .hero-title {
-  color: #f5f1e8;
-  text-shadow: 0 2px 20px rgba(10, 9, 7, 0.45);
+  color: #f3f2ef;
+  text-shadow: 0 2px 20px rgba(9, 8, 7, 0.45);
 }
 
 .hero-actions-video {
@@ -503,12 +503,12 @@ button {
 }
 
 .hero-video-content .btn {
-  border-color: #f5f1e8;
-  color: #f5f1e8;
+  border-color: #f3f2ef;
+  color: #f3f2ef;
 }
 
 .hero-video-content .btn::before {
-  background: #f5f1e8;
+  background: #f3f2ef;
 }
 
 .hero-video-content .btn:hover span {
@@ -516,7 +516,7 @@ button {
 }
 
 .hero-video-content .btn-solid {
-  background: #f5f1e8;
+  background: #f3f2ef;
   color: var(--ink);
 }
 
@@ -529,7 +529,7 @@ button {
 }
 
 .hero-video-content .btn-solid:hover span {
-  color: #f5f1e8;
+  color: #f3f2ef;
 }
 
 .hero-title {
