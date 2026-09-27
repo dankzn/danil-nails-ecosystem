@@ -32,7 +32,7 @@ export const es: Dictionary = {
       {
         index: "01",
         title: "Atención personal",
-        body: "Sin cadena de producción ni recepcionistas entre tú y el maestro: trabajas directamente con quien hace tu manicura"
+        body: "Durante tu cita, tu especialista trabaja solo contigo — sin clientas en paralelo ni prisas entre una y otra"
       },
       {
         index: "02",

@@ -32,7 +32,7 @@ export const fr: Dictionary = {
       {
         index: "01",
         title: "Attention personnelle",
-        body: "Ni chaîne de production, ni réceptionniste entre vous et le maître — vous travaillez directement avec la personne qui réalise votre manucure"
+        body: "Pendant votre rendez-vous, votre spécialiste ne travaille qu'avec vous — aucune cliente en parallèle, aucune précipitation entre deux rendez-vous"
       },
       {
         index: "02",

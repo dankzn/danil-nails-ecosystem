@@ -32,7 +32,7 @@ export const en: Dictionary = {
       {
         index: "01",
         title: "Personal attention",
-        body: "No conveyor belt, no front-desk queue between you and the master — you work directly with the person doing your nails"
+        body: "During your appointment, your specialist works with you and only you — no parallel clients, no rushing between chairs"
       },
       {
         index: "02",
