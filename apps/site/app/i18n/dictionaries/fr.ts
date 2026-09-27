@@ -36,13 +36,13 @@ export const fr: Dictionary = {
       },
       {
         index: "02",
-        title: "Réservations validées à la main",
-        body: "Chaque réservation est confirmée en personne, jamais automatiquement — c'est ainsi que le planning reste sans chevauchement"
+        title: "Une approche sur mesure",
+        body: "La forme, la longueur et le style sont choisis à chaque fois pour votre main et vos goûts, jamais selon un modèle"
       },
       {
         index: "03",
-        title: "Protocole stérile",
-        body: "Les instruments sont traités entre chaque cliente selon le protocole standard du studio — c'est la base, pas une option"
+        title: "Le souci du détail",
+        body: "La beauté se joue dans les détails — de la préparation des cuticules à la toute dernière touche de vernis"
       }
     ]
   },

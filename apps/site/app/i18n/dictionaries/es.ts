@@ -36,13 +36,13 @@ export const es: Dictionary = {
       },
       {
         index: "02",
-        title: "Reservas confirmadas a mano",
-        body: "Cada reserva se confirma en persona, no de forma automática — así mantenemos la agenda sin solapes"
+        title: "Un enfoque personalizado",
+        body: "La forma, el largo y el estilo se eligen cada vez para tu mano y tu gusto, nunca por plantilla"
       },
       {
         index: "03",
-        title: "Protocolo estéril",
-        body: "El instrumental se procesa entre cada clienta según el protocolo estándar del estudio — es la base, no una opción"
+        title: "Atención al detalle",
+        body: "La belleza está en los detalles — desde la preparación de la cutícula hasta el último toque de esmalte"
       }
     ]
   },
