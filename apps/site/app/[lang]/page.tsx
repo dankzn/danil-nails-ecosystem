@@ -10,11 +10,10 @@ function riseDelay(ms: number): CSSProperties {
   return { "--rise-delay": `${ms}ms` } as CSSProperties;
 }
 
-const principleVideos = [
-  { src: "/videos/emphasis-detail.mp4", aspect: "2160 / 4096" },
-  { src: "/videos/precision-detail.mp4", aspect: "2160 / 4096" },
-  { src: "/videos/luxury-detail.mp4", aspect: "1920 / 1080" }
-];
+// All three are pre-cropped and graded to the same 4:5 frame (see
+// apps/site/public/videos) so they read as one consistent set rather than
+// three mismatched clips.
+const principleVideos = ["/videos/emphasis-detail.mp4", "/videos/precision-detail.mp4", "/videos/luxury-detail.mp4"];
 
 export default async function HomePage({ params }: PageProps<"/[lang]">) {
   const { lang } = await params;
@@ -91,8 +90,7 @@ export default async function HomePage({ params }: PageProps<"/[lang]">) {
                   {video ? (
                     <video
                       className="philosophy-principle-video"
-                      src={video.src}
-                      style={{ aspectRatio: video.aspect }}
+                      src={video}
                       autoPlay
                       muted
                       loop

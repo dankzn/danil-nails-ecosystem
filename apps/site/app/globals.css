@@ -730,8 +730,7 @@ button {
 
 .philosophy-principle-video {
   width: 100%;
-  /* aspect-ratio comes from an inline style — the clips aren't all the
-     same orientation (two portrait, one landscape). */
+  aspect-ratio: 4 / 5;
   object-fit: cover;
   filter: saturate(0.82) brightness(0.94) contrast(1.03);
 }
