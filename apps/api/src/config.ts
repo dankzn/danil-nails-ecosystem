@@ -16,7 +16,10 @@ const environmentSchema = z.object({
   CRM_STATIC_DIR: z.string().min(1).optional(),
   DATABASE_URL: z.string().min(1).optional(),
   SESSION_COOKIE_NAME: z.string().min(1).default("danil_nails_session"),
-  SESSION_TTL_DAYS: z.coerce.number().int().min(1).max(365).default(30)
+  SESSION_TTL_DAYS: z.coerce.number().int().min(1).max(365).default(30),
+  SUPABASE_URL: z.url().optional(),
+  SUPABASE_SERVICE_ROLE_KEY: z.string().min(1).optional(),
+  SUPABASE_STAFF_PHOTOS_BUCKET: z.string().min(1).default("staff-photos")
 });
 
 export const environment = environmentSchema.parse(process.env);

@@ -36,6 +36,9 @@ CRM разворачивается как один бесплатный Render W
 | `SESSION_COOKIE_NAME` | `danil_nails_crm_session` |
 | `SESSION_TTL_DAYS` | `30` |
 | `SITE_PUBLIC_URL` | фактический HTTPS URL публичного сайта на Vercel (см. `docs/08-vercel-site-deployment.md`), без завершающего `/` |
+| `SUPABASE_URL` | опционально, нужен для загрузки фото сотрудников (см. `docs/06-supabase-setup.md`, раздел про Storage) |
+| `SUPABASE_SERVICE_ROLE_KEY` | опционально, `service_role` ключ проекта; секрет, только в Render |
+| `SUPABASE_STAFF_PHOTOS_BUCKET` | опционально, по умолчанию `staff-photos` |
 
 `NEXT_PUBLIC_API_URL` в production не задаётся: CRM обращается к API через тот же origin.
 

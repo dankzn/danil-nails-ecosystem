@@ -31,6 +31,7 @@ export function registerAvailabilityRoutes(
         id: true,
         displayName: true,
         bio: true,
+        photoUrl: true,
         position: {
           select: { titleRu: true, titleEn: true, titleEs: true, titleFr: true }
         }

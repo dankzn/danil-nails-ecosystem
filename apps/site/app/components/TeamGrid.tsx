@@ -16,6 +16,7 @@ type StaffMember = {
   id: string;
   displayName: string;
   bio: string | null;
+  photoUrl: string | null;
   position: PositionTitle | null;
 };
 
@@ -69,14 +70,18 @@ export function TeamGrid({ lang, heading, loadingLabel, emptyLabel }: TeamGridPr
               <Reveal delay={index * 60} key={member.id}>
                 <article className="team-card">
                   <div className="team-card-portrait">
-                    <span>
-                      {member.displayName
-                        .split(" ")
-                        .map((part) => part.charAt(0))
-                        .filter((letter) => letter.length > 0)
-                        .slice(0, 2)
-                        .join("")}
-                    </span>
+                    {member.photoUrl ? (
+                      <img alt={member.displayName} src={member.photoUrl} />
+                    ) : (
+                      <span>
+                        {member.displayName
+                          .split(" ")
+                          .map((part) => part.charAt(0))
+                          .filter((letter) => letter.length > 0)
+                          .slice(0, 2)
+                          .join("")}
+                      </span>
+                    )}
                   </div>
                   <h3 className="team-card-name">{member.displayName}</h3>
                   {role ? <p className="team-card-role">{role}</p> : null}

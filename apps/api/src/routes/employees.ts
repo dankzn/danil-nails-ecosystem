@@ -14,6 +14,11 @@ import type { FastifyInstance, FastifyReply } from "fastify";
 import { z } from "zod";
 import { authorize } from "../auth/session.js";
 import { currentMonthKey, payrollPreview } from "../payroll/calculation.js";
+import {
+  StorageNotConfiguredError,
+  isAllowedPhotoMimeType,
+  uploadStaffPhoto
+} from "../storage/supabase-storage.js";
 
 const dateSchema = z.iso.date().nullable().optional();
 const optionalEmailSchema = z.union([z.email(), z.literal("")]).nullable().optional();
@@ -539,6 +544,43 @@ export function registerEmployeeRoutes(
         }
         if (isForeignKeyConstraintError(error)) {
           return reply.code(404).send({ error: "employee_reference_not_found" });
+        }
+        throw error;
+      }
+    }
+  );
+
+  server.post(
+    "/v1/owner/employees/:id/photo",
+    { preHandler: ownerGuard },
+    async (request, reply) => {
+      const parameters = idSchema.safeParse(request.params);
+      if (!parameters.success) return sendInvalidPayload(reply);
+
+      const current = await database!.staffProfile.findUnique({
+        where: { id: parameters.data.id }
+      });
+      if (!current) return reply.code(404).send({ error: "employee_not_found" });
+
+      const file = await request.file();
+      if (!file) return sendInvalidPayload(reply);
+      if (!isAllowedPhotoMimeType(file.mimetype)) {
+        return reply.code(400).send({ error: "unsupported_photo_type" });
+      }
+
+      const data = await file.toBuffer();
+
+      try {
+        const photoUrl = await uploadStaffPhoto(current.id, data, file.mimetype);
+        const employee = await database!.staffProfile.update({
+          where: { id: current.id },
+          data: { photoUrl },
+          include: employeeDetailInclude
+        });
+        return { employee: serializeEmployee(employee) };
+      } catch (error) {
+        if (error instanceof StorageNotConfiguredError) {
+          return reply.code(503).send({ error: "storage_not_configured" });
         }
         throw error;
       }

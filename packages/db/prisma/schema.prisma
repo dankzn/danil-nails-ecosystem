@@ -287,6 +287,7 @@ model StaffProfile {
   emergencyContactName String?
   emergencyContactPhone String?
   isBookable           Boolean          @default(true)
+  photoUrl             String?
   createdAt            DateTime         @default(now())
   updatedAt            DateTime         @updatedAt
 

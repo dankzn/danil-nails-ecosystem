@@ -77,6 +77,7 @@ type Employee = {
   countryId: string | null;
   country: NamedRef | null;
   bio: string | null;
+  photoUrl: string | null;
   employmentStatus: EmploymentStatus;
   employmentType: EmploymentType;
   hiredAt: string | null;
@@ -399,6 +400,12 @@ function employeeErrorMessage(error: unknown) {
     if (error.code === "invalid_payroll_payment_amount") {
       return "Сумма выплаты превышает остаток к выплате.";
     }
+    if (error.code === "storage_not_configured") {
+      return "Загрузка фото не настроена на сервере (нет доступа к хранилищу).";
+    }
+    if (error.code === "unsupported_photo_type") {
+      return "Поддерживаются только фото в формате JPEG, PNG или WebP.";
+    }
     if (error.status === 401 || error.status === 403) {
       return "Этот раздел доступен только владельцу.";
     }
@@ -466,6 +473,7 @@ export default function EmployeesPage() {
   );
   const [selectedEmployee, setSelectedEmployee] = useState<EmployeeDetail | null>(null);
   const [isDetailLoading, setIsDetailLoading] = useState(false);
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [detailTab, setDetailTab] = useState<DetailTab>("profile");
   const [actionTarget, setActionTarget] = useState<{
     employee: Employee;
@@ -586,6 +594,28 @@ export default function EmployeesPage() {
       setIsDetailLoading(false);
     }
   }, []);
+
+  const uploadEmployeePhoto = useCallback(
+    async (employeeId: string, file: File) => {
+      setIsUploadingPhoto(true);
+      setFormError(null);
+      try {
+        const body = new FormData();
+        body.append("file", file);
+        const response = await apiRequest<{ employee: EmployeeDetail }>(
+          `/v1/owner/employees/${employeeId}/photo`,
+          { method: "POST", body }
+        );
+        setSelectedEmployee(response.employee);
+        await loadEmployees(search, statusFilter);
+      } catch (error) {
+        setFormError(employeeErrorMessage(error));
+      } finally {
+        setIsUploadingPhoto(false);
+      }
+    },
+    [loadEmployees, search, statusFilter]
+  );
 
   const loadPayroll = useCallback(async (employeeId: string, month: string) => {
     setIsPayrollLoading(true);
@@ -1142,7 +1172,13 @@ export default function EmployeesPage() {
                     <tr key={employee.id}>
                       <td>
                         <div className="employee-name-cell">
-                          <span className="employee-avatar">{initials(employee.displayName)}</span>
+                          <span className="employee-avatar">
+                            {employee.photoUrl ? (
+                              <img alt="" src={employee.photoUrl} />
+                            ) : (
+                              initials(employee.displayName)
+                            )}
+                          </span>
                           <span>
                             <strong>{employee.displayName}</strong>
                             <small>{employee.user.email ?? employee.user.phone ?? "Без контакта"}</small>
@@ -1561,9 +1597,27 @@ export default function EmployeesPage() {
           {selectedEmployee ? (
             <div className="employee-detail-shell">
               <div className="employee-profile-summary">
-                <span className="employee-profile-avatar">
-                  {initials(selectedEmployee.displayName)}
-                </span>
+                <label className="employee-profile-avatar employee-profile-avatar-upload">
+                  {selectedEmployee.photoUrl ? (
+                    <img alt={selectedEmployee.displayName} src={selectedEmployee.photoUrl} />
+                  ) : (
+                    <span>{initials(selectedEmployee.displayName)}</span>
+                  )}
+                  <input
+                    accept="image/png,image/jpeg,image/webp"
+                    disabled={isUploadingPhoto}
+                    hidden
+                    onChange={(event) => {
+                      const file = event.target.files?.[0];
+                      event.target.value = "";
+                      if (file) void uploadEmployeePhoto(selectedEmployee.id, file);
+                    }}
+                    type="file"
+                  />
+                  <span className="employee-profile-avatar-hint">
+                    {isUploadingPhoto ? "Загружаем…" : "Изменить фото"}
+                  </span>
+                </label>
                 <div>
                   <strong>{selectedEmployee.legalName ?? selectedEmployee.displayName}</strong>
                   <span>

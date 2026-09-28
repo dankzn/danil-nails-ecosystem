@@ -1,5 +1,6 @@
 import cookie from "@fastify/cookie";
 import cors from "@fastify/cors";
+import multipart from "@fastify/multipart";
 import rateLimit from "@fastify/rate-limit";
 import staticFiles from "@fastify/static";
 import type { DatabaseClient } from "@danil-nails/db";
@@ -58,6 +59,9 @@ export async function buildServer(
   });
   await server.register(rateLimit, {
     global: false
+  });
+  await server.register(multipart, {
+    limits: { fileSize: 5 * 1024 * 1024, files: 1 }
   });
   server.addHook("onSend", async (_request, reply, payload) => {
     reply.header("x-robots-tag", "noindex, nofollow, noarchive");
