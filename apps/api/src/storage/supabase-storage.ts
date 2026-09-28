@@ -42,22 +42,37 @@ export async function uploadStaffPhoto(
 
   const bucket = environment.SUPABASE_STAFF_PHOTOS_BUCKET;
   const path = `${staffProfileId}-${Date.now()}.${extensionForMimeType(mimeType)}`;
+  const uploadUrl = `${supabaseUrl}/storage/v1/object/${bucket}/${path}`;
 
-  const response = await fetch(`${supabaseUrl}/storage/v1/object/${bucket}/${path}`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${serviceRoleKey}`,
-      apikey: serviceRoleKey,
-      "Content-Type": mimeType,
-      "x-upsert": "true"
-    },
-    body: new Uint8Array(data)
-  });
+  // Transient DNS/network blips against Supabase's edge shouldn't fail a
+  // user-initiated upload outright — retry a couple of times before giving up.
+  let lastError: unknown;
+  for (let attempt = 0; attempt < 3; attempt++) {
+    if (attempt > 0) {
+      await new Promise((resolve) => setTimeout(resolve, 300 * attempt));
+    }
+    try {
+      const response = await fetch(uploadUrl, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${serviceRoleKey}`,
+          apikey: serviceRoleKey,
+          "Content-Type": mimeType,
+          "x-upsert": "true"
+        },
+        body: new Uint8Array(data)
+      });
 
-  if (!response.ok) {
-    const body = await response.text().catch(() => "");
-    throw new Error(`supabase_storage_upload_failed: ${response.status} ${body}`);
+      if (!response.ok) {
+        const body = await response.text().catch(() => "");
+        throw new Error(`supabase_storage_upload_failed: ${response.status} ${body}`);
+      }
+
+      return `${supabaseUrl}/storage/v1/object/public/${bucket}/${path}`;
+    } catch (error) {
+      lastError = error;
+    }
   }
 
-  return `${supabaseUrl}/storage/v1/object/public/${bucket}/${path}`;
+  throw lastError;
 }
