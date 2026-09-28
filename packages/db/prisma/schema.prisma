@@ -312,7 +312,10 @@ model StaffProfile {
 
 model Position {
   id         String   @id @default(cuid())
-  title      String   @unique
+  titleRu    String   @unique
+  titleEn    String?
+  titleEs    String?
+  titleFr    String?
   isArchived Boolean  @default(false)
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt

@@ -1592,6 +1592,11 @@ td strong {
   min-width: 220px;
 }
 
+.directory-add-fields-position input {
+  min-width: 160px;
+  flex: 1 1 160px;
+}
+
 .segmented-control {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

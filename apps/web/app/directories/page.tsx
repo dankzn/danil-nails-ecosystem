@@ -7,9 +7,17 @@ import { Modal } from "../ui/modal";
 
 type Entry = { id: string; title: string; isArchived: boolean };
 type CityEntry = Entry & { countryId: string; country: { id: string; title: string } };
+type PositionEntry = {
+  id: string;
+  titleRu: string;
+  titleEn: string | null;
+  titleEs: string | null;
+  titleFr: string | null;
+  isArchived: boolean;
+};
 
 type Directories = {
-  positions: Entry[];
+  positions: PositionEntry[];
   countries: Entry[];
   cities: CityEntry[];
   organizations: Entry[];
@@ -18,14 +26,15 @@ type Directories = {
 };
 
 const simpleTabs = [
-  { key: "positions", label: "Должности", kind: "positions" },
   { key: "countries", label: "Страны", kind: "countries" },
   { key: "organizations", label: "Организации", kind: "organizations" },
   { key: "orgUnitTypes", label: "Типы оргобъектов", kind: "org-unit-types" },
   { key: "managerTypes", label: "Типы руководителей", kind: "manager-types" }
 ] as const;
 type SimpleTabKey = (typeof simpleTabs)[number]["key"];
-type TabKey = SimpleTabKey | "cities";
+type TabKey = SimpleTabKey | "cities" | "positions";
+
+const emptyPositionForm = { titleRu: "", titleEn: "", titleEs: "", titleFr: "" };
 
 const tabs: Array<{ key: TabKey; label: string }> = [
   { key: "positions", label: "Должности" },
@@ -57,11 +66,14 @@ export default function DirectoriesPage() {
   const [notice, setNotice] = useState<string | null>(null);
   const [newTitle, setNewTitle] = useState("");
   const [newCityCountryId, setNewCityCountryId] = useState("");
+  const [newPosition, setNewPosition] = useState(emptyPositionForm);
   const [formError, setFormError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [editingEntry, setEditingEntry] = useState<Entry | CityEntry | null>(null);
   const [editTitle, setEditTitle] = useState("");
   const [editCountryId, setEditCountryId] = useState("");
+  const [editingPosition, setEditingPosition] = useState<PositionEntry | null>(null);
+  const [editPosition, setEditPosition] = useState(emptyPositionForm);
 
   const load = useCallback(async () => {
     setIsLoading(true);
@@ -83,18 +95,55 @@ export default function DirectoriesPage() {
   useEffect(() => {
     setNewTitle("");
     setNewCityCountryId(data?.countries[0]?.id ?? "");
+    setNewPosition(emptyPositionForm);
     setFormError(null);
   }, [activeTab, data?.countries]);
 
   function entriesForTab(): Array<Entry | CityEntry> {
     if (!data) return [];
     if (activeTab === "cities") return data.cities;
+    if (activeTab === "positions") {
+      return data.positions.map((position) => ({
+        id: position.id,
+        title: position.titleRu,
+        isArchived: position.isArchived
+      }));
+    }
     const tab = simpleTabs.find((item) => item.key === activeTab);
     return tab ? data[tab.key] : [];
   }
 
   async function createEntry(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (activeTab === "positions") {
+      if (!newPosition.titleRu.trim()) {
+        setFormError("Введите название на русском.");
+        return;
+      }
+      setIsSaving(true);
+      setFormError(null);
+      setNotice(null);
+      try {
+        await apiRequest("/v1/owner/directories/positions", {
+          method: "POST",
+          body: JSON.stringify({
+            titleRu: newPosition.titleRu.trim(),
+            titleEn: newPosition.titleEn.trim() || null,
+            titleEs: newPosition.titleEs.trim() || null,
+            titleFr: newPosition.titleFr.trim() || null
+          })
+        });
+        setNewPosition(emptyPositionForm);
+        setNotice("Запись добавлена.");
+        await load();
+      } catch (error) {
+        setFormError(directoryErrorMessage(error));
+      } finally {
+        setIsSaving(false);
+      }
+      return;
+    }
+
     if (!newTitle.trim()) {
       setFormError("Введите название записи.");
       return;
@@ -131,10 +180,48 @@ export default function DirectoriesPage() {
   }
 
   function openEdit(entry: Entry | CityEntry) {
+    if (activeTab === "positions") {
+      const position = data?.positions.find((item) => item.id === entry.id);
+      if (!position) return;
+      setEditingPosition(position);
+      setEditPosition({
+        titleRu: position.titleRu,
+        titleEn: position.titleEn ?? "",
+        titleEs: position.titleEs ?? "",
+        titleFr: position.titleFr ?? ""
+      });
+      setFormError(null);
+      return;
+    }
     setEditingEntry(entry);
     setEditTitle(entry.title);
     setEditCountryId("countryId" in entry ? entry.countryId : "");
     setFormError(null);
+  }
+
+  async function savePositionEdit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!editingPosition || !editPosition.titleRu.trim()) return;
+    setIsSaving(true);
+    setFormError(null);
+    try {
+      await apiRequest(`/v1/owner/directories/positions/${editingPosition.id}`, {
+        method: "PATCH",
+        body: JSON.stringify({
+          titleRu: editPosition.titleRu.trim(),
+          titleEn: editPosition.titleEn.trim() || null,
+          titleEs: editPosition.titleEs.trim() || null,
+          titleFr: editPosition.titleFr.trim() || null
+        })
+      });
+      setEditingPosition(null);
+      setNotice("Запись обновлена.");
+      await load();
+    } catch (error) {
+      setFormError(directoryErrorMessage(error));
+    } finally {
+      setIsSaving(false);
+    }
   }
 
   async function saveEdit(event: FormEvent<HTMLFormElement>) {
@@ -171,7 +258,9 @@ export default function DirectoriesPage() {
       const path =
         activeTab === "cities"
           ? `/v1/owner/directories/cities/${entry.id}`
-          : `/v1/owner/directories/${simpleTabs.find((item) => item.key === activeTab)!.kind}/${entry.id}`;
+          : activeTab === "positions"
+            ? `/v1/owner/directories/positions/${entry.id}`
+            : `/v1/owner/directories/${simpleTabs.find((item) => item.key === activeTab)!.kind}/${entry.id}`;
       await apiRequest(path, {
         method: "PATCH",
         body: JSON.stringify({ isArchived: !entry.isArchived })
@@ -219,34 +308,78 @@ export default function DirectoriesPage() {
       ) : null}
 
       <section className="panel table-panel">
-        <form className="table-toolbar directory-add-row" onSubmit={createEntry}>
-          <div className="directory-add-fields">
-            <input
-              maxLength={160}
-              onChange={(event) => setNewTitle(event.target.value)}
-              placeholder="Название новой записи"
-              required
-              value={newTitle}
-            />
-            {activeTab === "cities" ? (
-              <select
-                onChange={(event) => setNewCityCountryId(event.target.value)}
-                value={newCityCountryId}
-              >
-                {(data?.countries ?? []).map((country) => (
-                  <option key={country.id} value={country.id}>
-                    {country.title}
-                  </option>
-                ))}
-              </select>
-            ) : null}
-          </div>
-          <button className="primary-button" disabled={isSaving} type="submit">
-            <Plus aria-hidden="true" size={15} />
-            Добавить
-          </button>
-        </form>
-        {formError && !editingEntry ? (
+        {activeTab === "positions" ? (
+          <form className="table-toolbar directory-add-row" onSubmit={createEntry}>
+            <div className="directory-add-fields directory-add-fields-position">
+              <input
+                maxLength={160}
+                onChange={(event) =>
+                  setNewPosition((form) => ({ ...form, titleRu: event.target.value }))
+                }
+                placeholder="Название (русский)"
+                required
+                value={newPosition.titleRu}
+              />
+              <input
+                maxLength={160}
+                onChange={(event) =>
+                  setNewPosition((form) => ({ ...form, titleEn: event.target.value }))
+                }
+                placeholder="English"
+                value={newPosition.titleEn}
+              />
+              <input
+                maxLength={160}
+                onChange={(event) =>
+                  setNewPosition((form) => ({ ...form, titleEs: event.target.value }))
+                }
+                placeholder="Español"
+                value={newPosition.titleEs}
+              />
+              <input
+                maxLength={160}
+                onChange={(event) =>
+                  setNewPosition((form) => ({ ...form, titleFr: event.target.value }))
+                }
+                placeholder="Français"
+                value={newPosition.titleFr}
+              />
+            </div>
+            <button className="primary-button" disabled={isSaving} type="submit">
+              <Plus aria-hidden="true" size={15} />
+              Добавить
+            </button>
+          </form>
+        ) : (
+          <form className="table-toolbar directory-add-row" onSubmit={createEntry}>
+            <div className="directory-add-fields">
+              <input
+                maxLength={160}
+                onChange={(event) => setNewTitle(event.target.value)}
+                placeholder="Название новой записи"
+                required
+                value={newTitle}
+              />
+              {activeTab === "cities" ? (
+                <select
+                  onChange={(event) => setNewCityCountryId(event.target.value)}
+                  value={newCityCountryId}
+                >
+                  {(data?.countries ?? []).map((country) => (
+                    <option key={country.id} value={country.id}>
+                      {country.title}
+                    </option>
+                  ))}
+                </select>
+              ) : null}
+            </div>
+            <button className="primary-button" disabled={isSaving} type="submit">
+              <Plus aria-hidden="true" size={15} />
+              Добавить
+            </button>
+          </form>
+        )}
+        {formError && !editingEntry && !editingPosition ? (
           <p className="feedback feedback-error" role="alert">
             {formError}
           </p>
@@ -327,6 +460,75 @@ export default function DirectoriesPage() {
           </div>
         )}
       </section>
+
+      {editingPosition ? (
+        <Modal
+          description="Изменения сразу применяются везде, где используется эта запись."
+          onClose={() => setEditingPosition(null)}
+          title="Изменить должность"
+        >
+          <form className="modal-form" onSubmit={savePositionEdit}>
+            <label className="form-field">
+              <span>Название (русский)</span>
+              <input
+                maxLength={160}
+                onChange={(event) =>
+                  setEditPosition((form) => ({ ...form, titleRu: event.target.value }))
+                }
+                required
+                value={editPosition.titleRu}
+              />
+            </label>
+            <label className="form-field">
+              <span>English</span>
+              <input
+                maxLength={160}
+                onChange={(event) =>
+                  setEditPosition((form) => ({ ...form, titleEn: event.target.value }))
+                }
+                value={editPosition.titleEn}
+              />
+            </label>
+            <label className="form-field">
+              <span>Español</span>
+              <input
+                maxLength={160}
+                onChange={(event) =>
+                  setEditPosition((form) => ({ ...form, titleEs: event.target.value }))
+                }
+                value={editPosition.titleEs}
+              />
+            </label>
+            <label className="form-field">
+              <span>Français</span>
+              <input
+                maxLength={160}
+                onChange={(event) =>
+                  setEditPosition((form) => ({ ...form, titleFr: event.target.value }))
+                }
+                value={editPosition.titleFr}
+              />
+            </label>
+            {formError ? (
+              <p className="feedback feedback-error" role="alert">
+                {formError}
+              </p>
+            ) : null}
+            <footer className="modal-actions">
+              <button
+                className="secondary-button"
+                onClick={() => setEditingPosition(null)}
+                type="button"
+              >
+                Отмена
+              </button>
+              <button className="primary-button" disabled={isSaving} type="submit">
+                {isSaving ? "Сохраняем…" : "Сохранить"}
+              </button>
+            </footer>
+          </form>
+        </Modal>
+      ) : null}
 
       {editingEntry ? (
         <Modal

@@ -54,13 +54,20 @@ type PayrollEntryType =
 type ServiceOption = { id: string; titleRu: string; isActive: boolean };
 
 type NamedRef = { id: string; title: string };
+type PositionRef = {
+  id: string;
+  titleRu: string;
+  titleEn: string | null;
+  titleEs: string | null;
+  titleFr: string | null;
+};
 
 type Employee = {
   id: string;
   displayName: string;
   legalName: string | null;
   positionId: string | null;
-  position: NamedRef | null;
+  position: PositionRef | null;
   primaryOrgUnitId: string | null;
   primaryOrgUnit: NamedRef | null;
   primaryOrganizationId: string | null;
@@ -432,7 +439,7 @@ export default function EmployeesPage() {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [services, setServices] = useState<ServiceOption[]>([]);
   const [directories, setDirectories] = useState<{
-    positions: NamedRef[];
+    positions: PositionRef[];
     countries: NamedRef[];
     cities: Array<NamedRef & { countryId: string }>;
     organizations: NamedRef[];
@@ -548,7 +555,7 @@ export default function EmployeesPage() {
       try {
         const [directoriesResponse, orgUnitsResponse] = await Promise.all([
           apiRequest<{
-            positions: NamedRef[];
+            positions: PositionRef[];
             countries: NamedRef[];
             cities: Array<NamedRef & { countryId: string }>;
             organizations: NamedRef[];
@@ -1143,7 +1150,7 @@ export default function EmployeesPage() {
                         </div>
                       </td>
                       <td>
-                        <span>{employee.position?.title ?? "Не указана"}</span>
+                        <span>{employee.position?.titleRu ?? "Не указана"}</span>
                         <small>
                           {roleLabels[employee.user.role]}
                           {employee.primaryOrgUnit
@@ -1254,7 +1261,7 @@ export default function EmployeesPage() {
                     <option value="">Не указана</option>
                     {directories.positions.map((position) => (
                       <option key={position.id} value={position.id}>
-                        {position.title}
+                        {position.titleRu}
                       </option>
                     ))}
                   </select>
@@ -1544,7 +1551,7 @@ export default function EmployeesPage() {
         <Modal
           description={
             selectedEmployee
-              ? `${selectedEmployee.position?.title ?? "Должность не указана"} · ${statusMeta[selectedEmployee.employmentStatus].label}`
+              ? `${selectedEmployee.position?.titleRu ?? "Должность не указана"} · ${statusMeta[selectedEmployee.employmentStatus].label}`
               : "Загружаем личное дело"
           }
           onClose={() => setSelectedEmployee(null)}

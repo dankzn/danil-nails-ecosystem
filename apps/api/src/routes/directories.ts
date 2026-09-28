@@ -4,7 +4,6 @@ import { z } from "zod";
 import { authorize } from "../auth/session.js";
 
 const simpleKinds = [
-  "positions",
   "countries",
   "organizations",
   "org-unit-types",
@@ -14,8 +13,6 @@ type SimpleKind = (typeof simpleKinds)[number];
 
 const delegateForKind = (database: DatabaseClient, kind: SimpleKind) => {
   switch (kind) {
-    case "positions":
-      return database.position;
     case "countries":
       return database.country;
     case "organizations":
@@ -37,6 +34,20 @@ const updateSchema = z.object({
   title: z.string().trim().min(2).max(160).optional(),
   isArchived: z.boolean().optional()
 });
+const positionCreateSchema = z.object({
+  titleRu: z.string().trim().min(2).max(160),
+  titleEn: z.string().trim().max(160).nullable().optional(),
+  titleEs: z.string().trim().max(160).nullable().optional(),
+  titleFr: z.string().trim().max(160).nullable().optional()
+});
+const positionUpdateSchema = z.object({
+  titleRu: z.string().trim().min(2).max(160).optional(),
+  titleEn: z.string().trim().max(160).nullable().optional(),
+  titleEs: z.string().trim().max(160).nullable().optional(),
+  titleFr: z.string().trim().max(160).nullable().optional(),
+  isArchived: z.boolean().optional()
+});
+const positionIdParamsSchema = z.object({ id: z.string().cuid() });
 const cityCreateSchema = z.object({
   title: z.string().trim().min(2).max(160),
   countryId: z.string().cuid()
@@ -88,7 +99,7 @@ export function registerDirectoryRoutes(
         orgUnitTypes,
         managerTypes
       ] = await Promise.all([
-        database!.position.findMany({ orderBy: { title: "asc" } }),
+        database!.position.findMany({ orderBy: { titleRu: "asc" } }),
         database!.country.findMany({ orderBy: { title: "asc" } }),
         database!.city.findMany({
           orderBy: { title: "asc" },
@@ -150,6 +161,63 @@ export function registerDirectoryRoutes(
           where: { id: parameters.data.id },
           data: {
             ...(input.data.title !== undefined ? { title: input.data.title } : {}),
+            ...(input.data.isArchived !== undefined
+              ? { isArchived: input.data.isArchived }
+              : {})
+          }
+        });
+        return { entry };
+      } catch (error) {
+        if (isUniqueConstraintError(error)) {
+          return reply.code(409).send({ error: "directory_entry_already_exists" });
+        }
+        throw error;
+      }
+    }
+  );
+
+  server.post(
+    "/v1/owner/directories/positions",
+    { preHandler: ownerGuard },
+    async (request, reply) => {
+      const input = positionCreateSchema.safeParse(request.body);
+      if (!input.success) return sendInvalidPayload(reply);
+
+      try {
+        const entry = await database!.position.create({
+          data: {
+            titleRu: input.data.titleRu,
+            titleEn: input.data.titleEn ?? null,
+            titleEs: input.data.titleEs ?? null,
+            titleFr: input.data.titleFr ?? null
+          }
+        });
+        return reply.code(201).send({ entry });
+      } catch (error) {
+        if (isUniqueConstraintError(error)) {
+          return reply.code(409).send({ error: "directory_entry_already_exists" });
+        }
+        throw error;
+      }
+    }
+  );
+
+  server.patch(
+    "/v1/owner/directories/positions/:id",
+    { preHandler: ownerGuard },
+    async (request, reply) => {
+      const parameters = positionIdParamsSchema.safeParse(request.params);
+      const input = positionUpdateSchema.safeParse(request.body);
+      if (!parameters.success || !input.success) return sendInvalidPayload(reply);
+
+      try {
+        const entry = await database!.position.update({
+          where: { id: parameters.data.id },
+          data: {
+            ...(input.data.titleRu !== undefined ? { titleRu: input.data.titleRu } : {}),
+            ...(input.data.titleEn !== undefined ? { titleEn: input.data.titleEn } : {}),
+            ...(input.data.titleEs !== undefined ? { titleEs: input.data.titleEs } : {}),
+            ...(input.data.titleFr !== undefined ? { titleFr: input.data.titleFr } : {}),
             ...(input.data.isArchived !== undefined
               ? { isArchived: input.data.isArchived }
               : {})

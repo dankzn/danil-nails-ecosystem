@@ -134,7 +134,9 @@ const employeeListInclude = {
       passwordHash: true
     }
   },
-  position: { select: { id: true, title: true } },
+  position: {
+    select: { id: true, titleRu: true, titleEn: true, titleEs: true, titleFr: true }
+  },
   primaryOrgUnit: { select: { id: true, title: true } },
   primaryOrganization: { select: { id: true, title: true } },
   city: { select: { id: true, title: true } },
@@ -281,7 +283,7 @@ export function registerEmployeeRoutes(
               OR: [
                 { displayName: { contains: query.data.search, mode: "insensitive" } },
                 { legalName: { contains: query.data.search, mode: "insensitive" } },
-                { position: { title: { contains: query.data.search, mode: "insensitive" } } },
+                { position: { titleRu: { contains: query.data.search, mode: "insensitive" } } },
                 { user: { email: { contains: query.data.search, mode: "insensitive" } } }
               ]
             }
