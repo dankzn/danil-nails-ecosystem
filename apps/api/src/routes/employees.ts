@@ -14,11 +14,8 @@ import type { FastifyInstance, FastifyReply } from "fastify";
 import { z } from "zod";
 import { authorize } from "../auth/session.js";
 import { currentMonthKey, payrollPreview } from "../payroll/calculation.js";
-import {
-  StorageNotConfiguredError,
-  isAllowedPhotoMimeType,
-  uploadStaffPhoto
-} from "../storage/supabase-storage.js";
+
+const allowedPhotoMimeTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
 
 const dateSchema = z.iso.date().nullable().optional();
 const optionalEmailSchema = z.union([z.email(), z.literal("")]).nullable().optional();
@@ -146,6 +143,7 @@ const employeeListInclude = {
   primaryOrganization: { select: { id: true, title: true } },
   city: { select: { id: true, title: true } },
   country: { select: { id: true, title: true } },
+  photo: { select: { updatedAt: true } },
   services: {
     include: {
       service: { select: { id: true, titleRu: true, isActive: true } }
@@ -213,9 +211,20 @@ function sendInvalidPayload(reply: FastifyReply) {
   return reply.code(400).send({ error: "invalid_employee_payload" });
 }
 
-function serializeEmployee<T extends { user: { passwordHash: string | null } }>(employee: T) {
+function serializeEmployee<
+  T extends {
+    id: string;
+    user: { passwordHash: string | null };
+    photo?: { updatedAt: Date } | null;
+  }
+>(employee: T) {
   const { passwordHash, ...user } = employee.user;
-  return { ...employee, user: { ...user, accountReady: Boolean(passwordHash) } };
+  const { photo, ...rest } = employee;
+  return {
+    ...rest,
+    user: { ...user, accountReady: Boolean(passwordHash) },
+    photoUrl: photo ? `/v1/staff/${employee.id}/photo?v=${photo.updatedAt.getTime()}` : null
+  };
 }
 
 function profileData(input: z.infer<typeof employeeUpdateSchema>) {
@@ -564,26 +573,23 @@ export function registerEmployeeRoutes(
 
       const file = await request.file();
       if (!file) return sendInvalidPayload(reply);
-      if (!isAllowedPhotoMimeType(file.mimetype)) {
+      if (!allowedPhotoMimeTypes.has(file.mimetype)) {
         return reply.code(400).send({ error: "unsupported_photo_type" });
       }
 
-      const data = await file.toBuffer();
+      const data = new Uint8Array(await file.toBuffer());
 
-      try {
-        const photoUrl = await uploadStaffPhoto(current.id, data, file.mimetype);
-        const employee = await database!.staffProfile.update({
-          where: { id: current.id },
-          data: { photoUrl },
-          include: employeeDetailInclude
-        });
-        return { employee: serializeEmployee(employee) };
-      } catch (error) {
-        if (error instanceof StorageNotConfiguredError) {
-          return reply.code(503).send({ error: "storage_not_configured" });
-        }
-        throw error;
-      }
+      await database!.staffPhoto.upsert({
+        where: { staffProfileId: current.id },
+        create: { staffProfileId: current.id, data, contentType: file.mimetype },
+        update: { data, contentType: file.mimetype }
+      });
+
+      const employee = await database!.staffProfile.findUniqueOrThrow({
+        where: { id: current.id },
+        include: employeeDetailInclude
+      });
+      return { employee: serializeEmployee(employee) };
     }
   );
 

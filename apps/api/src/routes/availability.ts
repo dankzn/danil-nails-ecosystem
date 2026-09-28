@@ -31,7 +31,7 @@ export function registerAvailabilityRoutes(
         id: true,
         displayName: true,
         bio: true,
-        photoUrl: true,
+        photo: { select: { updatedAt: true } },
         position: {
           select: { titleRu: true, titleEn: true, titleEs: true, titleFr: true }
         }
@@ -39,7 +39,26 @@ export function registerAvailabilityRoutes(
       orderBy: { displayName: "asc" }
     });
 
-    return { staff };
+    return {
+      staff: staff.map(({ photo, ...member }) => ({
+        ...member,
+        photoUrl: photo ? `/v1/staff/${member.id}/photo?v=${photo.updatedAt.getTime()}` : null
+      }))
+    };
+  });
+
+  server.get("/v1/staff/:id/photo", async (request, reply) => {
+    const parameters = z.object({ id: z.string().cuid() }).safeParse(request.params);
+    if (!parameters.success) return sendInvalidPayload(reply);
+    if (!database) return reply.code(404).send({ error: "photo_not_found" });
+
+    const photo = await database.staffPhoto.findUnique({
+      where: { staffProfileId: parameters.data.id }
+    });
+    if (!photo) return reply.code(404).send({ error: "photo_not_found" });
+
+    reply.header("cache-control", "public, max-age=31536000, immutable");
+    return reply.type(photo.contentType).send(photo.data);
   });
 
   server.get("/v1/availability", async (request, reply) => {

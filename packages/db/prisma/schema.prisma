@@ -287,7 +287,6 @@ model StaffProfile {
   emergencyContactName String?
   emergencyContactPhone String?
   isBookable           Boolean          @default(true)
-  photoUrl             String?
   createdAt            DateTime         @default(now())
   updatedAt            DateTime         @updatedAt
 
@@ -309,6 +308,19 @@ model StaffProfile {
   payrolls       EmployeePayroll[]
   orgUnitManagerAssignments OrgUnitManager[]
   waitlistEntries WaitlistEntry[]
+  photo          StaffPhoto?
+}
+
+// Kept as its own model (not a column on StaffProfile) so ordinary employee
+// queries never drag multi-hundred-KB image bytes along with them — the
+// bytes are only touched by the two routes that actually need them.
+model StaffPhoto {
+  staffProfileId String   @id
+  data           Bytes
+  contentType    String
+  updatedAt      DateTime @updatedAt
+
+  staffProfile StaffProfile @relation(fields: [staffProfileId], references: [id], onDelete: Cascade)
 }
 
 model Position {

@@ -71,7 +71,7 @@ export function TeamGrid({ lang, heading, loadingLabel, emptyLabel }: TeamGridPr
                 <article className="team-card">
                   <div className="team-card-portrait">
                     {member.photoUrl ? (
-                      <img alt={member.displayName} src={member.photoUrl} />
+                      <img alt={member.displayName} src={`${apiUrl}${member.photoUrl}`} />
                     ) : (
                       <span>
                         {member.displayName
