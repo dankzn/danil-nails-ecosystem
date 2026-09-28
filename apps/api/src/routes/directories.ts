@@ -38,13 +38,15 @@ const positionCreateSchema = z.object({
   titleRu: z.string().trim().min(2).max(160),
   titleEn: z.string().trim().max(160).nullable().optional(),
   titleEs: z.string().trim().max(160).nullable().optional(),
-  titleFr: z.string().trim().max(160).nullable().optional()
+  titleFr: z.string().trim().max(160).nullable().optional(),
+  isInternal: z.boolean().optional()
 });
 const positionUpdateSchema = z.object({
   titleRu: z.string().trim().min(2).max(160).optional(),
   titleEn: z.string().trim().max(160).nullable().optional(),
   titleEs: z.string().trim().max(160).nullable().optional(),
   titleFr: z.string().trim().max(160).nullable().optional(),
+  isInternal: z.boolean().optional(),
   isArchived: z.boolean().optional()
 });
 const positionIdParamsSchema = z.object({ id: z.string().cuid() });
@@ -189,7 +191,8 @@ export function registerDirectoryRoutes(
             titleRu: input.data.titleRu,
             titleEn: input.data.titleEn ?? null,
             titleEs: input.data.titleEs ?? null,
-            titleFr: input.data.titleFr ?? null
+            titleFr: input.data.titleFr ?? null,
+            isInternal: input.data.isInternal ?? false
           }
         });
         return reply.code(201).send({ entry });
@@ -218,6 +221,9 @@ export function registerDirectoryRoutes(
             ...(input.data.titleEn !== undefined ? { titleEn: input.data.titleEn } : {}),
             ...(input.data.titleEs !== undefined ? { titleEs: input.data.titleEs } : {}),
             ...(input.data.titleFr !== undefined ? { titleFr: input.data.titleFr } : {}),
+            ...(input.data.isInternal !== undefined
+              ? { isInternal: input.data.isInternal }
+              : {}),
             ...(input.data.isArchived !== undefined
               ? { isArchived: input.data.isArchived }
               : {})

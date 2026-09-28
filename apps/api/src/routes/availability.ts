@@ -32,8 +32,14 @@ export function registerAvailabilityRoutes(
         displayName: true,
         bio: true,
         photo: { select: { updatedAt: true } },
-        position: {
-          select: { titleRu: true, titleEn: true, titleEs: true, titleFr: true }
+        positions: {
+          orderBy: { order: "asc" },
+          where: { position: { isInternal: false, isArchived: false } },
+          select: {
+            position: {
+              select: { titleRu: true, titleEn: true, titleEs: true, titleFr: true }
+            }
+          }
         },
         user: { select: { role: true } }
       },
@@ -50,9 +56,14 @@ export function registerAvailabilityRoutes(
     });
 
     return {
-      staff: ordered.map(({ photo, user: _user, ...member }) => ({
+      staff: ordered.map(({ photo, positions, user: _user, ...member }) => ({
         ...member,
-        photoUrl: photo ? `/v1/staff/${member.id}/photo?v=${photo.updatedAt.getTime()}` : null
+        photoUrl: photo ? `/v1/staff/${member.id}/photo?v=${photo.updatedAt.getTime()}` : null,
+        // Internal positions (e.g. "Основатель") are excluded by the `where`
+        // above and never reach this response at all — only the first
+        // remaining public one is shown, so someone whose only position is
+        // internal correctly shows no role rather than leaking it.
+        position: positions[0]?.position ?? null
       }))
     };
   });

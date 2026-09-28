@@ -269,7 +269,6 @@ model StaffProfile {
   userId               String           @unique
   displayName          String
   legalName            String?
-  positionId           String?
   primaryOrgUnitId     String?
   primaryOrganizationId String?
   cityId               String?
@@ -291,7 +290,7 @@ model StaffProfile {
   updatedAt            DateTime         @updatedAt
 
   user         User                @relation(fields: [userId], references: [id])
-  position         Position?     @relation(fields: [positionId], references: [id])
+  positions        StaffPosition[]
   primaryOrgUnit   OrgUnit?      @relation(fields: [primaryOrgUnitId], references: [id])
   primaryOrganization Organization? @relation(fields: [primaryOrganizationId], references: [id])
   city             City?         @relation(fields: [cityId], references: [id])
@@ -329,11 +328,33 @@ model Position {
   titleEn    String?
   titleEs    String?
   titleFr    String?
+  // Internal-only positions (e.g. "Основатель") never reach the public site
+  // or client-facing APIs — see AGENTS.md: private/internal labels must
+  // never mix with what clients or site visitors see.
+  isInternal Boolean  @default(false)
   isArchived Boolean  @default(false)
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
-  staffProfiles StaffProfile[]
+  staffAssignments StaffPosition[]
+}
+
+// A staff member can hold more than one position (e.g. founder AND nail
+// master) — this join table replaces what used to be a single positionId
+// column on StaffProfile. `order` preserves the sequence positions were
+// added in, so the first (lowest) one is the "primary" position shown
+// first everywhere, including the public site's staff listing.
+model StaffPosition {
+  id             String   @id @default(cuid())
+  staffProfileId String
+  positionId     String
+  order          Int      @default(0)
+  createdAt      DateTime @default(now())
+
+  staffProfile StaffProfile @relation(fields: [staffProfileId], references: [id], onDelete: Cascade)
+  position     Position     @relation(fields: [positionId], references: [id])
+
+  @@unique([staffProfileId, positionId])
 }
 
 model Country {

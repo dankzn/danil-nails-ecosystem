@@ -13,6 +13,7 @@ type PositionEntry = {
   titleEn: string | null;
   titleEs: string | null;
   titleFr: string | null;
+  isInternal: boolean;
   isArchived: boolean;
 };
 
@@ -34,7 +35,13 @@ const simpleTabs = [
 type SimpleTabKey = (typeof simpleTabs)[number]["key"];
 type TabKey = SimpleTabKey | "cities" | "positions";
 
-const emptyPositionForm = { titleRu: "", titleEn: "", titleEs: "", titleFr: "" };
+const emptyPositionForm = {
+  titleRu: "",
+  titleEn: "",
+  titleEs: "",
+  titleFr: "",
+  isInternal: false
+};
 
 const tabs: Array<{ key: TabKey; label: string }> = [
   { key: "positions", label: "Должности" },
@@ -99,13 +106,14 @@ export default function DirectoriesPage() {
     setFormError(null);
   }, [activeTab, data?.countries]);
 
-  function entriesForTab(): Array<Entry | CityEntry> {
+  function entriesForTab(): Array<Entry | CityEntry | (Entry & { isInternal: boolean })> {
     if (!data) return [];
     if (activeTab === "cities") return data.cities;
     if (activeTab === "positions") {
       return data.positions.map((position) => ({
         id: position.id,
         title: position.titleRu,
+        isInternal: position.isInternal,
         isArchived: position.isArchived
       }));
     }
@@ -130,7 +138,8 @@ export default function DirectoriesPage() {
             titleRu: newPosition.titleRu.trim(),
             titleEn: newPosition.titleEn.trim() || null,
             titleEs: newPosition.titleEs.trim() || null,
-            titleFr: newPosition.titleFr.trim() || null
+            titleFr: newPosition.titleFr.trim() || null,
+            isInternal: newPosition.isInternal
           })
         });
         setNewPosition(emptyPositionForm);
@@ -188,7 +197,8 @@ export default function DirectoriesPage() {
         titleRu: position.titleRu,
         titleEn: position.titleEn ?? "",
         titleEs: position.titleEs ?? "",
-        titleFr: position.titleFr ?? ""
+        titleFr: position.titleFr ?? "",
+        isInternal: position.isInternal
       });
       setFormError(null);
       return;
@@ -211,7 +221,8 @@ export default function DirectoriesPage() {
           titleRu: editPosition.titleRu.trim(),
           titleEn: editPosition.titleEn.trim() || null,
           titleEs: editPosition.titleEs.trim() || null,
-          titleFr: editPosition.titleFr.trim() || null
+          titleFr: editPosition.titleFr.trim() || null,
+          isInternal: editPosition.isInternal
         })
       });
       setEditingPosition(null);
@@ -344,6 +355,16 @@ export default function DirectoriesPage() {
                 placeholder="Français"
                 value={newPosition.titleFr}
               />
+              <label className="checkbox-field directory-internal-toggle">
+                <input
+                  checked={newPosition.isInternal}
+                  onChange={(event) =>
+                    setNewPosition((form) => ({ ...form, isInternal: event.target.checked }))
+                  }
+                  type="checkbox"
+                />
+                <span>Внутренняя (не видна клиентам и на сайте)</span>
+              </label>
             </div>
             <button className="primary-button" disabled={isSaving} type="submit">
               <Plus aria-hidden="true" size={15} />
@@ -424,6 +445,9 @@ export default function DirectoriesPage() {
                       >
                         {entry.isArchived ? "Архив" : "Активна"}
                       </span>
+                      {"isInternal" in entry && entry.isInternal ? (
+                        <span className="status status-neutral">Внутренняя</span>
+                      ) : null}
                     </td>
                     <td className="action-cell">
                       <button
@@ -508,6 +532,16 @@ export default function DirectoriesPage() {
                 }
                 value={editPosition.titleFr}
               />
+            </label>
+            <label className="checkbox-field">
+              <input
+                checked={editPosition.isInternal}
+                onChange={(event) =>
+                  setEditPosition((form) => ({ ...form, isInternal: event.target.checked }))
+                }
+                type="checkbox"
+              />
+              <span>Внутренняя (не видна клиентам и на сайте)</span>
             </label>
             {formError ? (
               <p className="feedback feedback-error" role="alert">

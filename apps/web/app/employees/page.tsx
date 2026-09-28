@@ -60,14 +60,14 @@ type PositionRef = {
   titleEn: string | null;
   titleEs: string | null;
   titleFr: string | null;
+  isInternal: boolean;
 };
 
 type Employee = {
   id: string;
   displayName: string;
   legalName: string | null;
-  positionId: string | null;
-  position: PositionRef | null;
+  positions: PositionRef[];
   primaryOrgUnitId: string | null;
   primaryOrgUnit: NamedRef | null;
   primaryOrganizationId: string | null;
@@ -210,7 +210,7 @@ type EmployeeForm = {
   email: string;
   phone: string;
   role: UserRole;
-  positionId: string;
+  positionIds: string[];
   primaryOrgUnitId: string;
   primaryOrganizationId: string;
   cityId: string;
@@ -341,7 +341,7 @@ function emptyEmployeeForm(): EmployeeForm {
     email: "",
     phone: "",
     role: "master",
-    positionId: "",
+    positionIds: [],
     primaryOrgUnitId: "",
     primaryOrganizationId: "",
     cityId: "",
@@ -420,7 +420,7 @@ function employeeToForm(employee: Employee): EmployeeForm {
     email: employee.user.email ?? "",
     phone: employee.user.phone ?? "",
     role: employee.user.role,
-    positionId: employee.positionId ?? "",
+    positionIds: employee.positions.map((position) => position.id),
     primaryOrgUnitId: employee.primaryOrgUnitId ?? "",
     primaryOrganizationId: employee.primaryOrganizationId ?? "",
     cityId: employee.cityId ?? "",
@@ -678,7 +678,7 @@ export default function EmployeesPage() {
       email: optionalValue(employeeForm.email),
       phone: optionalValue(employeeForm.phone),
       ...(!isOwner ? { role: employeeForm.role } : {}),
-      positionId: optionalValue(employeeForm.positionId),
+      positionIds: employeeForm.positionIds,
       primaryOrgUnitId: optionalValue(employeeForm.primaryOrgUnitId),
       primaryOrganizationId: optionalValue(employeeForm.primaryOrganizationId),
       cityId: optionalValue(employeeForm.cityId),
@@ -1186,7 +1186,11 @@ export default function EmployeesPage() {
                         </div>
                       </td>
                       <td>
-                        <span>{employee.position?.titleRu ?? "Не указана"}</span>
+                        <span>
+                          {employee.positions.length > 0
+                            ? employee.positions.map((position) => position.titleRu).join(" · ")
+                            : "Не указана"}
+                        </span>
                         <small>
                           {roleLabels[employee.user.role]}
                           {employee.primaryOrgUnit
@@ -1288,20 +1292,31 @@ export default function EmployeesPage() {
                     value={employeeForm.legalName}
                   />
                 </label>
-                <label className="form-field">
-                  <span>Должность</span>
-                  <select
-                    onChange={(event) => updateEmployeeForm("positionId", event.target.value)}
-                    value={employeeForm.positionId}
-                  >
-                    <option value="">Не указана</option>
+                <div className="form-field form-field-span-two">
+                  <span>Должности (можно несколько, первая — основная)</span>
+                  <div className="service-checkbox-grid">
                     {directories.positions.map((position) => (
-                      <option key={position.id} value={position.id}>
-                        {position.titleRu}
-                      </option>
+                      <label className="service-checkbox" key={position.id}>
+                        <input
+                          checked={employeeForm.positionIds.includes(position.id)}
+                          onChange={(event) =>
+                            updateEmployeeForm(
+                              "positionIds",
+                              event.target.checked
+                                ? [...employeeForm.positionIds, position.id]
+                                : employeeForm.positionIds.filter((id) => id !== position.id)
+                            )
+                          }
+                          type="checkbox"
+                        />
+                        <span>
+                          {position.titleRu}
+                          {position.isInternal ? " (внутренняя)" : ""}
+                        </span>
+                      </label>
                     ))}
-                  </select>
-                </label>
+                  </div>
+                </div>
                 <label className="form-field">
                   <span>Основное подразделение</span>
                   <select
@@ -1587,7 +1602,11 @@ export default function EmployeesPage() {
         <Modal
           description={
             selectedEmployee
-              ? `${selectedEmployee.position?.titleRu ?? "Должность не указана"} · ${statusMeta[selectedEmployee.employmentStatus].label}`
+              ? `${
+                  selectedEmployee.positions.length > 0
+                    ? selectedEmployee.positions.map((position) => position.titleRu).join(" · ")
+                    : "Должность не указана"
+                } · ${statusMeta[selectedEmployee.employmentStatus].label}`
               : "Загружаем личное дело"
           }
           onClose={() => setSelectedEmployee(null)}

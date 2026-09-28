@@ -42,7 +42,7 @@ const employeeCreateSchema = z.object({
   email: optionalEmailSchema,
   phone: z.string().trim().max(30).nullable().optional(),
   role: staffRoleSchema.default("master"),
-  positionId: z.string().cuid().nullable().optional(),
+  positionIds: z.array(z.string().cuid()).max(20).default([]),
   primaryOrgUnitId: z.string().cuid().nullable().optional(),
   primaryOrganizationId: z.string().cuid().nullable().optional(),
   cityId: z.string().cuid().nullable().optional(),
@@ -63,7 +63,14 @@ const employeeCreateSchema = z.object({
 });
 
 const employeeUpdateSchema = employeeCreateSchema
-  .omit({ serviceIds: true, role: true, employmentStatus: true, employmentType: true, isBookable: true })
+  .omit({
+    serviceIds: true,
+    positionIds: true,
+    role: true,
+    employmentStatus: true,
+    employmentType: true,
+    isBookable: true
+  })
   .partial()
   .extend({
     // z.default() survives .partial() (an omitted key still resolves to the
@@ -71,6 +78,7 @@ const employeeUpdateSchema = employeeCreateSchema
     // their create-time defaults on every single-field edit. Redeclare them
     // without a default so "omitted" genuinely means "leave unchanged".
     serviceIds: z.array(z.string().cuid()).max(100).optional(),
+    positionIds: z.array(z.string().cuid()).max(20).optional(),
     role: staffRoleSchema.optional(),
     employmentStatus: employmentStatusSchema.optional(),
     employmentType: employmentTypeSchema.optional(),
@@ -136,8 +144,20 @@ const employeeListInclude = {
       passwordHash: true
     }
   },
-  position: {
-    select: { id: true, titleRu: true, titleEn: true, titleEs: true, titleFr: true }
+  positions: {
+    orderBy: { order: "asc" },
+    include: {
+      position: {
+        select: {
+          id: true,
+          titleRu: true,
+          titleEn: true,
+          titleEs: true,
+          titleFr: true,
+          isInternal: true
+        }
+      }
+    }
   },
   primaryOrgUnit: { select: { id: true, title: true } },
   primaryOrganization: { select: { id: true, title: true } },
@@ -211,26 +231,38 @@ function sendInvalidPayload(reply: FastifyReply) {
   return reply.code(400).send({ error: "invalid_employee_payload" });
 }
 
+type PositionAssignment = {
+  position: {
+    id: string;
+    titleRu: string;
+    titleEn: string | null;
+    titleEs: string | null;
+    titleFr: string | null;
+    isInternal: boolean;
+  };
+};
+
 function serializeEmployee<
   T extends {
     id: string;
     user: { passwordHash: string | null };
     photo?: { updatedAt: Date } | null;
+    positions?: PositionAssignment[];
   }
 >(employee: T) {
   const { passwordHash, ...user } = employee.user;
-  const { photo, ...rest } = employee;
+  const { photo, positions, ...rest } = employee;
   return {
     ...rest,
     user: { ...user, accountReady: Boolean(passwordHash) },
-    photoUrl: photo ? `/v1/staff/${employee.id}/photo?v=${photo.updatedAt.getTime()}` : null
+    photoUrl: photo ? `/v1/staff/${employee.id}/photo?v=${photo.updatedAt.getTime()}` : null,
+    positions: positions?.map((assignment) => assignment.position) ?? []
   };
 }
 
 function profileData(input: z.infer<typeof employeeUpdateSchema>) {
   return {
     ...(input.legalName !== undefined ? { legalName: optionalText(input.legalName) } : {}),
-    ...(input.positionId !== undefined ? { positionId: input.positionId } : {}),
     ...(input.primaryOrgUnitId !== undefined
       ? { primaryOrgUnitId: input.primaryOrgUnitId }
       : {}),
@@ -275,6 +307,13 @@ async function validateServices(database: DatabaseClient, serviceIds: string[]) 
   return count === uniqueIds.length;
 }
 
+async function validatePositions(database: DatabaseClient, positionIds: string[]) {
+  if (positionIds.length === 0) return true;
+  const uniqueIds = [...new Set(positionIds)];
+  const count = await database.position.count({ where: { id: { in: uniqueIds } } });
+  return count === uniqueIds.length;
+}
+
 export function registerEmployeeRoutes(
   server: FastifyInstance,
   database: DatabaseClient | null
@@ -297,7 +336,15 @@ export function registerEmployeeRoutes(
               OR: [
                 { displayName: { contains: query.data.search, mode: "insensitive" } },
                 { legalName: { contains: query.data.search, mode: "insensitive" } },
-                { position: { titleRu: { contains: query.data.search, mode: "insensitive" } } },
+                {
+                  positions: {
+                    some: {
+                      position: {
+                        titleRu: { contains: query.data.search, mode: "insensitive" }
+                      }
+                    }
+                  }
+                },
                 { user: { email: { contains: query.data.search, mode: "insensitive" } } }
               ]
             }
@@ -392,6 +439,9 @@ export function registerEmployeeRoutes(
       if (!(await validateServices(database!, input.data.serviceIds))) {
         return reply.code(400).send({ error: "invalid_employee_services" });
       }
+      if (!(await validatePositions(database!, input.data.positionIds))) {
+        return reply.code(400).send({ error: "invalid_employee_positions" });
+      }
 
       try {
         const employee = await database!.$transaction(async (transaction) => {
@@ -411,6 +461,12 @@ export function registerEmployeeRoutes(
               services: {
                 create: [...new Set(input.data.serviceIds)].map((serviceId) => ({
                   serviceId
+                }))
+              },
+              positions: {
+                create: [...new Set(input.data.positionIds)].map((positionId, order) => ({
+                  positionId,
+                  order
                 }))
               }
             }
@@ -459,6 +515,12 @@ export function registerEmployeeRoutes(
       ) {
         return reply.code(400).send({ error: "invalid_employee_services" });
       }
+      if (
+        input.data.positionIds &&
+        !(await validatePositions(database!, input.data.positionIds))
+      ) {
+        return reply.code(400).send({ error: "invalid_employee_positions" });
+      }
 
       const current = await database!.staffProfile.findUnique({
         where: { id: parameters.data.id },
@@ -503,6 +565,19 @@ export function registerEmployeeRoutes(
                 data: [...new Set(input.data.serviceIds)].map((serviceId) => ({
                   staffId: current.id,
                   serviceId
+                }))
+              });
+            }
+          }
+
+          if (input.data.positionIds) {
+            await transaction.staffPosition.deleteMany({ where: { staffProfileId: current.id } });
+            if (input.data.positionIds.length) {
+              await transaction.staffPosition.createMany({
+                data: [...new Set(input.data.positionIds)].map((positionId, order) => ({
+                  staffProfileId: current.id,
+                  positionId,
+                  order
                 }))
               });
             }

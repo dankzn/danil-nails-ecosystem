@@ -1597,6 +1597,12 @@ td strong {
   flex: 1 1 160px;
 }
 
+.directory-internal-toggle {
+  min-height: 0;
+  flex: 1 1 260px;
+  padding: 9px 12px;
+}
+
 .segmented-control {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
