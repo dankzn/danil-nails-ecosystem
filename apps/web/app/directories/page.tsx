@@ -95,7 +95,10 @@ export default function DirectoriesPage() {
 
   async function createEntry(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (!newTitle.trim()) return;
+    if (!newTitle.trim()) {
+      setFormError("Введите название записи.");
+      return;
+    }
     setIsSaving(true);
     setFormError(null);
     setNotice(null);
@@ -222,6 +225,7 @@ export default function DirectoriesPage() {
               maxLength={160}
               onChange={(event) => setNewTitle(event.target.value)}
               placeholder="Название новой записи"
+              required
               value={newTitle}
             />
             {activeTab === "cities" ? (
