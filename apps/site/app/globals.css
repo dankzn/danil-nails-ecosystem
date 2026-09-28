@@ -703,6 +703,39 @@ button {
   line-height: 1.8;
 }
 
+/* Each principle carries a close-up detail clip — showing the work makes
+   the point faster than the copy alone. Sides alternate row to row
+   (checkerboard) instead of pinning every clip to the same edge. */
+.philosophy-principle-media {
+  grid-template-columns: 120px minmax(0, 1fr) 190px;
+  align-items: center;
+}
+
+.philosophy-principle-media-left {
+  grid-template-columns: 120px 190px minmax(0, 1fr);
+  align-items: center;
+}
+
+.philosophy-principle-media-left .philosophy-principle-index {
+  order: 0;
+}
+
+.philosophy-principle-media-left .philosophy-principle-video {
+  order: 1;
+}
+
+.philosophy-principle-media-left .philosophy-principle-body {
+  order: 2;
+}
+
+.philosophy-principle-video {
+  width: 100%;
+  /* aspect-ratio comes from an inline style — the clips aren't all the
+     same orientation (two portrait, one landscape). */
+  object-fit: cover;
+  filter: saturate(0.82) brightness(0.94) contrast(1.03);
+}
+
 /* ---------- Services ---------- */
 
 .services-list {
@@ -1384,6 +1417,14 @@ button {
     grid-template-columns: 72px minmax(0, 1fr);
   }
 
+  .philosophy-principle-media {
+    grid-template-columns: 72px minmax(0, 1fr) 140px;
+  }
+
+  .philosophy-principle-media-left {
+    grid-template-columns: 72px 140px minmax(0, 1fr);
+  }
+
   .philosophy-principle:nth-child(2) {
     padding-left: 4vw;
   }
@@ -1518,6 +1559,11 @@ button {
 
   .philosophy-principle-body {
     padding-top: 0;
+  }
+
+  .philosophy-principle-video {
+    width: 140px;
+    margin: 4px 0;
   }
 
   .contact-actions {

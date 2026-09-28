@@ -10,6 +10,12 @@ function riseDelay(ms: number): CSSProperties {
   return { "--rise-delay": `${ms}ms` } as CSSProperties;
 }
 
+const principleVideos = [
+  { src: "/videos/emphasis-detail.mp4", aspect: "2160 / 4096" },
+  { src: "/videos/precision-detail.mp4", aspect: "2160 / 4096" },
+  { src: "/videos/luxury-detail.mp4", aspect: "1920 / 1080" }
+];
+
 export default async function HomePage({ params }: PageProps<"/[lang]">) {
   const { lang } = await params;
   if (!isLocale(lang)) notFound();
@@ -68,15 +74,35 @@ export default async function HomePage({ params }: PageProps<"/[lang]">) {
           </div>
 
           <div className="philosophy-principles">
-            {dict.philosophy.principles.map((item, index) => (
-              <Reveal delay={index * 90} key={item.title} className="philosophy-principle">
-                <span className="philosophy-principle-index">{item.index}</span>
-                <div className="philosophy-principle-body">
-                  <h3>{item.title}</h3>
-                  <p>{item.body}</p>
-                </div>
-              </Reveal>
-            ))}
+            {dict.philosophy.principles.map((item, index) => {
+              const video = principleVideos[index];
+              const mediaSide = index % 2 === 1 ? " philosophy-principle-media-left" : " philosophy-principle-media";
+              return (
+                <Reveal
+                  delay={index * 90}
+                  key={item.title}
+                  className={`philosophy-principle${video ? mediaSide : ""}`}
+                >
+                  <span className="philosophy-principle-index">{item.index}</span>
+                  <div className="philosophy-principle-body">
+                    <h3>{item.title}</h3>
+                    <p>{item.body}</p>
+                  </div>
+                  {video ? (
+                    <video
+                      className="philosophy-principle-video"
+                      src={video.src}
+                      style={{ aspectRatio: video.aspect }}
+                      autoPlay
+                      muted
+                      loop
+                      playsInline
+                      preload="metadata"
+                    />
+                  ) : null}
+                </Reveal>
+              );
+            })}
           </div>
         </div>
       </section>
