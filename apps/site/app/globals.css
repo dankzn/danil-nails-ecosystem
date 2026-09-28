@@ -595,7 +595,11 @@ button {
 
 .philosophy {
   position: relative;
-  padding: clamp(96px, 13vw, 176px) 0;
+  /* Asymmetric: the generous top pad gives the section its own "chapter"
+     opening after the hero-intro band, but a matching bottom pad would
+     stack with the next section's own top padding and leave a huge dead
+     gap between them (border-bottom doesn't collapse the two paddings). */
+  padding: clamp(96px, 13vw, 176px) 0 clamp(56px, 7vw, 96px);
   border-bottom: 1px solid var(--paper-line);
 }
 
@@ -1493,7 +1497,7 @@ button {
   }
 
   .philosophy {
-    padding: 72px 0;
+    padding: 72px 0 40px;
   }
 
   .philosophy-principle {
