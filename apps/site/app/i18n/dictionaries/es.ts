@@ -95,6 +95,11 @@ export const es: Dictionary = {
     bio: "Atiende a las clientas en persona, lleva la agenda él mismo y responde por la calidad de cada manicura — desde la primera consulta hasta el acabado final",
     facts: [{ value: "3", label: "formatos de servicio" }]
   },
+  team: {
+    heading: "Equipo",
+    loading: "Cargando el equipo…",
+    empty: "El equipo aparecerá aquí muy pronto."
+  },
   contact: {
     kicker: "Reserva",
     headingPre: "Reserva ",

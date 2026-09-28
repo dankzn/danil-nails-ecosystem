@@ -1,4 +1,4 @@
-import type { DatabaseClient } from "@danil-nails/db";
+import { EmploymentStatus, type DatabaseClient } from "@danil-nails/db";
 import { businessConfig } from "@danil-nails/shared";
 import type { FastifyInstance, FastifyReply } from "fastify";
 import { z } from "zod";
@@ -26,8 +26,15 @@ export function registerAvailabilityRoutes(
     if (!database) return { staff: [] };
 
     const staff = await database.staffProfile.findMany({
-      where: { isBookable: true },
-      select: { id: true, displayName: true },
+      where: { isBookable: true, employmentStatus: { not: EmploymentStatus.dismissed } },
+      select: {
+        id: true,
+        displayName: true,
+        bio: true,
+        position: {
+          select: { titleRu: true, titleEn: true, titleEs: true, titleFr: true }
+        }
+      },
       orderBy: { displayName: "asc" }
     });
 

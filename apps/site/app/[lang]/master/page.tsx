@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { Reveal } from "../../components/Reveal";
+import { TeamGrid } from "../../components/TeamGrid";
 import { getDictionary } from "../../i18n/get-dictionary";
 import { isLocale } from "../../i18n/locales";
 
@@ -42,6 +43,17 @@ export default async function MasterPage({ params }: PageProps<"/[lang]/master">
               </div>
             </Reveal>
           </div>
+        </div>
+      </section>
+
+      <section className="section">
+        <div className="wrap">
+          <TeamGrid
+            emptyLabel={dict.team.empty}
+            heading={dict.team.heading}
+            lang={lang}
+            loadingLabel={dict.team.loading}
+          />
         </div>
       </section>
     </main>

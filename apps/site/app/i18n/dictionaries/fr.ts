@@ -95,6 +95,11 @@ export const fr: Dictionary = {
     bio: "Reçoit les clientes en personne, gère lui-même le planning et répond de la qualité de chaque manucure — de la première consultation jusqu'à la finition",
     facts: [{ value: "3", label: "formats de prestation" }]
   },
+  team: {
+    heading: "Équipe",
+    loading: "Chargement de l'équipe…",
+    empty: "L'équipe sera bientôt présentée ici."
+  },
   contact: {
     kicker: "Réservation",
     headingPre: "Réservez ",

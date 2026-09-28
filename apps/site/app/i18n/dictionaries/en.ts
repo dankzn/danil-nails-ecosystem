@@ -95,6 +95,11 @@ export const en: Dictionary = {
     bio: "Takes clients personally, keeps the schedule himself, and answers for the quality of every single manicure — from the first consultation to the final polish",
     facts: [{ value: "3", label: "service formats" }]
   },
+  team: {
+    heading: "Team",
+    loading: "Loading the team…",
+    empty: "The team roster will appear here soon."
+  },
   contact: {
     kicker: "Booking",
     headingPre: "Book ",
