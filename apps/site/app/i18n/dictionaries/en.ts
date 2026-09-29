@@ -90,7 +90,11 @@ export const en: Dictionary = {
     kicker: "Masters",
     headingPre: "Craft, ",
     headingEm: "visible in the details",
-    lede: "Meet the studio's team of masters — pick the one you'd like to book with"
+    lede: "Meet the studio's team of masters — pick the one you'd like to book with",
+    countryLabel: "Country",
+    cityLabel: "City",
+    allCountriesLabel: "All countries",
+    allCitiesLabel: "All cities"
   },
   team: {
     heading: "Team",

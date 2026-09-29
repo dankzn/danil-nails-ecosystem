@@ -90,7 +90,11 @@ export const ru: Dictionary = {
     kicker: "Мастера",
     headingPre: "Мастерство, ",
     headingEm: "видное в деталях",
-    lede: "Команда мастеров студии — выбирайте того, к кому хотите записаться"
+    lede: "Команда мастеров студии — выбирайте того, к кому хотите записаться",
+    countryLabel: "Страна",
+    cityLabel: "Город",
+    allCountriesLabel: "Все страны",
+    allCitiesLabel: "Все города"
   },
   team: {
     heading: "Команда",

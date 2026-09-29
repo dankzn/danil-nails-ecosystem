@@ -42,6 +42,11 @@ export function registerAvailabilityRoutes(
         philosophy: true,
         worksVideoUrl: true,
         hiredAt: true,
+        // City/country of the staff member — the studio currently has one
+        // city, but this lets the future multi-city masters page filter by
+        // location without another schema change.
+        city: { select: { id: true, title: true } },
+        country: { select: { id: true, title: true } },
         photo: { select: { updatedAt: true } },
         positions: {
           orderBy: { order: "asc" },

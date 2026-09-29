@@ -60,6 +60,10 @@ export type Dictionary = {
     headingPre: string;
     headingEm: string;
     lede: string;
+    countryLabel: string;
+    cityLabel: string;
+    allCountriesLabel: string;
+    allCitiesLabel: string;
   };
   team: {
     heading: string;

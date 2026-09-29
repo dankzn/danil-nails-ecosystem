@@ -12,6 +12,8 @@ export type PositionTitle = {
   isMasterRole: boolean;
 };
 
+export type LocationRef = { id: string; title: string };
+
 export type StaffMember = {
   id: string;
   displayName: string;
@@ -19,6 +21,8 @@ export type StaffMember = {
   worksVideoUrl: string | null;
   experienceYears: number | null;
   photoUrl: string | null;
+  city: LocationRef | null;
+  country: LocationRef | null;
   positions: PositionTitle[];
 };
 
