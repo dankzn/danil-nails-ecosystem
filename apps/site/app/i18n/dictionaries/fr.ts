@@ -92,7 +92,7 @@ export const fr: Dictionary = {
     headingEm: "visible dans les détails",
     name: "Danil Afliatov",
     role: "Fondateur et maître manucure",
-    bio: "Reçoit les clientes en personne, gère lui-même le planning et répond de la qualité de chaque manucure — de la première consultation jusqu'à la finition",
+    bio: "Un travail soigné sur la forme, le vernis et chaque détail — confort et résultat régulier à chaque rendez-vous",
     facts: [{ value: "3", label: "formats de prestation" }]
   },
   team: {

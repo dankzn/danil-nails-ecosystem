@@ -92,7 +92,7 @@ export const es: Dictionary = {
     headingEm: "visible en los detalles",
     name: "Danil Afliatov",
     role: "Fundador y maestro de manicura",
-    bio: "Atiende a las clientas en persona, lleva la agenda él mismo y responde por la calidad de cada manicura — desde la primera consulta hasta el acabado final",
+    bio: "Trabajo cuidadoso con la forma, el esmaltado y cada detalle — comodidad y un resultado constante en cada cita",
     facts: [{ value: "3", label: "formatos de servicio" }]
   },
   team: {

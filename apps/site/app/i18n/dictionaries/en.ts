@@ -92,7 +92,7 @@ export const en: Dictionary = {
     headingEm: "visible in the details",
     name: "Danil Afliatov",
     role: "Founder and nail master",
-    bio: "Takes clients personally, keeps the schedule himself, and answers for the quality of every single manicure — from the first consultation to the final polish",
+    bio: "Careful, precise work with shape, coating and detail — comfort and a consistent result at every appointment",
     facts: [{ value: "3", label: "service formats" }]
   },
   team: {
