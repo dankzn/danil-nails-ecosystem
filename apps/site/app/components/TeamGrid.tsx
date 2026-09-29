@@ -7,7 +7,7 @@ import { Reveal } from "./Reveal";
 
 type TeamGridProps = {
   lang: Locale;
-  heading: string;
+  heading?: string;
   bookCta: string;
   staff: StaffMember[];
 };
@@ -17,9 +17,11 @@ export function TeamGrid({ lang, heading, bookCta, staff }: TeamGridProps) {
 
   return (
     <div className="team-section">
-      <Reveal>
-        <h2 className="team-heading">{heading}</h2>
-      </Reveal>
+      {heading ? (
+        <Reveal>
+          <h2 className="team-heading">{heading}</h2>
+        </Reveal>
+      ) : null}
       <div className="team-grid">
         {staff.map((member, index) => {
           const role = localizedPositions(member.positions, lang).join(" · ");

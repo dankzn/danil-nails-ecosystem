@@ -87,13 +87,10 @@ export const es: Dictionary = {
     ]
   },
   master: {
-    kicker: "Maestro",
+    kicker: "Maestros",
     headingPre: "Oficio, ",
     headingEm: "visible en los detalles",
-    name: "Danil Afliatov",
-    role: "Fundador y maestro de manicura",
-    bio: "Trabajo cuidadoso con la forma, el esmaltado y cada detalle — comodidad y un resultado constante en cada cita",
-    facts: [{ value: "3", label: "formatos de servicio" }]
+    lede: "Conoce al equipo de maestras y maestros del estudio — elige con quién reservar"
   },
   team: {
     heading: "Equipo",

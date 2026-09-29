@@ -908,88 +908,6 @@ button {
   }
 }
 
-/* ---------- Master ---------- */
-
-.master-block {
-  margin-top: 52px;
-  display: grid;
-  grid-template-columns: minmax(0, 0.62fr) minmax(0, 1.38fr);
-  gap: 64px;
-  align-items: start;
-}
-
-.master-portrait {
-  position: relative;
-  aspect-ratio: 4 / 5;
-  background: var(--paper-raised);
-  border: 1px solid var(--paper-line);
-  display: grid;
-  place-items: center;
-  overflow: hidden;
-}
-
-.master-portrait span {
-  font-family: var(--font-grotesk);
-  font-size: 88px;
-  color: var(--ink-faint);
-}
-
-.master-portrait img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-
-.master-name {
-  font-family: var(--font-grotesk);
-  font-weight: 700;
-  font-size: clamp(28px, 3.2vw, 38px);
-  margin: 0 0 8px;
-  color: var(--ink);
-}
-
-.master-role {
-  color: var(--clay);
-  font-size: 12.5px;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-  margin-bottom: 26px;
-}
-
-.master-bio {
-  color: var(--ink-soft);
-  font-size: 16px;
-  line-height: 1.8;
-  max-width: 54ch;
-}
-
-.master-facts {
-  display: flex;
-  gap: 48px;
-  margin-top: 34px;
-  padding-top: 26px;
-  border-top: 1px solid var(--paper-line);
-}
-
-.master-facts div strong {
-  display: block;
-  font-family: var(--font-grotesk);
-  font-size: 26px;
-  font-weight: 700;
-  color: var(--ink);
-}
-
-.master-facts div span {
-  font-size: 11.5px;
-  color: var(--ink-faint);
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-}
-
-.master-book-cta {
-  margin-top: 34px;
-}
-
 /* ---------- Team ---------- */
 
 .team-heading {
@@ -1517,14 +1435,6 @@ button {
 
   .philosophy-principle:nth-child(3) {
     padding-left: 8vw;
-  }
-
-  .master-block {
-    grid-template-columns: 1fr;
-  }
-
-  .master-portrait {
-    max-width: 320px;
   }
 
   .gallery-grid {

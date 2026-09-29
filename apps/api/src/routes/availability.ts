@@ -1,4 +1,4 @@
-import { EmploymentStatus, UserRole, type DatabaseClient } from "@danil-nails/db";
+import { EmploymentStatus, type DatabaseClient } from "@danil-nails/db";
 import { businessConfig } from "@danil-nails/shared";
 import type { FastifyInstance, FastifyReply } from "fastify";
 import { z } from "zod";
@@ -40,23 +40,13 @@ export function registerAvailabilityRoutes(
               select: { titleRu: true, titleEn: true, titleEs: true, titleFr: true }
             }
           }
-        },
-        user: { select: { role: true } }
+        }
       },
       orderBy: { displayName: "asc" }
     });
 
-    // The studio's owner is the public "face" of the business on the site
-    // (see app/[lang]/master), so they lead the list regardless of name —
-    // alphabetical order alone let a test/newer staff member outrank them.
-    const ordered = [...staff].sort((a, b) => {
-      const aIsOwner = a.user.role === UserRole.owner ? 0 : 1;
-      const bIsOwner = b.user.role === UserRole.owner ? 0 : 1;
-      return aIsOwner - bIsOwner;
-    });
-
     return {
-      staff: ordered.map(({ photo, positions, user: _user, ...member }) => ({
+      staff: staff.map(({ photo, positions, ...member }) => ({
         ...member,
         photoUrl: photo ? `/v1/staff/${member.id}/photo?v=${photo.updatedAt.getTime()}` : null,
         // Internal positions (e.g. "Основатель-внутр") are excluded by the

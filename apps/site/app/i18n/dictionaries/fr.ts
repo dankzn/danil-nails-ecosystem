@@ -87,13 +87,10 @@ export const fr: Dictionary = {
     ]
   },
   master: {
-    kicker: "Maître",
+    kicker: "Maîtres",
     headingPre: "Un savoir-faire ",
     headingEm: "visible dans les détails",
-    name: "Danil Afliatov",
-    role: "Fondateur et maître manucure",
-    bio: "Un travail soigné sur la forme, le vernis et chaque détail — confort et résultat régulier à chaque rendez-vous",
-    facts: [{ value: "3", label: "formats de prestation" }]
+    lede: "Découvrez l'équipe de maîtres du studio — choisissez avec qui réserver"
   },
   team: {
     heading: "Équipe",

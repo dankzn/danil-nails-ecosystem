@@ -59,10 +59,7 @@ export type Dictionary = {
     kicker: string;
     headingPre: string;
     headingEm: string;
-    name: string;
-    role: string;
-    bio: string;
-    facts: { value: string; label: string }[];
+    lede: string;
   };
   team: {
     heading: string;

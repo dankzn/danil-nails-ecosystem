@@ -87,13 +87,10 @@ export const en: Dictionary = {
     ]
   },
   master: {
-    kicker: "Master",
+    kicker: "Masters",
     headingPre: "Craft, ",
     headingEm: "visible in the details",
-    name: "Danil Afliatov",
-    role: "Founder and nail master",
-    bio: "Careful, precise work with shape, coating and detail — comfort and a consistent result at every appointment",
-    facts: [{ value: "3", label: "service formats" }]
+    lede: "Meet the studio's team of masters — pick the one you'd like to book with"
   },
   team: {
     heading: "Team",
