@@ -67,6 +67,14 @@ export type Dictionary = {
     empty: string;
     bookCta: string;
   };
+  masterProfile: {
+    backLink: string;
+    philosophyHeading: string;
+    videoHeading: string;
+    videoFallback: string;
+    loading: string;
+    notFound: string;
+  };
   contact: {
     kicker: string;
     headingPre: string;

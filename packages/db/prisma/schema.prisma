@@ -273,7 +273,14 @@ model StaffProfile {
   primaryOrganizationId String?
   cityId               String?
   countryId            String?
+  // Internal HR note ("Служебная информация" in the CRM) — never exposed
+  // via any public/client-facing API. See AGENTS.md: private/internal
+  // labels must never mix with what clients or site visitors see.
   bio                  String?
+  // The two fields below are the opposite: written by the owner
+  // specifically to be shown on the public masters page.
+  philosophy           String?
+  worksVideoUrl        String?
   employmentStatus     EmploymentStatus @default(active)
   employmentType       EmploymentType   @default(full_time)
   hiredAt              DateTime?

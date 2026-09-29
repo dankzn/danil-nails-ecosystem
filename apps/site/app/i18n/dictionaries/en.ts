@@ -98,6 +98,14 @@ export const en: Dictionary = {
     empty: "The team roster will appear here soon.",
     bookCta: "Book"
   },
+  masterProfile: {
+    backLink: "All masters",
+    philosophyHeading: "My philosophy",
+    videoHeading: "Work video",
+    videoFallback: "Watch the work video",
+    loading: "Loading master profile…",
+    notFound: "Master not found."
+  },
   contact: {
     kicker: "Booking",
     headingPre: "Book ",

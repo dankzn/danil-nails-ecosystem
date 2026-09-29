@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import type { Locale } from "../i18n/locales";
 import {
   initialsOf,
@@ -35,17 +36,22 @@ export function TeamGrid({ lang, heading, bookCta, staff }: TeamGridProps) {
           return (
             <Reveal delay={index * 60} key={member.id}>
               <article className="team-card">
-                <div className="team-card-portrait">
-                  {photoSrc ? (
-                    <img alt={member.displayName} src={photoSrc} />
-                  ) : (
-                    <span>{initialsOf(member.displayName)}</span>
-                  )}
-                </div>
-                <h3 className="team-card-name">{member.displayName}</h3>
-                {role.length > 0 ? <p className="team-card-role">{role}</p> : null}
-                {member.bio ? <p className="team-card-bio">{member.bio}</p> : null}
-                <Button className="team-card-cta" href={`/${lang}/contact/?staff=${member.id}`}>
+                <Link className="team-card-link" href={`/${lang}/master/profile/?id=${member.id}`}>
+                  <div className="team-card-portrait">
+                    {photoSrc ? (
+                      <img alt={member.displayName} src={photoSrc} />
+                    ) : (
+                      <span>{initialsOf(member.displayName)}</span>
+                    )}
+                  </div>
+                  <h3 className="team-card-name">{member.displayName}</h3>
+                  {role.length > 0 ? <p className="team-card-role">{role}</p> : null}
+                </Link>
+                <Button
+                  className="team-card-cta"
+                  href={`/${lang}/contact/?staff=${member.id}`}
+                  variant="solid"
+                >
                   {bookCta}
                 </Button>
               </article>

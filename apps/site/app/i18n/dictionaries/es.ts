@@ -98,6 +98,14 @@ export const es: Dictionary = {
     empty: "El equipo aparecerá aquí muy pronto.",
     bookCta: "Reservar"
   },
+  masterProfile: {
+    backLink: "Todos los maestros",
+    philosophyHeading: "Mi filosofía",
+    videoHeading: "Video de trabajos",
+    videoFallback: "Ver video de trabajos",
+    loading: "Cargando la ficha del maestro…",
+    notFound: "Maestro no encontrado."
+  },
   contact: {
     kicker: "Reserva",
     headingPre: "Reserva ",

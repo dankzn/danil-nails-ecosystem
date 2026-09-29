@@ -98,6 +98,14 @@ export const ru: Dictionary = {
     empty: "Скоро здесь появится команда мастеров.",
     bookCta: "Записаться"
   },
+  masterProfile: {
+    backLink: "Все мастера",
+    philosophyHeading: "Моя философия",
+    videoHeading: "Видео работ",
+    videoFallback: "Смотреть видео работ",
+    loading: "Загружаем карточку мастера…",
+    notFound: "Мастер не найден."
+  },
   contact: {
     kicker: "Запись",
     headingPre: "Запишитесь ",

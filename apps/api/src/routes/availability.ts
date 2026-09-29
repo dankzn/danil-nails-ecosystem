@@ -18,6 +18,12 @@ function sendInvalidPayload(reply: FastifyReply) {
   return reply.code(400).send({ error: "invalid_availability_query" });
 }
 
+function experienceYearsSince(hiredAt: Date | null) {
+  if (!hiredAt) return null;
+  const years = (Date.now() - hiredAt.getTime()) / (365.25 * 24 * 60 * 60 * 1000);
+  return Math.max(0, Math.floor(years));
+}
+
 export function registerAvailabilityRoutes(
   server: FastifyInstance,
   database: DatabaseClient | null
@@ -30,7 +36,12 @@ export function registerAvailabilityRoutes(
       select: {
         id: true,
         displayName: true,
-        bio: true,
+        // "bio" is the internal HR note ("Служебная информация" in the
+        // CRM) and must never reach this public response — only the
+        // fields below, which the owner writes specifically for the site.
+        philosophy: true,
+        worksVideoUrl: true,
+        hiredAt: true,
         photo: { select: { updatedAt: true } },
         positions: {
           orderBy: { order: "asc" },
@@ -52,9 +63,10 @@ export function registerAvailabilityRoutes(
     });
 
     return {
-      staff: staff.map(({ photo, positions, ...member }) => ({
+      staff: staff.map(({ photo, positions, hiredAt, ...member }) => ({
         ...member,
         photoUrl: photo ? `/v1/staff/${member.id}/photo?v=${photo.updatedAt.getTime()}` : null,
+        experienceYears: experienceYearsSince(hiredAt),
         // Internal positions (e.g. "Основатель-внутр") are excluded by the
         // `where` above and never reach this response at all — every
         // remaining position is public and shown, in order.

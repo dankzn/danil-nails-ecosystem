@@ -77,6 +77,8 @@ type Employee = {
   countryId: string | null;
   country: NamedRef | null;
   bio: string | null;
+  philosophy: string | null;
+  worksVideoUrl: string | null;
   photoUrl: string | null;
   employmentStatus: EmploymentStatus;
   employmentType: EmploymentType;
@@ -226,6 +228,8 @@ type EmployeeForm = {
   emergencyContactName: string;
   emergencyContactPhone: string;
   bio: string;
+  philosophy: string;
+  worksVideoUrl: string;
   isBookable: boolean;
   serviceIds: string[];
 };
@@ -357,6 +361,8 @@ function emptyEmployeeForm(): EmployeeForm {
     emergencyContactName: "",
     emergencyContactPhone: "",
     bio: "",
+    philosophy: "",
+    worksVideoUrl: "",
     isBookable: true,
     serviceIds: []
   };
@@ -437,6 +443,8 @@ function employeeToForm(employee: Employee): EmployeeForm {
     emergencyContactName: employee.emergencyContactName ?? "",
     emergencyContactPhone: employee.emergencyContactPhone ?? "",
     bio: employee.bio ?? "",
+    philosophy: employee.philosophy ?? "",
+    worksVideoUrl: employee.worksVideoUrl ?? "",
     isBookable: employee.isBookable,
     serviceIds: employee.services.map(({ service }) => service.id)
   };
@@ -694,6 +702,8 @@ export default function EmployeesPage() {
       emergencyContactName: optionalValue(employeeForm.emergencyContactName),
       emergencyContactPhone: optionalValue(employeeForm.emergencyContactPhone),
       bio: optionalValue(employeeForm.bio),
+      philosophy: optionalValue(employeeForm.philosophy),
+      worksVideoUrl: optionalValue(employeeForm.worksVideoUrl),
       isBookable: employeeForm.isBookable,
       serviceIds: employeeForm.serviceIds
     };
@@ -1548,11 +1558,38 @@ export default function EmployeesPage() {
                   />
                 </label>
                 <label className="form-field form-field-span-three">
-                  <span>Служебная информация</span>
+                  <span>Служебная информация (видна только в CRM)</span>
                   <textarea
                     maxLength={2000}
                     onChange={(event) => updateEmployeeForm("bio", event.target.value)}
                     value={employeeForm.bio}
+                  />
+                </label>
+              </div>
+            </fieldset>
+
+            <fieldset className="hr-fieldset">
+              <legend>Публичная карточка на сайте</legend>
+              <div className="form-grid">
+                <label className="form-field form-field-span-three">
+                  <span>Моя философия</span>
+                  <textarea
+                    maxLength={2000}
+                    onChange={(event) => updateEmployeeForm("philosophy", event.target.value)}
+                    placeholder="Короткий личный текст о подходе к работе — виден на публичной карточке мастера"
+                    value={employeeForm.philosophy}
+                  />
+                </label>
+                <label className="form-field form-field-span-two">
+                  <span>Видео работ (ссылка на YouTube/Vimeo)</span>
+                  <input
+                    maxLength={500}
+                    onChange={(event) =>
+                      updateEmployeeForm("worksVideoUrl", event.target.value)
+                    }
+                    placeholder="https://..."
+                    type="url"
+                    value={employeeForm.worksVideoUrl}
                   />
                 </label>
               </div>
@@ -1743,8 +1780,16 @@ export default function EmployeesPage() {
                       </strong>
                     </div>
                     <div className="employee-profile-wide">
-                      <span>Служебная информация</span>
+                      <span>Служебная информация (видна только в CRM)</span>
                       <strong>{selectedEmployee.bio ?? "Не указана"}</strong>
+                    </div>
+                    <div className="employee-profile-wide">
+                      <span>Моя философия (публичная карточка на сайте)</span>
+                      <strong>{selectedEmployee.philosophy ?? "Не указана"}</strong>
+                    </div>
+                    <div className="employee-profile-wide">
+                      <span>Видео работ (публичная карточка на сайте)</span>
+                      <strong>{selectedEmployee.worksVideoUrl ?? "Не указано"}</strong>
                     </div>
                   </div>
                 ) : null}

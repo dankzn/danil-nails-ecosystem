@@ -58,6 +58,8 @@ const employeeCreateSchema = z.object({
   emergencyContactName: z.string().trim().max(160).nullable().optional(),
   emergencyContactPhone: z.string().trim().max(30).nullable().optional(),
   bio: z.string().trim().max(2000).nullable().optional(),
+  philosophy: z.string().trim().max(2000).nullable().optional(),
+  worksVideoUrl: z.union([z.url(), z.literal("")]).nullable().optional(),
   isBookable: z.boolean().default(true),
   serviceIds: z.array(z.string().cuid()).max(100).default([])
 });
@@ -272,6 +274,10 @@ function profileData(input: z.infer<typeof employeeUpdateSchema>) {
     ...(input.cityId !== undefined ? { cityId: input.cityId } : {}),
     ...(input.countryId !== undefined ? { countryId: input.countryId } : {}),
     ...(input.bio !== undefined ? { bio: optionalText(input.bio) } : {}),
+    ...(input.philosophy !== undefined ? { philosophy: optionalText(input.philosophy) } : {}),
+    ...(input.worksVideoUrl !== undefined
+      ? { worksVideoUrl: optionalText(input.worksVideoUrl) }
+      : {}),
     ...(input.employmentStatus !== undefined
       ? { employmentStatus: EmploymentStatus[input.employmentStatus] }
       : {}),

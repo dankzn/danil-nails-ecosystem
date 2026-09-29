@@ -15,7 +15,9 @@ export type PositionTitle = {
 export type StaffMember = {
   id: string;
   displayName: string;
-  bio: string | null;
+  philosophy: string | null;
+  worksVideoUrl: string | null;
+  experienceYears: number | null;
   photoUrl: string | null;
   positions: PositionTitle[];
 };
@@ -40,6 +42,49 @@ export function masterPositions(positions: PositionTitle[]) {
 
 export function staffPhotoSrc(photoUrl: string | null) {
   return photoUrl ? `${apiUrl}${photoUrl}` : null;
+}
+
+// Turns a YouTube/Vimeo watch link into its embeddable iframe src; returns
+// null for anything else (the caller falls back to a plain link).
+export function embeddableVideoSrc(url: string | null) {
+  if (!url) return null;
+  try {
+    const parsed = new URL(url);
+    const host = parsed.hostname.replace(/^www\./, "");
+
+    if (host === "youtube.com" || host === "m.youtube.com") {
+      const id = parsed.searchParams.get("v");
+      return id ? `https://www.youtube.com/embed/${id}` : null;
+    }
+    if (host === "youtu.be") {
+      const id = parsed.pathname.slice(1);
+      return id ? `https://www.youtube.com/embed/${id}` : null;
+    }
+    if (host === "vimeo.com") {
+      const id = parsed.pathname.slice(1);
+      return id ? `https://player.vimeo.com/video/${id}` : null;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+function ruYearsWord(years: number) {
+  const lastTwo = years % 100;
+  const lastOne = years % 10;
+  if (lastTwo >= 11 && lastTwo <= 14) return "лет";
+  if (lastOne === 1) return "год";
+  if (lastOne >= 2 && lastOne <= 4) return "года";
+  return "лет";
+}
+
+export function experienceLabel(years: number | null, lang: Locale) {
+  if (years === null) return null;
+  if (lang === "en") return `${years} ${years === 1 ? "year" : "years"} of experience`;
+  if (lang === "es") return `${years} ${years === 1 ? "año" : "años"} de experiencia`;
+  if (lang === "fr") return `${years} ${years === 1 ? "an" : "ans"} d'expérience`;
+  return `${years} ${ruYearsWord(years)} опыта`;
 }
 
 export function initialsOf(displayName: string) {
