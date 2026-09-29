@@ -72,12 +72,18 @@ export function BookingForm({ dict, lang }: { dict: Dictionary["booking"]; lang:
       .then((data) => setServices(data.services ?? []))
       .catch(() => setServices([]));
 
+    const presetStaffId = new URLSearchParams(window.location.search).get("staff");
+
     fetch(`${apiUrl}/v1/staff`)
       .then((response) => response.json())
       .then((data) => {
         const list: Staff[] = data.staff ?? [];
         setStaffList(list);
-        if (list.length === 1 && list[0]) setStaffId(list[0].id);
+        if (presetStaffId && list.some((staff) => staff.id === presetStaffId)) {
+          setStaffId(presetStaffId);
+        } else if (list.length === 1 && list[0]) {
+          setStaffId(list[0].id);
+        }
       })
       .catch(() => setStaffList([]));
   }, []);

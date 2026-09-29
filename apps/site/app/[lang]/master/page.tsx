@@ -10,7 +10,7 @@ export default async function MasterPage({ params }: PageProps<"/[lang]/master">
 
   return (
     <main>
-      <MasterSection lang={lang} master={dict.master} teamHeading={dict.team.heading} />
+      <MasterSection lang={lang} master={dict.master} team={dict.team} />
     </main>
   );
 }

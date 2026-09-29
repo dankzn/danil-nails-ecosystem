@@ -59,11 +59,10 @@ export function registerAvailabilityRoutes(
       staff: ordered.map(({ photo, positions, user: _user, ...member }) => ({
         ...member,
         photoUrl: photo ? `/v1/staff/${member.id}/photo?v=${photo.updatedAt.getTime()}` : null,
-        // Internal positions (e.g. "Основатель") are excluded by the `where`
-        // above and never reach this response at all — only the first
-        // remaining public one is shown, so someone whose only position is
-        // internal correctly shows no role rather than leaking it.
-        position: positions[0]?.position ?? null
+        // Internal positions (e.g. "Основатель-внутр") are excluded by the
+        // `where` above and never reach this response at all — every
+        // remaining position is public and shown, in order.
+        positions: positions.map((assignment) => assignment.position)
       }))
     };
   });

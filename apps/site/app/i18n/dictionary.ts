@@ -68,6 +68,7 @@ export type Dictionary = {
     heading: string;
     loading: string;
     empty: string;
+    bookCta: string;
   };
   contact: {
     kicker: string;

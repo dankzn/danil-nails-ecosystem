@@ -98,7 +98,8 @@ export const ru: Dictionary = {
   team: {
     heading: "Команда",
     loading: "Загружаем команду…",
-    empty: "Скоро здесь появится команда мастеров."
+    empty: "Скоро здесь появится команда мастеров.",
+    bookCta: "Записаться"
   },
   contact: {
     kicker: "Запись",

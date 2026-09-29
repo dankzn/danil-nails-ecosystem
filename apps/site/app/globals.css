@@ -986,6 +986,10 @@ button {
   letter-spacing: 0.06em;
 }
 
+.master-book-cta {
+  margin-top: 34px;
+}
+
 /* ---------- Team ---------- */
 
 .team-heading {
@@ -1055,7 +1059,11 @@ button {
   color: var(--ink-soft);
   font-size: 14px;
   line-height: 1.6;
-  margin: 0;
+  margin: 0 0 18px;
+}
+
+.team-card-cta {
+  display: inline-flex;
 }
 
 /* ---------- Register form ---------- */

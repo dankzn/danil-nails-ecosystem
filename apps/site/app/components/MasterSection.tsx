@@ -1,7 +1,8 @@
 "use client";
 
 import type { Locale } from "../i18n/locales";
-import { initialsOf, localizedPosition, staffPhotoSrc, useStaff } from "../lib/use-staff";
+import { initialsOf, localizedPositions, staffPhotoSrc, useStaff } from "../lib/use-staff";
+import { Button } from "./Button";
 import { Reveal } from "./Reveal";
 import { TeamGrid } from "./TeamGrid";
 
@@ -15,13 +16,20 @@ type MasterDict = {
   facts: { value: string; label: string }[];
 };
 
+type TeamDict = {
+  heading: string;
+  loading: string;
+  empty: string;
+  bookCta: string;
+};
+
 type MasterSectionProps = {
   lang: Locale;
   master: MasterDict;
-  teamHeading: string;
+  team: TeamDict;
 };
 
-export function MasterSection({ lang, master, teamHeading }: MasterSectionProps) {
+export function MasterSection({ lang, master, team }: MasterSectionProps) {
   const staff = useStaff();
   // While loading, or if the CRM has nobody bookable yet, fall back to the
   // static copy below rather than showing an empty hero.
@@ -29,9 +37,11 @@ export function MasterSection({ lang, master, teamHeading }: MasterSectionProps)
   const rest = staff && staff.length > 1 ? staff.slice(1) : [];
 
   const name = primary?.displayName ?? master.name;
-  const role = (primary ? localizedPosition(primary.position, lang) : null) ?? master.role;
+  const roles = primary ? localizedPositions(primary.positions, lang) : [];
+  const role = roles.length > 0 ? roles.join(" · ") : master.role;
   const bio = primary?.bio ?? master.bio;
   const photoSrc = primary ? staffPhotoSrc(primary.photoUrl) : null;
+  const bookHref = primary ? `/${lang}/contact/?staff=${primary.id}` : `/${lang}/contact/`;
 
   return (
     <>
@@ -68,6 +78,9 @@ export function MasterSection({ lang, master, teamHeading }: MasterSectionProps)
                     </div>
                   ))}
                 </div>
+                <Button className="master-book-cta" href={bookHref} variant="solid">
+                  {team.bookCta}
+                </Button>
               </div>
             </Reveal>
           </div>
@@ -77,7 +90,7 @@ export function MasterSection({ lang, master, teamHeading }: MasterSectionProps)
       {rest.length > 0 ? (
         <section className="section">
           <div className="wrap">
-            <TeamGrid heading={teamHeading} lang={lang} staff={rest} />
+            <TeamGrid bookCta={team.bookCta} heading={team.heading} lang={lang} staff={rest} />
           </div>
         </section>
       ) : null}

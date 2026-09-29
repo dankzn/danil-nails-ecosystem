@@ -1,16 +1,18 @@
 "use client";
 
 import type { Locale } from "../i18n/locales";
-import { initialsOf, localizedPosition, staffPhotoSrc, type StaffMember } from "../lib/use-staff";
+import { initialsOf, localizedPositions, staffPhotoSrc, type StaffMember } from "../lib/use-staff";
+import { Button } from "./Button";
 import { Reveal } from "./Reveal";
 
 type TeamGridProps = {
   lang: Locale;
   heading: string;
+  bookCta: string;
   staff: StaffMember[];
 };
 
-export function TeamGrid({ lang, heading, staff }: TeamGridProps) {
+export function TeamGrid({ lang, heading, bookCta, staff }: TeamGridProps) {
   if (staff.length === 0) return null;
 
   return (
@@ -20,7 +22,7 @@ export function TeamGrid({ lang, heading, staff }: TeamGridProps) {
       </Reveal>
       <div className="team-grid">
         {staff.map((member, index) => {
-          const role = localizedPosition(member.position, lang);
+          const role = localizedPositions(member.positions, lang).join(" · ");
           const photoSrc = staffPhotoSrc(member.photoUrl);
           return (
             <Reveal delay={index * 60} key={member.id}>
@@ -33,8 +35,11 @@ export function TeamGrid({ lang, heading, staff }: TeamGridProps) {
                   )}
                 </div>
                 <h3 className="team-card-name">{member.displayName}</h3>
-                {role ? <p className="team-card-role">{role}</p> : null}
+                {role.length > 0 ? <p className="team-card-role">{role}</p> : null}
                 {member.bio ? <p className="team-card-bio">{member.bio}</p> : null}
+                <Button className="team-card-cta" href={`/${lang}/contact/?staff=${member.id}`}>
+                  {bookCta}
+                </Button>
               </article>
             </Reveal>
           );

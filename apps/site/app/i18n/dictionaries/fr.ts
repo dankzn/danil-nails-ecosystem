@@ -98,7 +98,8 @@ export const fr: Dictionary = {
   team: {
     heading: "Équipe",
     loading: "Chargement de l'équipe…",
-    empty: "L'équipe sera bientôt présentée ici."
+    empty: "L'équipe sera bientôt présentée ici.",
+    bookCta: "Réserver"
   },
   contact: {
     kicker: "Réservation",

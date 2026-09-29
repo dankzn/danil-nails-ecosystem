@@ -16,15 +16,18 @@ export type StaffMember = {
   displayName: string;
   bio: string | null;
   photoUrl: string | null;
-  position: PositionTitle | null;
+  positions: PositionTitle[];
 };
 
-export function localizedPosition(position: PositionTitle | null, lang: Locale) {
-  if (!position) return null;
+export function localizedPosition(position: PositionTitle, lang: Locale) {
   if (lang === "en") return position.titleEn ?? position.titleRu;
   if (lang === "es") return position.titleEs ?? position.titleRu;
   if (lang === "fr") return position.titleFr ?? position.titleRu;
   return position.titleRu;
+}
+
+export function localizedPositions(positions: PositionTitle[], lang: Locale) {
+  return positions.map((position) => localizedPosition(position, lang));
 }
 
 export function staffPhotoSrc(photoUrl: string | null) {
