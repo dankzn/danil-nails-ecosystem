@@ -1,7 +1,7 @@
 "use client";
 
 import type { Locale } from "../i18n/locales";
-import { useStaff } from "../lib/use-staff";
+import { masterPositions, useStaff } from "../lib/use-staff";
 import { Reveal } from "./Reveal";
 import { TeamGrid } from "./TeamGrid";
 
@@ -27,10 +27,10 @@ type MasterSectionProps = {
 
 export function MasterSection({ lang, master, team }: MasterSectionProps) {
   const staff = useStaff();
-  // Only people with at least one public position are working masters —
-  // administrative-only staff (e.g. an owner with no craft position) never
-  // appear here, and nobody gets a bigger card than anyone else.
-  const masters = (staff ?? []).filter((member) => member.positions.length > 0);
+  // Only people holding an actual craft ("master") role appear here — a
+  // public-but-organizational title (co-founder, SMM manager) is not
+  // enough, and nobody gets a bigger card than anyone else.
+  const masters = (staff ?? []).filter((member) => masterPositions(member.positions).length > 0);
 
   return (
     <section className="section section-first">

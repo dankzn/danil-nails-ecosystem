@@ -9,6 +9,7 @@ export type PositionTitle = {
   titleEn: string | null;
   titleEs: string | null;
   titleFr: string | null;
+  isMasterRole: boolean;
 };
 
 export type StaffMember = {
@@ -28,6 +29,13 @@ export function localizedPosition(position: PositionTitle, lang: Locale) {
 
 export function localizedPositions(positions: PositionTitle[], lang: Locale) {
   return positions.map((position) => localizedPosition(position, lang));
+}
+
+// Only actual craft roles (e.g. "Мастер маникюра") — as opposed to public
+// organizational titles like "Сооснователь" or "SMM-менеджер" — belong on
+// the public masters page.
+export function masterPositions(positions: PositionTitle[]) {
+  return positions.filter((position) => position.isMasterRole);
 }
 
 export function staffPhotoSrc(photoUrl: string | null) {

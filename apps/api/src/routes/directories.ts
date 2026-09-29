@@ -39,7 +39,8 @@ const positionCreateSchema = z.object({
   titleEn: z.string().trim().max(160).nullable().optional(),
   titleEs: z.string().trim().max(160).nullable().optional(),
   titleFr: z.string().trim().max(160).nullable().optional(),
-  isInternal: z.boolean().optional()
+  isInternal: z.boolean().optional(),
+  isMasterRole: z.boolean().optional()
 });
 const positionUpdateSchema = z.object({
   titleRu: z.string().trim().min(2).max(160).optional(),
@@ -47,6 +48,7 @@ const positionUpdateSchema = z.object({
   titleEs: z.string().trim().max(160).nullable().optional(),
   titleFr: z.string().trim().max(160).nullable().optional(),
   isInternal: z.boolean().optional(),
+  isMasterRole: z.boolean().optional(),
   isArchived: z.boolean().optional()
 });
 const positionIdParamsSchema = z.object({ id: z.string().cuid() });
@@ -192,7 +194,8 @@ export function registerDirectoryRoutes(
             titleEn: input.data.titleEn ?? null,
             titleEs: input.data.titleEs ?? null,
             titleFr: input.data.titleFr ?? null,
-            isInternal: input.data.isInternal ?? false
+            isInternal: input.data.isInternal ?? false,
+            isMasterRole: input.data.isMasterRole ?? false
           }
         });
         return reply.code(201).send({ entry });
@@ -223,6 +226,9 @@ export function registerDirectoryRoutes(
             ...(input.data.titleFr !== undefined ? { titleFr: input.data.titleFr } : {}),
             ...(input.data.isInternal !== undefined
               ? { isInternal: input.data.isInternal }
+              : {}),
+            ...(input.data.isMasterRole !== undefined
+              ? { isMasterRole: input.data.isMasterRole }
               : {}),
             ...(input.data.isArchived !== undefined
               ? { isArchived: input.data.isArchived }

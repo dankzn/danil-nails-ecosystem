@@ -1,7 +1,13 @@
 "use client";
 
 import type { Locale } from "../i18n/locales";
-import { initialsOf, localizedPositions, staffPhotoSrc, type StaffMember } from "../lib/use-staff";
+import {
+  initialsOf,
+  localizedPositions,
+  masterPositions,
+  staffPhotoSrc,
+  type StaffMember
+} from "../lib/use-staff";
 import { Button } from "./Button";
 import { Reveal } from "./Reveal";
 
@@ -24,7 +30,7 @@ export function TeamGrid({ lang, heading, bookCta, staff }: TeamGridProps) {
       ) : null}
       <div className="team-grid">
         {staff.map((member, index) => {
-          const role = localizedPositions(member.positions, lang).join(" · ");
+          const role = localizedPositions(masterPositions(member.positions), lang).join(" · ");
           const photoSrc = staffPhotoSrc(member.photoUrl);
           return (
             <Reveal delay={index * 60} key={member.id}>

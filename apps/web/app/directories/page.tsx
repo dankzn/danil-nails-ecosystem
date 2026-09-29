@@ -14,6 +14,7 @@ type PositionEntry = {
   titleEs: string | null;
   titleFr: string | null;
   isInternal: boolean;
+  isMasterRole: boolean;
   isArchived: boolean;
 };
 
@@ -40,7 +41,8 @@ const emptyPositionForm = {
   titleEn: "",
   titleEs: "",
   titleFr: "",
-  isInternal: false
+  isInternal: false,
+  isMasterRole: false
 };
 
 const tabs: Array<{ key: TabKey; label: string }> = [
@@ -106,7 +108,9 @@ export default function DirectoriesPage() {
     setFormError(null);
   }, [activeTab, data?.countries]);
 
-  function entriesForTab(): Array<Entry | CityEntry | (Entry & { isInternal: boolean })> {
+  function entriesForTab(): Array<
+    Entry | CityEntry | (Entry & { isInternal: boolean; isMasterRole: boolean })
+  > {
     if (!data) return [];
     if (activeTab === "cities") return data.cities;
     if (activeTab === "positions") {
@@ -114,6 +118,7 @@ export default function DirectoriesPage() {
         id: position.id,
         title: position.titleRu,
         isInternal: position.isInternal,
+        isMasterRole: position.isMasterRole,
         isArchived: position.isArchived
       }));
     }
@@ -139,7 +144,8 @@ export default function DirectoriesPage() {
             titleEn: newPosition.titleEn.trim() || null,
             titleEs: newPosition.titleEs.trim() || null,
             titleFr: newPosition.titleFr.trim() || null,
-            isInternal: newPosition.isInternal
+            isInternal: newPosition.isInternal,
+            isMasterRole: newPosition.isMasterRole
           })
         });
         setNewPosition(emptyPositionForm);
@@ -198,7 +204,8 @@ export default function DirectoriesPage() {
         titleEn: position.titleEn ?? "",
         titleEs: position.titleEs ?? "",
         titleFr: position.titleFr ?? "",
-        isInternal: position.isInternal
+        isInternal: position.isInternal,
+        isMasterRole: position.isMasterRole
       });
       setFormError(null);
       return;
@@ -222,7 +229,8 @@ export default function DirectoriesPage() {
           titleEn: editPosition.titleEn.trim() || null,
           titleEs: editPosition.titleEs.trim() || null,
           titleFr: editPosition.titleFr.trim() || null,
-          isInternal: editPosition.isInternal
+          isInternal: editPosition.isInternal,
+          isMasterRole: editPosition.isMasterRole
         })
       });
       setEditingPosition(null);
@@ -365,6 +373,16 @@ export default function DirectoriesPage() {
                 />
                 <span>Внутренняя (не видна клиентам и на сайте)</span>
               </label>
+              <label className="checkbox-field directory-internal-toggle">
+                <input
+                  checked={newPosition.isMasterRole}
+                  onChange={(event) =>
+                    setNewPosition((form) => ({ ...form, isMasterRole: event.target.checked }))
+                  }
+                  type="checkbox"
+                />
+                <span>Мастер (показывать на странице мастеров сайта)</span>
+              </label>
             </div>
             <button className="primary-button" disabled={isSaving} type="submit">
               <Plus aria-hidden="true" size={15} />
@@ -447,6 +465,9 @@ export default function DirectoriesPage() {
                       </span>
                       {"isInternal" in entry && entry.isInternal ? (
                         <span className="status status-neutral">Внутренняя</span>
+                      ) : null}
+                      {"isMasterRole" in entry && entry.isMasterRole ? (
+                        <span className="status status-success">Мастер</span>
                       ) : null}
                     </td>
                     <td className="action-cell">
@@ -542,6 +563,16 @@ export default function DirectoriesPage() {
                 type="checkbox"
               />
               <span>Внутренняя (не видна клиентам и на сайте)</span>
+            </label>
+            <label className="checkbox-field">
+              <input
+                checked={editPosition.isMasterRole}
+                onChange={(event) =>
+                  setEditPosition((form) => ({ ...form, isMasterRole: event.target.checked }))
+                }
+                type="checkbox"
+              />
+              <span>Мастер (показывать на странице мастеров сайта)</span>
             </label>
             {formError ? (
               <p className="feedback feedback-error" role="alert">

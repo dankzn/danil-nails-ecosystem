@@ -332,6 +332,12 @@ model Position {
   // or client-facing APIs — see AGENTS.md: private/internal labels must
   // never mix with what clients or site visitors see.
   isInternal Boolean  @default(false)
+  // Marks an actual client-facing craft role (e.g. "Мастер маникюра") as
+  // opposed to a public-but-organizational title (e.g. "Сооснователь",
+  // "SMM-менеджер") — only staff holding a master-role position appear on
+  // the public masters page (apps/site /master), even though both kinds of
+  // title can otherwise be public (isInternal: false).
+  isMasterRole Boolean  @default(false)
   isArchived Boolean  @default(false)
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt

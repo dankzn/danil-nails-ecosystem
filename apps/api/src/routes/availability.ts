@@ -37,7 +37,13 @@ export function registerAvailabilityRoutes(
           where: { position: { isInternal: false, isArchived: false } },
           select: {
             position: {
-              select: { titleRu: true, titleEn: true, titleEs: true, titleFr: true }
+              select: {
+                titleRu: true,
+                titleEn: true,
+                titleEs: true,
+                titleFr: true,
+                isMasterRole: true
+              }
             }
           }
         }
