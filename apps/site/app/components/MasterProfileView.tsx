@@ -17,7 +17,12 @@ import { Reveal } from "./Reveal";
 
 export function MasterProfileView({ dict, lang }: { dict: Dictionary; lang: Locale }) {
   const staff = useStaff();
-  const [staffId, setStaffId] = useState<string | null>(null);
+  // undefined = URL not read yet (still on the server-rendered shell),
+  // null = read and there genuinely is no ?id= in it. Collapsing these two
+  // into one "not ready" state is what caused the infinite loading spinner
+  // when the id was legitimately missing (e.g. the language switcher used
+  // to drop query params on navigation).
+  const [staffId, setStaffId] = useState<string | null | undefined>(undefined);
 
   useEffect(() => {
     setStaffId(new URLSearchParams(window.location.search).get("id"));
@@ -39,7 +44,7 @@ export function MasterProfileView({ dict, lang }: { dict: Dictionary; lang: Loca
           </a>
         </Reveal>
 
-        {staff === null || staffId === null ? (
+        {staff === null || staffId === undefined ? (
           <p className="team-status">{dict.masterProfile.loading}</p>
         ) : !member ? (
           <p className="team-status">{dict.masterProfile.notFound}</p>
