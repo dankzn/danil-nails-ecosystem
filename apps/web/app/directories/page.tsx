@@ -42,7 +42,7 @@ const emptyPositionForm = {
   titleEs: "",
   titleFr: "",
   isInternal: false,
-  isMasterRole: false
+  isMasterRole: true
 };
 
 const tabs: Array<{ key: TabKey; label: string }> = [

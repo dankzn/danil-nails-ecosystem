@@ -336,8 +336,11 @@ model Position {
   // opposed to a public-but-organizational title (e.g. "Сооснователь",
   // "SMM-менеджер") — only staff holding a master-role position appear on
   // the public masters page (apps/site /master), even though both kinds of
-  // title can otherwise be public (isInternal: false).
-  isMasterRole Boolean  @default(false)
+  // title can otherwise be public (isInternal: false). Opt-out by design:
+  // defaults true so a new/existing public position doesn't silently drop
+  // its holder off the masters page — admin-only titles must be unchecked
+  // explicitly.
+  isMasterRole Boolean  @default(true)
   isArchived Boolean  @default(false)
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt

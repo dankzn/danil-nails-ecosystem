@@ -195,7 +195,7 @@ export function registerDirectoryRoutes(
             titleEs: input.data.titleEs ?? null,
             titleFr: input.data.titleFr ?? null,
             isInternal: input.data.isInternal ?? false,
-            isMasterRole: input.data.isMasterRole ?? false
+            isMasterRole: input.data.isMasterRole ?? true
           }
         });
         return reply.code(201).send({ entry });
