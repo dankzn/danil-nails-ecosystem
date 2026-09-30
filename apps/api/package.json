@@ -6,7 +6,7 @@
     "node": "22.x"
   },
   "scripts": {
-    "predev": "pnpm --filter @danil-nails/db build && pnpm --filter @danil-nails/shared build",
+    "predev": "pnpm --filter @danil-nails/shared build && pnpm --filter @danil-nails/db build",
     "dev": "tsx watch src/index.ts",
     "build": "tsc --project tsconfig.json",
     "test": "tsx --test src/*.test.ts src/**/*.test.ts",
