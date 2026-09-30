@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
 import { usePathname } from "next/navigation";
 import { locales, localeNames, type Locale } from "../i18n/locales";
 
@@ -10,17 +10,34 @@ function swapLocale(pathname: string, search: string, nextLocale: Locale): strin
   return `/${segments.join("/")}/${search}`;
 }
 
-// Query params (e.g. ?id=... on a master profile, ?staff=... on the
-// booking form) live only in the browser's location, not in `usePathname`,
-// so read them directly rather than pulling in `useSearchParams` — the
-// same trade-off this codebase already makes in BookingForm, avoiding
-// that hook's Suspense-boundary requirement under `output: "export"`.
+// Best-effort href for the initial render/no-JS case. The real navigation
+// happens in handleLocaleClick below, computed fresh from the live
+// window.location at click time — not from this pre-rendered value, and
+// not from React state set in an effect — because on the deployed static
+// export, relying on hydration-timed state here was still dropping the
+// query string (?id=... on a master profile) on click in production, even
+// though it worked in every local/incognito repro. Reading location
+// directly inside the click handler sidesteps whatever hydration/caching
+// timing caused that and is the one thing guaranteed to see the real,
+// current URL.
 function useSearchString() {
   const [search, setSearch] = useState("");
   useEffect(() => {
     setSearch(window.location.search);
   }, []);
   return search;
+}
+
+function handleLocaleClick(event: ReactMouseEvent<HTMLAnchorElement>, nextLocale: Locale) {
+  if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) {
+    return; // let the browser handle "open in new tab" etc. via the href
+  }
+  event.preventDefault();
+  window.location.href = swapLocale(
+    window.location.pathname,
+    window.location.search,
+    nextLocale
+  );
 }
 
 export function LocaleSwitcher({
@@ -43,6 +60,7 @@ export function LocaleSwitcher({
         <a
           key={locale}
           href={swapLocale(pathname, search, locale)}
+          onClick={(event) => handleLocaleClick(event, locale)}
           className={`locale-switcher-item${locale === current ? " locale-switcher-item-active" : ""}`}
           aria-current={locale === current ? "true" : undefined}
           title={localeNames[locale]}
@@ -105,7 +123,10 @@ function CompactLocaleSwitcher({
                 aria-current={locale === current ? "true" : undefined}
                 className={`locale-dropdown-item${locale === current ? " locale-dropdown-item-active" : ""}`}
                 href={swapLocale(pathname, search, locale)}
-                onClick={() => setIsOpen(false)}
+                onClick={(event) => {
+                  setIsOpen(false);
+                  handleLocaleClick(event, locale);
+                }}
                 role="option"
               >
                 {localeNames[locale]}

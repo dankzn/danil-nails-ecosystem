@@ -15,6 +15,8 @@ import {
 import { Button } from "./Button";
 import { Reveal } from "./Reveal";
 
+const LAST_MASTER_ID_KEY = "danil-nails:last-master-id";
+
 export function MasterProfileView({ dict, lang }: { dict: Dictionary; lang: Locale }) {
   const staff = useStaff();
   // undefined = URL not read yet (still on the server-rendered shell),
@@ -25,7 +27,35 @@ export function MasterProfileView({ dict, lang }: { dict: Dictionary; lang: Loca
   const [staffId, setStaffId] = useState<string | null | undefined>(undefined);
 
   useEffect(() => {
-    setStaffId(new URLSearchParams(window.location.search).get("id"));
+    const idFromUrl = new URLSearchParams(window.location.search).get("id");
+
+    if (idFromUrl) {
+      // Remember it so this same browser tab can recover the right master
+      // even if a future navigation drops the query string again — belt
+      // and suspenders alongside the language switcher's own fix.
+      try {
+        sessionStorage.setItem(LAST_MASTER_ID_KEY, idFromUrl);
+      } catch {
+        // Private mode / storage disabled — the URL param still works.
+      }
+      setStaffId(idFromUrl);
+      return;
+    }
+
+    let recoveredId: string | null = null;
+    try {
+      recoveredId = sessionStorage.getItem(LAST_MASTER_ID_KEY);
+    } catch {
+      recoveredId = null;
+    }
+    if (recoveredId) {
+      // Put it back in the URL too, so a refresh or a share of this link
+      // keeps working without depending on sessionStorage again.
+      const url = new URL(window.location.href);
+      url.searchParams.set("id", recoveredId);
+      window.history.replaceState(null, "", url.toString());
+    }
+    setStaffId(recoveredId);
   }, []);
 
   const member =
