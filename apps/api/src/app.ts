@@ -3,7 +3,22 @@ import cors from "@fastify/cors";
 import multipart from "@fastify/multipart";
 import rateLimit from "@fastify/rate-limit";
 import staticFiles from "@fastify/static";
-import type { DatabaseClient } from "@danil-nails/db";
+import type { DatabaseClient, UserRole } from "@danil-nails/db";
+
+// Kept here rather than in a separate ambient .d.ts file so it's always
+// part of whatever compiles app.ts, rather than depending on that file
+// being picked up by an "include" glob.
+declare module "fastify" {
+  interface FastifyRequest {
+    crmUser: {
+      id: string;
+      email: string | null;
+      phone: string | null;
+      displayName: string | null;
+      role: UserRole;
+    } | null;
+  }
+}
 import {
   appointmentStatuses,
   attendanceConfirmationStatuses,
