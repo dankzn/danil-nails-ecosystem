@@ -67,7 +67,15 @@ export async function buildServer(
         callback(null, true);
         return;
       }
-      callback(new Error("origin_not_allowed"), false);
+      // Logged (not just rejected) so a misconfigured *_PUBLIC_URL shows up
+      // directly in the deployment's logs instead of only as an opaque
+      // browser-side CORS error with no indication of which origin or
+      // which allowed list was involved.
+      server.log.warn(
+        { origin, allowedOrigins: [...allowedOrigins] },
+        "Rejected cross-origin request: origin not in the allow-list"
+      );
+      callback(null, false);
     },
     credentials: true,
     methods: ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"]
