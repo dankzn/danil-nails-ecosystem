@@ -20,7 +20,7 @@
 - Repository: тот же GitHub-репозиторий, branch `main`.
 - Root Directory: `apps/api`.
 - Framework Preset: Other.
-- Build Command: `pnpm install --frozen-lockfile && pnpm --filter @danil-nails/db build`
+- Build Command: `pnpm install --frozen-lockfile && pnpm --filter @danil-nails/db build && pnpm --filter @danil-nails/shared build`
   (Prisma Client нужно сгенерировать — сама Vercel-функция собирается
   автоматически из `api/index.ts` через `vercel.json`).
 - Output Directory: оставить пустым (не применимо для serverless-функций).
