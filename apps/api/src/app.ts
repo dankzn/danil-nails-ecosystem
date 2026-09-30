@@ -41,7 +41,7 @@ export async function buildServer(
 
   await server.register(cookie);
   const allowedOrigins = new Set(
-    [environment.APP_PUBLIC_URL, environment.SITE_PUBLIC_URL].filter(
+    [environment.APP_PUBLIC_URL, environment.SITE_PUBLIC_URL, environment.CRM_PUBLIC_URL].filter(
       (value): value is string => Boolean(value)
     )
   );
@@ -116,7 +116,11 @@ export async function buildServer(
   registerInventoryRoutes(server, database);
   registerWaitlistRoutes(server, database);
 
-  if (environment.NODE_ENV === "production") {
+  // On Vercel the API runs as its own project/serverless function — the
+  // CRM is deployed separately (its own Vercel static project, just like
+  // apps/site) rather than served from this same process, so there's no
+  // "apps/web/out" build alongside this one to serve here.
+  if (environment.NODE_ENV === "production" && !process.env.VERCEL) {
     await server.register(staticFiles, {
       root: resolve(
         environment.CRM_STATIC_DIR ?? resolve(process.cwd(), "apps/web/out")

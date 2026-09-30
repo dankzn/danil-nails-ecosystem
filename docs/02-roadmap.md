@@ -68,8 +68,15 @@
 
 ## Публичный сайт (apps/site)
 
-Отдельный от CRM deployment: премиальный маркетинговый сайт, деплоится на Vercel
-(CRM остаётся на Render). Развивается параллельно фазам CRM, не блокирует soft launch.
+Отдельный от CRM deployment: премиальный маркетинговый сайт, деплоится на Vercel.
+Развивается параллельно фазам CRM, не блокирует soft launch.
+
+CRM (`apps/web`) и API (`apps/api`) переезжают с Render на Vercel (два отдельных
+проекта, БД остаётся на Supabase — переносить данные не нужно). Код готов
+(serverless-обёртка для Fastify, `vercel.json`, CORS под новый домен CRM) —
+см. `docs/10-vercel-api-crm-deployment.md`. Сам деплой (создание Vercel-проектов,
+переменные окружения) делается вручную в дашборде Vercel — остановка Render
+после проверки. ⏳
 
 - Премиальный дизайн "Obsidian & Garnet" (тёмная тема, гранат/шампань, Playfair Display + Manrope). ✅
 - Скролл-анимации, magnetic-кнопки, курсор-glow — с отключением через `prefers-reduced-motion`/`pointer: coarse`. ✅
