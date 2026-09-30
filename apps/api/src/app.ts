@@ -2,7 +2,6 @@ import cookie from "@fastify/cookie";
 import cors from "@fastify/cors";
 import multipart from "@fastify/multipart";
 import rateLimit from "@fastify/rate-limit";
-import staticFiles from "@fastify/static";
 import type { DatabaseClient, UserRole } from "@danil-nails/db";
 
 // Kept here rather than in a separate ambient .d.ts file so it's always
@@ -29,6 +28,7 @@ import {
   userRoles
 } from "@danil-nails/shared";
 import Fastify from "fastify";
+import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { environment } from "./config.js";
 import { registerAvailabilityRoutes } from "./routes/availability.js";
@@ -134,15 +134,24 @@ export async function buildServer(
   // On Vercel the API runs as its own project/serverless function — the
   // CRM is deployed separately (its own Vercel static project, just like
   // apps/site) rather than served from this same process, so there's no
-  // "apps/web/out" build alongside this one to serve here.
-  if (environment.NODE_ENV === "production" && !process.env.VERCEL) {
-    await server.register(staticFiles, {
-      root: resolve(
-        environment.CRM_STATIC_DIR ?? resolve(process.cwd(), "apps/web/out")
-      ),
-      prefix: "/",
-      redirect: true
-    });
+  // "apps/web/out" build alongside this one to serve here. Checking that
+  // the directory actually exists (rather than trusting an env var like
+  // process.env.VERCEL) is what actually keeps @fastify/static — and its
+  // content-disposition dependency, which crashes when required in
+  // Vercel's function runtime — out of that deployment entirely: the
+  // import below only runs when there's really something to serve.
+  if (environment.NODE_ENV === "production") {
+    const staticDir = resolve(
+      environment.CRM_STATIC_DIR ?? resolve(process.cwd(), "apps/web/out")
+    );
+    if (existsSync(staticDir)) {
+      const { default: staticFiles } = await import("@fastify/static");
+      await server.register(staticFiles, {
+        root: staticDir,
+        prefix: "/",
+        redirect: true
+      });
+    }
   }
 
   return server;
