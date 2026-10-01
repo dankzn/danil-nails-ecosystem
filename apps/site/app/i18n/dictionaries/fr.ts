@@ -8,6 +8,7 @@ export const fr: Dictionary = {
   },
   nav: {
     home: "Accueil",
+    about: "À propos",
     services: "Prestations",
     gallery: "Réalisations",
     master: "Maître",
@@ -95,6 +96,19 @@ export const fr: Dictionary = {
     cityLabel: "Ville",
     allCountriesLabel: "Tous les pays",
     allCitiesLabel: "Toutes les villes"
+  },
+  about: {
+    kicker: "À propos",
+    headingPre: "Qui s'occupe ",
+    headingEm: "de votre réservation",
+    lede: "La partie administrative du studio — la personne qui répond aux messages, confirme les réservations et veille à ce que le planning ne se chevauche pas",
+    staff: [
+      {
+        index: "01",
+        title: "Danil Afliatov — fondateur et administrateur",
+        body: "Danil dirige le studio depuis le début : il confirme les réservations à la main, répond aux questions avant votre visite et veille à ce que le planning reste sans conflit. Pendant le soft launch, c'est aussi lui qui s'occupe de l'administratif — un administrateur dédié rejoindra l'équipe à mesure que le studio grandit"
+      }
+    ]
   },
   team: {
     heading: "Équipe",

@@ -8,6 +8,7 @@ export const en: Dictionary = {
   },
   nav: {
     home: "Home",
+    about: "About",
     services: "Services",
     gallery: "Work",
     master: "Master",
@@ -95,6 +96,19 @@ export const en: Dictionary = {
     cityLabel: "City",
     allCountriesLabel: "All countries",
     allCitiesLabel: "All cities"
+  },
+  about: {
+    kicker: "About",
+    headingPre: "Who's behind ",
+    headingEm: "your booking",
+    lede: "The admin side of the studio — the person who answers messages, confirms bookings, and keeps the schedule from overlapping",
+    staff: [
+      {
+        index: "01",
+        title: "Danil Afliatov — founder and admin",
+        body: "Danil runs the studio from the ground up: confirms bookings by hand, answers questions before your visit, and keeps the schedule conflict-free. During the soft launch he also handles the admin work himself — a dedicated admin joins as the studio grows"
+      }
+    ]
   },
   team: {
     heading: "Team",

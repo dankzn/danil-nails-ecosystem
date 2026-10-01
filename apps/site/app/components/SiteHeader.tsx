@@ -22,6 +22,7 @@ export function SiteHeader({ lang, dict }: { lang: Locale; dict: Dictionary }) {
 
   const links = [
     { href: `/${lang}/`, label: dict.nav.home },
+    { href: `/${lang}/about/`, label: dict.nav.about },
     { href: `/${lang}/services/`, label: dict.nav.services },
     { href: `/${lang}/gallery/`, label: dict.nav.gallery },
     { href: `/${lang}/master/`, label: dict.nav.master },

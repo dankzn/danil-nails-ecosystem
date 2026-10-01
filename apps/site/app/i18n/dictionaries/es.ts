@@ -8,6 +8,7 @@ export const es: Dictionary = {
   },
   nav: {
     home: "Inicio",
+    about: "Sobre nosotros",
     services: "Servicios",
     gallery: "Trabajos",
     master: "Maestro",
@@ -95,6 +96,19 @@ export const es: Dictionary = {
     cityLabel: "Ciudad",
     allCountriesLabel: "Todos los países",
     allCitiesLabel: "Todas las ciudades"
+  },
+  about: {
+    kicker: "Sobre nosotros",
+    headingPre: "Quién lleva ",
+    headingEm: "tu reserva",
+    lede: "La parte administrativa del estudio — quien responde los mensajes, confirma las reservas y evita que el horario se cruce",
+    staff: [
+      {
+        index: "01",
+        title: "Danil Afliátov — fundador y administrador",
+        body: "Danil lleva el estudio desde cero: confirma las reservas a mano, responde dudas antes de tu visita y cuida que el horario no se cruce. Durante el soft launch también se encarga él mismo de la parte administrativa — un administrador dedicado se incorporará a medida que crezca el estudio"
+      }
+    ]
   },
   team: {
     heading: "Equipo",

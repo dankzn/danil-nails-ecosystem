@@ -5,6 +5,7 @@ export type Dictionary = {
   };
   nav: {
     home: string;
+    about: string;
     services: string;
     gallery: string;
     master: string;
@@ -64,6 +65,13 @@ export type Dictionary = {
     cityLabel: string;
     allCountriesLabel: string;
     allCitiesLabel: string;
+  };
+  about: {
+    kicker: string;
+    headingPre: string;
+    headingEm: string;
+    lede: string;
+    staff: { index: string; title: string; body: string }[];
   };
   team: {
     heading: string;
