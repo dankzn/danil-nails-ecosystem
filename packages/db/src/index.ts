@@ -11,6 +11,8 @@ export {
   EmploymentStatus,
   EmploymentType,
   Locale,
+  PaymentMethod,
+  PaymentStatus,
   PayrollEntryType,
   PayrollStatus,
   Prisma,

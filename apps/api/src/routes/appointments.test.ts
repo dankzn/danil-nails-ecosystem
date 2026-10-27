@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { requiresPrepaymentPenalty } from "./appointments.js";
+import {
+  paymentTotalMinor,
+  requiresPrepaymentPenalty
+} from "./appointments.js";
 
 const now = new Date("2026-09-22T09:00:00.000Z");
 
@@ -59,5 +62,12 @@ test("client changes outside 12 hours do not require prepayment", () => {
       now
     }),
     false
+  );
+});
+
+test("sums split appointment payments in minor units", () => {
+  assert.equal(
+    paymentTotalMinor([{ amountMinor: 125 }, { amountMinor: 75 }]),
+    200
   );
 });

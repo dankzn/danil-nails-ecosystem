@@ -105,6 +105,18 @@ enum BookingSource {
   admin_manual
 }
 
+enum PaymentMethod {
+  online_acquiring
+  cash
+  phone_transfer
+}
+
+enum PaymentStatus {
+  captured
+  refunded
+  voided
+}
+
 enum PayrollStatus {
   accrued
   partially_paid
@@ -144,6 +156,8 @@ model User {
   payrollsCreated        EmployeePayroll[] @relation("PayrollCreator")
   payrollEntriesAuthored PayrollEntry[] @relation("PayrollEntryAuthor")
   payrollPaymentsAuthored PayrollPayment[] @relation("PayrollPaymentAuthor")
+  appointmentsClosed     Appointment[] @relation("AppointmentCloser")
+  paymentsAccepted       Payment[] @relation("PaymentAcceptedBy")
 }
 
 model Session {
@@ -182,6 +196,7 @@ model Client {
   user                  User?                     @relation(fields: [userId], references: [id])
   loyaltyStatus         ClientLoyaltyStatus?      @relation(fields: [loyaltyStatusId], references: [id])
   appointments          Appointment[]
+  payments              Payment[]
   privateTagAssignments ClientPrivateTagAssignment[]
   allergenAssignments   ClientAllergenAssignment[]
   visitNotes            VisitNote[]
@@ -533,6 +548,7 @@ model Appointment {
   cancellationReason String?
   source           BookingSource     @default(online)
   createdByUserId   String?
+  closedByUserId    String?
   priceMinor        Int               @default(0)
   currency          Currency          @default(RUB)
   completedAt       DateTime?
@@ -543,7 +559,9 @@ model Appointment {
   staff            StaffProfile @relation(fields: [staffId], references: [id])
   service          Service      @relation(fields: [serviceId], references: [id])
   createdBy        User?        @relation("AppointmentCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  closedBy         User?        @relation("AppointmentCloser", fields: [closedByUserId], references: [id], onDelete: SetNull)
   events           AppointmentEvent[]
+  payments         Payment[]
   visitNotes       VisitNote[]
   visitMaterials   VisitMaterial[]
   nailPhotos       NailPhoto[]
@@ -553,6 +571,7 @@ model Appointment {
   @@index([clientId, startsAt])
   @@index([status])
   @@index([createdByUserId, source, completedAt])
+  @@index([closedByUserId, completedAt])
   @@index([completedAt, status])
 }
 
@@ -633,15 +652,28 @@ model NotificationJob {
 }
 
 model Payment {
-  id            String   @id @default(cuid())
-  appointmentId String?
-  clientId      String?
-  amount        Int
-  currency      Currency @default(RUB)
-  status        String
-  provider      String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id                    String        @id @default(cuid())
+  appointmentId         String
+  clientId              String
+  acceptedByUserId      String
+  amountMinor           Int
+  currency              Currency      @default(RUB)
+  method                PaymentMethod
+  status                PaymentStatus @default(captured)
+  provider              String?
+  externalTransactionId String?
+  paidAt                DateTime      @default(now())
+  createdAt             DateTime      @default(now())
+  updatedAt             DateTime      @updatedAt
+
+  appointment Appointment @relation(fields: [appointmentId], references: [id], onDelete: Restrict)
+  client      Client      @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  acceptedBy  User        @relation("PaymentAcceptedBy", fields: [acceptedByUserId], references: [id], onDelete: Restrict)
+
+  @@index([appointmentId, paidAt])
+  @@index([clientId, paidAt])
+  @@index([acceptedByUserId, paidAt])
+  @@index([method, paidAt])
 }
 
 model Review {

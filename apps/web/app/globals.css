@@ -2441,6 +2441,93 @@ td strong {
   gap: 14px;
 }
 
+.payment-section > .editor-section-heading > svg {
+  color: var(--green);
+}
+
+.payment-price-field {
+  max-width: 260px;
+}
+
+.payment-rows {
+  display: grid;
+  gap: 10px;
+}
+
+.payment-row {
+  display: grid;
+  grid-template-columns: minmax(180px, 1.2fr) minmax(120px, 0.7fr) minmax(160px, 1fr) 36px;
+  align-items: end;
+  gap: 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+  background: var(--surface-muted);
+}
+
+.payment-reference-field {
+  grid-column: 3;
+}
+
+.payment-remove-button {
+  grid-column: 4;
+}
+
+.payment-remove-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.35;
+}
+
+.payment-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.payment-total {
+  min-width: 150px;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 14px;
+  margin: 0;
+  border-left: 3px solid var(--amber);
+  padding: 9px 11px;
+  background: var(--amber-soft);
+  color: var(--amber);
+  font-size: 12px;
+}
+
+.payment-total strong {
+  font-size: 14px;
+}
+
+.payment-total-success {
+  border-color: var(--green);
+  background: var(--green-soft);
+  color: var(--green);
+}
+
+.payment-summary-list {
+  display: grid;
+  gap: 8px;
+}
+
+.payment-summary-list > div {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 4px 16px;
+  border-bottom: 1px solid var(--border);
+  padding: 8px 0;
+  font-size: 12px;
+}
+
+.payment-summary-list small {
+  grid-column: 1 / -1;
+  color: var(--text-muted);
+}
+
 .appointment-editor > .feedback {
   margin: 16px 20px 20px;
 }
@@ -2774,6 +2861,28 @@ td strong {
   .editor-action {
     width: 100%;
     justify-self: stretch;
+  }
+
+  .payment-price-field {
+    max-width: none;
+  }
+
+  .payment-row {
+    grid-template-columns: minmax(0, 1fr) minmax(110px, 0.7fr);
+  }
+
+  .payment-reference-field {
+    grid-column: 1 / -1;
+  }
+
+  .payment-remove-button {
+    grid-column: 2;
+    justify-self: end;
+  }
+
+  .payment-actions {
+    align-items: stretch;
+    flex-direction: column;
   }
 
   .login-page {
