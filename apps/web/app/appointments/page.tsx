@@ -2,12 +2,19 @@
 
 import { bookingRules } from "@danil-nails/shared";
 import {
+  Activity,
+  Bell,
   CalendarPlus,
+  ChartNoAxesCombined,
   ChevronLeft,
   ChevronRight,
   Clock3,
+  Gift,
+  History,
+  LoaderCircle,
   Pencil,
-  TriangleAlert
+  TriangleAlert,
+  UserRound
 } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
@@ -27,7 +34,23 @@ type AttendanceStatus =
   | "pending"
   | "confirmed"
   | "declined";
-type PaymentMethod = "online_acquiring" | "cash" | "phone_transfer";
+type PaymentMethod =
+  | "online_acquiring"
+  | "cash"
+  | "phone_transfer"
+  | "bank_card"
+  | "sbp"
+  | "qr"
+  | "bank_transfer"
+  | "other";
+type WorkspaceTab =
+  | "appointment"
+  | "client"
+  | "history"
+  | "statistics"
+  | "bonuses"
+  | "notifications"
+  | "activity";
 
 type AppointmentPayment = {
   id: string;
@@ -35,6 +58,7 @@ type AppointmentPayment = {
   amountMinor: number;
   currency: string;
   externalTransactionId: string | null;
+  note: string | null;
   occurredAt: string;
   receivedBy: {
     email: string | null;
@@ -113,6 +137,87 @@ type ClosePaymentRow = {
   method: PaymentMethod;
   amount: string;
   externalTransactionId: string;
+  note: string;
+};
+
+type LoyaltyTransaction = {
+  id: string;
+  type: "accrual" | "redemption" | "adjustment" | "reversal";
+  pointsDelta: number;
+  reason: string | null;
+  createdAt: string;
+  createdBy: {
+    email: string | null;
+    staffProfile: { displayName: string } | null;
+  } | null;
+};
+
+type AppointmentWorkspace = {
+  appointment: Appointment & {
+    client: Appointment["client"] & {
+      email: string | null;
+      whatsappPhone: string | null;
+      allergies: string | null;
+      noKnownAllergies: boolean;
+      customAllergyNote: string | null;
+      notes: string | null;
+      prepaymentReason: string | null;
+      loyaltyStatus: { titleRu: string } | null;
+      privateTagAssignments: Array<{
+        id: string;
+        tag: { id: string; title: string; color: string | null };
+      }>;
+      allergenAssignments: Array<{
+        id: string;
+        allergen: { id: string; title: string };
+      }>;
+      loyaltyTransactions: LoyaltyTransaction[];
+    };
+    events: Array<{
+      id: string;
+      fromStatus: AppointmentStatus | null;
+      toStatus: AppointmentStatus;
+      note: string | null;
+      createdAt: string;
+      actor: {
+        email: string | null;
+        staffProfile: { displayName: string } | null;
+      } | null;
+    }>;
+    loyaltyTransactions: LoyaltyTransaction[];
+  };
+  history: Array<{
+    id: string;
+    startsAt: string;
+    status: AppointmentStatus;
+    priceMinor: number;
+    currency: string;
+    internalNote: string | null;
+    service: { titleRu: string };
+    staff: { displayName: string };
+    payments: Array<{ amountMinor: number }>;
+  }>;
+  notificationJobs: Array<{
+    id: string;
+    channel: string;
+    recipient: string;
+    templateCode: string | null;
+    scheduledAt: string;
+    sentAt: string | null;
+    failedAt: string | null;
+    error: string | null;
+  }>;
+  statistics: {
+    totalAppointments: number;
+    completedAppointments: number;
+    canceledAppointments: number;
+    noShowAppointments: number;
+    lastCompletedAt: string | null;
+    visitsPerMonth: number;
+    spendByCurrency: Record<string, number>;
+    averageCheckByCurrency: Record<string, number>;
+    bonusBalancePoints: number;
+  };
 };
 
 function formatMoney(amountMinor: number, currency: string) {
@@ -155,8 +260,27 @@ const attendanceMeta: Record<AttendanceStatus, string> = {
 const paymentMethodMeta: Record<PaymentMethod, string> = {
   online_acquiring: "Онлайн-эквайринг",
   cash: "Наличные",
-  phone_transfer: "Перевод по номеру телефона"
+  phone_transfer: "Перевод по номеру телефона",
+  bank_card: "Банковская карта / терминал",
+  sbp: "СБП",
+  qr: "QR",
+  bank_transfer: "Банковский перевод",
+  other: "Другое"
 };
+
+const workspaceTabs: Array<{
+  value: WorkspaceTab;
+  label: string;
+  icon: typeof Activity;
+}> = [
+  { value: "appointment", label: "Запись", icon: CalendarPlus },
+  { value: "client", label: "Клиент", icon: UserRound },
+  { value: "history", label: "История", icon: History },
+  { value: "statistics", label: "Статистика", icon: ChartNoAxesCombined },
+  { value: "bonuses", label: "Бонусы", icon: Gift },
+  { value: "notifications", label: "Уведомления", icon: Bell },
+  { value: "activity", label: "Изменения", icon: Activity }
+];
 
 const manageableStatuses = ["confirmed", "canceled", "no_show"] as const;
 const closableStatuses = [
@@ -176,6 +300,14 @@ const dateHeadingFormatter = new Intl.DateTimeFormat("ru-RU", {
   day: "numeric",
   month: "long",
   year: "numeric"
+});
+const dateTimeFormatter = new Intl.DateTimeFormat("ru-RU", {
+  timeZone: "Europe/Moscow",
+  day: "2-digit",
+  month: "2-digit",
+  year: "numeric",
+  hour: "2-digit",
+  minute: "2-digit"
 });
 
 function moscowDateKey(date = new Date()) {
@@ -335,6 +467,12 @@ function appointmentErrorMessage(error: unknown) {
     if (error.code === "appointment_payment_mismatch") {
       return "Сумма платежей не совпадает со стоимостью записи. Укажите причину расхождения (скидка, долг, возврат) или исправьте суммы.";
     }
+    if (error.code === "appointment_bonus_insufficient") {
+      return "На бонусном счёте клиента недостаточно бонусов для списания.";
+    }
+    if (error.code === "appointment_bonus_exceeds_price") {
+      return "Стоимость списываемых бонусов не может превышать стоимость записи.";
+    }
     if (error.code === "appointment_not_completed") {
       return "Запись ещё не закрыта.";
     }
@@ -372,6 +510,11 @@ export default function AppointmentsPage() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [selectedAppointment, setSelectedAppointment] =
     useState<Appointment | null>(null);
+  const [workspace, setWorkspace] = useState<AppointmentWorkspace | null>(null);
+  const [workspaceTab, setWorkspaceTab] =
+    useState<WorkspaceTab>("appointment");
+  const [isWorkspaceLoading, setIsWorkspaceLoading] = useState(false);
+  const [workspaceError, setWorkspaceError] = useState<string | null>(null);
   const [form, setForm] = useState<BookingForm>({
     clientId: "",
     serviceId: "",
@@ -407,6 +550,8 @@ export default function AppointmentsPage() {
   const [closePayments, setClosePayments] = useState<ClosePaymentRow[]>([]);
   const [closeAdjustmentReason, setCloseAdjustmentReason] = useState("");
   const [closeNote, setCloseNote] = useState("");
+  const [bonusRedemptionPoints, setBonusRedemptionPoints] = useState("");
+  const [bonusAccrualPoints, setBonusAccrualPoints] = useState("");
   const [reopenReason, setReopenReason] = useState("");
   const [isClosing, setIsClosing] = useState(false);
 
@@ -443,6 +588,36 @@ export default function AppointmentsPage() {
   useEffect(() => {
     void loadOptions();
   }, [loadOptions]);
+
+  useEffect(() => {
+    if (!selectedAppointment) {
+      setWorkspace(null);
+      setWorkspaceError(null);
+      return;
+    }
+
+    const controller = new AbortController();
+    setIsWorkspaceLoading(true);
+    setWorkspaceError(null);
+    void apiRequest<AppointmentWorkspace>(
+      `/v1/admin/appointments/${selectedAppointment.id}/workspace`,
+      { signal: controller.signal }
+    )
+      .then((response) => {
+        setWorkspace(response);
+        setSelectedAppointment(response.appointment);
+      })
+      .catch((error) => {
+        if (!(error instanceof DOMException && error.name === "AbortError")) {
+          setWorkspaceError("Не удалось загрузить полную карточку записи.");
+        }
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setIsWorkspaceLoading(false);
+      });
+
+    return () => controller.abort();
+  }, [selectedAppointment?.id]);
 
   useEffect(() => {
     if (
@@ -580,6 +755,9 @@ export default function AppointmentsPage() {
         ? appointmentDate
         : today;
     setSelectedAppointment(appointment);
+    setWorkspace(null);
+    setWorkspaceTab("appointment");
+    setWorkspaceError(null);
     setStatus(
       appointment.status === "canceled" || appointment.status === "no_show"
         ? appointment.status
@@ -589,11 +767,20 @@ export default function AppointmentsPage() {
       closableStatuses.includes(
         appointment.status as (typeof closableStatuses)[number]
       )
-        ? [{ method: "cash", amount: "", externalTransactionId: "" }]
+        ? [
+            {
+              method: "cash",
+              amount: "",
+              externalTransactionId: "",
+              note: ""
+            }
+          ]
         : []
     );
     setCloseAdjustmentReason("");
     setCloseNote("");
+    setBonusRedemptionPoints("");
+    setBonusAccrualPoints("");
     setReopenReason("");
     setAttendanceStatus(appointment.attendanceConfirmationStatus);
     setCancellationReason(appointment.cancellationReason ?? "");
@@ -716,7 +903,7 @@ export default function AppointmentsPage() {
   function addClosePaymentRow() {
     setClosePayments((current) => [
       ...current,
-      { method: "cash", amount: "", externalTransactionId: "" }
+      { method: "cash", amount: "", externalTransactionId: "", note: "" }
     ]);
   }
 
@@ -746,11 +933,35 @@ export default function AppointmentsPage() {
         setFormError("Проверьте суммы платежей — они должны быть больше нуля.");
         return;
       }
+      if (row.method === "other" && !row.note.trim()) {
+        setFormError("Для способа оплаты «Другое» укажите комментарий.");
+        return;
+      }
       payments.push({
         method: row.method,
         amountMinor,
-        externalTransactionId: row.externalTransactionId.trim() || null
+        externalTransactionId: row.externalTransactionId.trim() || null,
+        note: row.note.trim() || null
       });
+    }
+
+    const redemptionPoints = Number(bonusRedemptionPoints || 0);
+    const accrualPoints = Number(bonusAccrualPoints || 0);
+    if (
+      !Number.isInteger(redemptionPoints) ||
+      redemptionPoints < 0 ||
+      !Number.isInteger(accrualPoints) ||
+      accrualPoints < 0
+    ) {
+      setFormError("Количество бонусов должно быть целым неотрицательным числом.");
+      return;
+    }
+    if (
+      workspace &&
+      redemptionPoints > workspace.statistics.bonusBalancePoints
+    ) {
+      setFormError("Нельзя списать больше бонусов, чем есть у клиента.");
+      return;
     }
 
     setIsClosing(true);
@@ -762,7 +973,9 @@ export default function AppointmentsPage() {
         body: JSON.stringify({
           payments,
           note: closeNote.trim() || null,
-          adjustmentReason: closeAdjustmentReason.trim() || null
+          adjustmentReason: closeAdjustmentReason.trim() || null,
+          bonusRedemptionPoints: redemptionPoints,
+          bonusAccrualPoints: accrualPoints
         })
       });
       setSelectedAppointment(null);
@@ -1192,11 +1405,43 @@ export default function AppointmentsPage() {
             new Date(selectedAppointment.startsAt)
           )}`}
           onClose={() => setSelectedAppointment(null)}
+          size="workspace"
           title={
             selectedAppointment.client.fullName ?? selectedAppointment.client.phone
           }
         >
-          <div className="modal-form appointment-editor">
+          <div className="appointment-workspace-shell">
+            <nav aria-label="Разделы карточки записи" className="workspace-tabs">
+              {workspaceTabs.map((tab) => {
+                const Icon = tab.icon;
+                return (
+                  <button
+                    aria-current={workspaceTab === tab.value ? "page" : undefined}
+                    className={workspaceTab === tab.value ? "is-active" : ""}
+                    key={tab.value}
+                    onClick={() => setWorkspaceTab(tab.value)}
+                    type="button"
+                  >
+                    <Icon aria-hidden="true" size={15} />
+                    <span>{tab.label}</span>
+                  </button>
+                );
+              })}
+            </nav>
+            <div className="modal-form appointment-editor appointment-workspace-body">
+            {isWorkspaceLoading ? (
+              <div className="workspace-loading" role="status">
+                <LoaderCircle aria-hidden="true" className="spin" size={18} />
+                Загружаем карточку клиента…
+              </div>
+            ) : null}
+            {workspaceError ? (
+              <p className="feedback feedback-error" role="alert">
+                {workspaceError}
+              </p>
+            ) : null}
+            {workspaceTab === "appointment" ? (
+              <>
             <dl className="appointment-details">
               <div>
                 <dt>Мастер</dt>
@@ -1351,6 +1596,21 @@ export default function AppointmentsPage() {
                         />
                       </label>
                     ) : null}
+                    {row.method === "other" ? (
+                      <label className="form-field form-field-span-two">
+                        <span>Комментарий к способу оплаты</span>
+                        <input
+                          maxLength={500}
+                          onChange={(event) =>
+                            updateClosePaymentRow(index, {
+                              note: event.target.value
+                            })
+                          }
+                          placeholder="Обязательно укажите, как принята оплата"
+                          value={row.note}
+                        />
+                      </label>
+                    ) : null}
                     <button
                       aria-label="Удалить платёж"
                       className="secondary-button"
@@ -1368,6 +1628,39 @@ export default function AppointmentsPage() {
                 >
                   Добавить платёж
                 </button>
+                <div className="workspace-bonus-close">
+                  <div>
+                    <span>Бонусный баланс</span>
+                    <strong>
+                      {workspace?.statistics.bonusBalancePoints ?? 0} бонусов
+                    </strong>
+                    <small>1 бонус уменьшает оплату на 1 единицу валюты</small>
+                  </div>
+                  <label className="form-field">
+                    <span>Списать бонусов</span>
+                    <input
+                      inputMode="numeric"
+                      min="0"
+                      onChange={(event) =>
+                        setBonusRedemptionPoints(event.target.value)
+                      }
+                      type="number"
+                      value={bonusRedemptionPoints}
+                    />
+                  </label>
+                  <label className="form-field">
+                    <span>Начислить бонусов</span>
+                    <input
+                      inputMode="numeric"
+                      min="0"
+                      onChange={(event) =>
+                        setBonusAccrualPoints(event.target.value)
+                      }
+                      type="number"
+                      value={bonusAccrualPoints}
+                    />
+                  </label>
+                </div>
                 <label className="form-field">
                   <span>Причина расхождения (скидка, долг, возврат)</span>
                   <input
@@ -1415,6 +1708,7 @@ export default function AppointmentsPage() {
                         {payment.externalTransactionId
                           ? ` · ${payment.externalTransactionId}`
                           : ""}
+                        {payment.note ? ` · ${payment.note}` : ""}
                       </li>
                     ))}
                   </ul>
@@ -1584,11 +1878,362 @@ export default function AppointmentsPage() {
               ) : null}
             </section>
 
+              </>
+            ) : null}
+
+            {workspaceTab === "client" && workspace ? (
+              <div className="workspace-panel">
+                <section className="workspace-client-hero">
+                  <div className="workspace-avatar" aria-hidden="true">
+                    {(workspace.appointment.client.fullName ?? "К")
+                      .slice(0, 1)
+                      .toUpperCase()}
+                  </div>
+                  <div>
+                    <p className="section-kicker">Клиент</p>
+                    <h2>
+                      {workspace.appointment.client.fullName ?? "Без имени"}
+                    </h2>
+                    <p>{workspace.appointment.client.phone}</p>
+                  </div>
+                  <span className="workspace-loyalty-status">
+                    {workspace.appointment.client.loyaltyStatus?.titleRu ??
+                      "Статус не назначен"}
+                  </span>
+                </section>
+
+                {workspace.appointment.client.allergenAssignments.length ||
+                workspace.appointment.client.customAllergyNote ? (
+                  <section className="workspace-alert">
+                    <TriangleAlert aria-hidden="true" size={18} />
+                    <div>
+                      <strong>Проверьте аллергии перед визитом</strong>
+                      <p>
+                        {[
+                          ...workspace.appointment.client.allergenAssignments.map(
+                            (assignment) => assignment.allergen.title
+                          ),
+                          workspace.appointment.client.customAllergyNote
+                        ]
+                          .filter(Boolean)
+                          .join(", ")}
+                      </p>
+                    </div>
+                  </section>
+                ) : null}
+
+                <dl className="workspace-definition-grid">
+                  <div>
+                    <dt>Email</dt>
+                    <dd>{workspace.appointment.client.email ?? "Не указан"}</dd>
+                  </div>
+                  <div>
+                    <dt>Telegram</dt>
+                    <dd>
+                      {workspace.appointment.client.telegramUsername
+                        ? `@${workspace.appointment.client.telegramUsername.replace(/^@/, "")}`
+                        : "Не указан"}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>WhatsApp</dt>
+                    <dd>
+                      {workspace.appointment.client.whatsappPhone ?? "Не указан"}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt>Предоплата</dt>
+                    <dd>
+                      {workspace.appointment.client.requiresPrepayment
+                        ? workspace.appointment.client.prepaymentReason ??
+                          "Обязательна"
+                        : "Не требуется"}
+                    </dd>
+                  </div>
+                </dl>
+
+                <section className="workspace-subsection">
+                  <div className="editor-section-heading">
+                    <div>
+                      <p className="section-kicker">Только для сотрудников</p>
+                      <h2>Внутренние теги</h2>
+                    </div>
+                  </div>
+                  {workspace.appointment.client.privateTagAssignments.length ? (
+                    <div className="workspace-tag-cloud">
+                      {workspace.appointment.client.privateTagAssignments.map(
+                        (assignment) => (
+                          <span
+                            key={assignment.id}
+                            style={
+                              assignment.tag.color
+                                ? { borderColor: assignment.tag.color }
+                                : undefined
+                            }
+                          >
+                            {assignment.tag.title}
+                          </span>
+                        )
+                      )}
+                    </div>
+                  ) : (
+                    <p className="workspace-empty">Теги не назначены.</p>
+                  )}
+                  <p className="workspace-note">
+                    {workspace.appointment.client.notes ??
+                      "Внутренних заметок пока нет."}
+                  </p>
+                </section>
+              </div>
+            ) : null}
+
+            {workspaceTab === "history" && workspace ? (
+              <div className="workspace-panel">
+                <div className="workspace-panel-heading">
+                  <div>
+                    <p className="section-kicker">Все визиты клиента</p>
+                    <h2>История записей</h2>
+                  </div>
+                  <strong>{workspace.statistics.totalAppointments}</strong>
+                </div>
+                {workspace.history.length ? (
+                  <div className="workspace-table-wrap">
+                    <table className="workspace-table">
+                      <thead>
+                        <tr>
+                          <th>Дата</th>
+                          <th>Мастер</th>
+                          <th>Услуга</th>
+                          <th>Статус</th>
+                          <th>Сумма</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {workspace.history.map((appointment) => (
+                          <tr key={appointment.id}>
+                            <td>{dateTimeFormatter.format(new Date(appointment.startsAt))}</td>
+                            <td>{appointment.staff.displayName}</td>
+                            <td>{appointment.service.titleRu}</td>
+                            <td>
+                              <span className={`status status-${statusMeta[appointment.status].tone}`}>
+                                {statusMeta[appointment.status].label}
+                              </span>
+                            </td>
+                            <td>
+                              {formatMoney(
+                                appointment.payments.length
+                                  ? appointment.payments.reduce(
+                                      (sum, payment) => sum + payment.amountMinor,
+                                      0
+                                    )
+                                  : appointment.priceMinor,
+                                appointment.currency
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                ) : (
+                  <p className="workspace-empty">Других записей пока нет.</p>
+                )}
+              </div>
+            ) : null}
+
+            {workspaceTab === "statistics" && workspace ? (
+              <div className="workspace-panel">
+                <div className="workspace-panel-heading">
+                  <div>
+                    <p className="section-kicker">Поведение клиента</p>
+                    <h2>Статистика посещений</h2>
+                  </div>
+                </div>
+                <div className="workspace-metrics">
+                  <div>
+                    <span>Всего записей</span>
+                    <strong>{workspace.statistics.totalAppointments}</strong>
+                  </div>
+                  <div>
+                    <span>Завершено</span>
+                    <strong>{workspace.statistics.completedAppointments}</strong>
+                  </div>
+                  <div>
+                    <span>Отменено</span>
+                    <strong>{workspace.statistics.canceledAppointments}</strong>
+                  </div>
+                  <div>
+                    <span>Неявки</span>
+                    <strong>{workspace.statistics.noShowAppointments}</strong>
+                  </div>
+                  <div>
+                    <span>Визитов в месяц</span>
+                    <strong>{workspace.statistics.visitsPerMonth}</strong>
+                  </div>
+                  <div>
+                    <span>Последний визит</span>
+                    <strong>
+                      {workspace.statistics.lastCompletedAt
+                        ? dateTimeFormatter.format(
+                            new Date(workspace.statistics.lastCompletedAt)
+                          )
+                        : "—"}
+                    </strong>
+                  </div>
+                </div>
+                <div className="workspace-finance-grid">
+                  {Object.entries(workspace.statistics.spendByCurrency).map(
+                    ([currency, amount]) => (
+                      <div key={currency}>
+                        <span>Потрачено · {currency}</span>
+                        <strong>{formatMoney(amount, currency)}</strong>
+                        <small>
+                          Средний чек {formatMoney(
+                            workspace.statistics.averageCheckByCurrency[currency] ?? 0,
+                            currency
+                          )}
+                        </small>
+                      </div>
+                    )
+                  )}
+                </div>
+              </div>
+            ) : null}
+
+            {workspaceTab === "bonuses" && workspace ? (
+              <div className="workspace-panel">
+                <div className="workspace-panel-heading">
+                  <div>
+                    <p className="section-kicker">Программа лояльности</p>
+                    <h2>Бонусный счёт</h2>
+                  </div>
+                  <strong>{workspace.statistics.bonusBalancePoints}</strong>
+                </div>
+                <p className="workspace-note">
+                  Начисление и списание для текущего визита выполняются при его
+                  финансовом закрытии на вкладке «Запись».
+                </p>
+                {workspace.appointment.client.loyaltyTransactions.length ? (
+                  <div className="workspace-ledger">
+                    {workspace.appointment.client.loyaltyTransactions.map(
+                      (transaction) => (
+                        <div key={transaction.id}>
+                          <span
+                            className={
+                              transaction.pointsDelta >= 0
+                                ? "ledger-positive"
+                                : "ledger-negative"
+                            }
+                          >
+                            {transaction.pointsDelta >= 0 ? "+" : ""}
+                            {transaction.pointsDelta}
+                          </span>
+                          <div>
+                            <strong>{transaction.reason ?? "Операция по бонусам"}</strong>
+                            <small>
+                              {dateTimeFormatter.format(new Date(transaction.createdAt))}
+                              {" · "}
+                              {transaction.createdBy?.staffProfile?.displayName ??
+                                transaction.createdBy?.email ??
+                                "Система"}
+                            </small>
+                          </div>
+                        </div>
+                      )
+                    )}
+                  </div>
+                ) : (
+                  <p className="workspace-empty">Операций пока нет.</p>
+                )}
+              </div>
+            ) : null}
+
+            {workspaceTab === "notifications" && workspace ? (
+              <div className="workspace-panel">
+                <div className="workspace-panel-heading">
+                  <div>
+                    <p className="section-kicker">Связь с клиентом</p>
+                    <h2>Уведомления по записи</h2>
+                  </div>
+                </div>
+                {workspace.notificationJobs.length ? (
+                  <div className="workspace-ledger">
+                    {workspace.notificationJobs.map((notification) => (
+                      <div key={notification.id}>
+                        <span className="notification-channel">
+                          {notification.channel.toUpperCase()}
+                        </span>
+                        <div>
+                          <strong>
+                            {notification.templateCode ?? "Уведомление"}
+                          </strong>
+                          <small>
+                            {dateTimeFormatter.format(
+                              new Date(notification.scheduledAt)
+                            )}
+                            {notification.sentAt
+                              ? " · отправлено"
+                              : notification.failedAt
+                                ? " · ошибка"
+                                : " · запланировано"}
+                          </small>
+                          {notification.error ? <p>{notification.error}</p> : null}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="workspace-empty">
+                    Уведомления по этой записи ещё не создавались.
+                  </p>
+                )}
+              </div>
+            ) : null}
+
+            {workspaceTab === "activity" && workspace ? (
+              <div className="workspace-panel">
+                <div className="workspace-panel-heading">
+                  <div>
+                    <p className="section-kicker">Неизменяемая хронология</p>
+                    <h2>История изменений</h2>
+                  </div>
+                </div>
+                {workspace.appointment.events.length ? (
+                  <div className="workspace-timeline">
+                    {workspace.appointment.events.map((event) => (
+                      <div key={event.id}>
+                        <span aria-hidden="true" />
+                        <div>
+                          <strong>
+                            {event.fromStatus
+                              ? `${statusMeta[event.fromStatus].label} → `
+                              : ""}
+                            {statusMeta[event.toStatus].label}
+                          </strong>
+                          <p>{event.note ?? "Статус записи изменён"}</p>
+                          <small>
+                            {dateTimeFormatter.format(new Date(event.createdAt))}
+                            {" · "}
+                            {event.actor?.staffProfile?.displayName ??
+                              event.actor?.email ??
+                              "Система"}
+                          </small>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="workspace-empty">Изменений пока нет.</p>
+                )}
+              </div>
+            ) : null}
+
             {formError ? (
               <p className="feedback feedback-error" role="alert">
                 {formError}
               </p>
             ) : null}
+            </div>
           </div>
         </Modal>
       ) : null}

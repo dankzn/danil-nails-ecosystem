@@ -11,6 +11,7 @@ export {
   EmploymentStatus,
   EmploymentType,
   Locale,
+  LoyaltyTransactionType,
   MaterialUnit,
   PaymentMethod,
   PayrollEntryType,

@@ -3,6 +3,7 @@ import {
   AttendanceConfirmationStatus,
   BookingSource,
   Currency,
+  LoyaltyTransactionType,
   PaymentMethod,
   StockMovementType,
   UserRole,
@@ -22,7 +23,12 @@ const appointmentStatuses = ["confirmed", "canceled", "no_show"] as const;
 const paymentMethods = [
   "online_acquiring",
   "cash",
-  "phone_transfer"
+  "phone_transfer",
+  "bank_card",
+  "sbp",
+  "qr",
+  "bank_transfer",
+  "other"
 ] as const;
 const attendanceStatuses = [
   "not_requested",
@@ -86,12 +92,23 @@ const rescheduleSchema = z.object({
 const closePaymentSchema = z.object({
   method: z.enum(paymentMethods),
   amountMinor: z.number().int().positive(),
-  externalTransactionId: z.string().trim().max(200).nullable().optional()
+  externalTransactionId: z.string().trim().max(200).nullable().optional(),
+  note: z.string().trim().max(500).nullable().optional()
+}).superRefine((payment, context) => {
+  if (payment.method === "other" && !payment.note) {
+    context.addIssue({
+      code: "custom",
+      path: ["note"],
+      message: "A comment is required for the other payment method"
+    });
+  }
 });
 const closeAppointmentSchema = z.object({
   payments: z.array(closePaymentSchema).max(10).default([]),
   note: z.string().trim().max(1000).nullable().optional(),
-  adjustmentReason: z.string().trim().max(1000).nullable().optional()
+  adjustmentReason: z.string().trim().max(1000).nullable().optional(),
+  bonusRedemptionPoints: z.number().int().min(0).max(1_000_000).default(0),
+  bonusAccrualPoints: z.number().int().min(0).max(1_000_000).default(0)
 });
 const reopenAppointmentSchema = z.object({
   reason: z.string().trim().min(1).max(1000)
@@ -138,8 +155,59 @@ const appointmentInclude = {
       amountMinor: true,
       currency: true,
       externalTransactionId: true,
+      note: true,
       occurredAt: true,
       receivedBy: {
+        select: {
+          email: true,
+          staffProfile: { select: { displayName: true } }
+        }
+      }
+    }
+  }
+} as const;
+
+const workspaceAppointmentInclude = {
+  ...appointmentInclude,
+  client: {
+    include: {
+      loyaltyStatus: true,
+      privateTagAssignments: {
+        orderBy: { createdAt: "asc" as const },
+        include: { tag: true }
+      },
+      allergenAssignments: {
+        orderBy: { createdAt: "asc" as const },
+        include: { allergen: true }
+      },
+      loyaltyTransactions: {
+        orderBy: { createdAt: "desc" as const },
+        include: {
+          createdBy: {
+            select: {
+              email: true,
+              staffProfile: { select: { displayName: true } }
+            }
+          }
+        }
+      }
+    }
+  },
+  events: {
+    orderBy: { createdAt: "desc" as const },
+    include: {
+      actor: {
+        select: {
+          email: true,
+          staffProfile: { select: { displayName: true } }
+        }
+      }
+    }
+  },
+  loyaltyTransactions: {
+    orderBy: { createdAt: "desc" as const },
+    include: {
+      createdBy: {
         select: {
           email: true,
           staffProfile: { select: { displayName: true } }
@@ -195,17 +263,35 @@ export function evaluateAppointmentClose(options: {
   priceMinor: number;
   payments: Array<{ amountMinor: number }>;
   adjustmentReason?: string | null | undefined;
+  bonusRedemptionPoints?: number | undefined;
+  bonusBalancePoints?: number | undefined;
 }):
   | { ok: true }
-  | { ok: false; error: "appointment_payment_mismatch" | "appointment_payment_required" } {
-  if (options.priceMinor > 0 && options.payments.length === 0) {
+  | {
+      ok: false;
+      error:
+        | "appointment_payment_mismatch"
+        | "appointment_payment_required"
+        | "appointment_bonus_insufficient"
+        | "appointment_bonus_exceeds_price";
+    } {
+  const bonusRedemptionPoints = options.bonusRedemptionPoints ?? 0;
+  if (bonusRedemptionPoints > (options.bonusBalancePoints ?? 0)) {
+    return { ok: false, error: "appointment_bonus_insufficient" };
+  }
+  const bonusValueMinor = bonusRedemptionPoints * 100;
+  if (bonusValueMinor > options.priceMinor) {
+    return { ok: false, error: "appointment_bonus_exceeds_price" };
+  }
+  const amountDueMinor = options.priceMinor - bonusValueMinor;
+  if (amountDueMinor > 0 && options.payments.length === 0) {
     return { ok: false, error: "appointment_payment_required" };
   }
   const totalMinor = options.payments.reduce(
     (sum, payment) => sum + payment.amountMinor,
     0
   );
-  const isBalanced = totalMinor === options.priceMinor;
+  const isBalanced = totalMinor === amountDueMinor;
   if (!isBalanced && !options.adjustmentReason) {
     return { ok: false, error: "appointment_payment_mismatch" };
   }
@@ -451,6 +537,157 @@ export function registerAppointmentRoutes(
       });
 
       return { date, timezone: businessConfig.timezone, appointments };
+    }
+  );
+
+  server.get(
+    "/v1/admin/appointments/:id/workspace",
+    { preHandler: staffGuard },
+    async (request, reply) => {
+      const parameters = idSchema.safeParse(request.params);
+      if (!parameters.success) return sendInvalidPayload(reply);
+
+      const current = await database!.appointment.findUnique({
+        where: { id: parameters.data.id },
+        select: {
+          id: true,
+          clientId: true,
+          staffId: true,
+          staff: { select: { userId: true } }
+        }
+      });
+      if (!current) return reply.code(404).send({ error: "appointment_not_found" });
+      if (!canManageAppointment(request.crmUser!, current.staff.userId)) {
+        return reply.code(403).send({ error: "insufficient_permissions" });
+      }
+
+      const historyWhere = {
+        clientId: current.clientId,
+        ...(request.crmUser!.role === UserRole.master
+          ? { staffId: current.staffId }
+          : {})
+      };
+      const [appointment, history, statisticsSource, notificationJobs] =
+        await Promise.all([
+          database!.appointment.findUniqueOrThrow({
+            where: { id: current.id },
+            include: workspaceAppointmentInclude
+          }),
+          database!.appointment.findMany({
+            where: historyWhere,
+            orderBy: { startsAt: "desc" },
+            take: 50,
+            select: {
+              id: true,
+              startsAt: true,
+              status: true,
+              priceMinor: true,
+              currency: true,
+              internalNote: true,
+              service: { select: { titleRu: true } },
+              staff: { select: { displayName: true } },
+              payments: {
+                where: { voidedAt: null },
+                select: { amountMinor: true }
+              }
+            }
+          }),
+          database!.appointment.findMany({
+            where: historyWhere,
+            orderBy: { startsAt: "asc" },
+            select: {
+              startsAt: true,
+              status: true,
+              priceMinor: true,
+              currency: true,
+              payments: {
+                where: { voidedAt: null },
+                select: { amountMinor: true }
+              }
+            }
+          }),
+          database!.notificationJob.findMany({
+            where: {
+              payload: { path: ["appointmentId"], equals: current.id }
+            },
+            orderBy: { createdAt: "desc" },
+            take: 50,
+            select: {
+              id: true,
+              channel: true,
+              recipient: true,
+              templateCode: true,
+              scheduledAt: true,
+              sentAt: true,
+              failedAt: true,
+              error: true
+            }
+          })
+        ]);
+
+      const completed = statisticsSource.filter(
+        (item) => item.status === AppointmentStatus.completed
+      );
+      const spendByCurrency = completed.reduce<Record<string, number>>(
+        (totals, item) => {
+          const paymentTotal = item.payments.reduce(
+            (sum, payment) => sum + payment.amountMinor,
+            0
+          );
+          totals[item.currency] =
+            (totals[item.currency] ?? 0) +
+            (item.payments.length ? paymentTotal : item.priceMinor);
+          return totals;
+        },
+        {}
+      );
+      const completedByCurrency = completed.reduce<Record<string, number>>(
+        (totals, item) => {
+          totals[item.currency] = (totals[item.currency] ?? 0) + 1;
+          return totals;
+        },
+        {}
+      );
+      const averageCheckByCurrency = Object.fromEntries(
+        Object.entries(spendByCurrency).map(([currency, total]) => [
+          currency,
+          Math.round(total / (completedByCurrency[currency] ?? 1))
+        ])
+      );
+      const firstCompletedAt = completed[0]?.startsAt ?? null;
+      const lastCompletedAt = completed.at(-1)?.startsAt ?? null;
+      const activeMonths = firstCompletedAt
+        ? Math.max(
+            1,
+            (Date.now() - firstCompletedAt.getTime()) /
+              (30.4375 * 24 * 60 * 60 * 1000)
+          )
+        : 1;
+      const bonusBalancePoints = appointment.client.loyaltyTransactions.reduce(
+        (sum, transaction) => sum + transaction.pointsDelta,
+        0
+      );
+
+      return {
+        appointment,
+        history,
+        notificationJobs,
+        statistics: {
+          totalAppointments: statisticsSource.length,
+          completedAppointments: completed.length,
+          canceledAppointments: statisticsSource.filter(
+            (item) => item.status === AppointmentStatus.canceled
+          ).length,
+          noShowAppointments: statisticsSource.filter(
+            (item) => item.status === AppointmentStatus.no_show
+          ).length,
+          lastCompletedAt,
+          visitsPerMonth: Number((completed.length / activeMonths).toFixed(1)),
+          spendByCurrency,
+          averageCheckByCurrency,
+          bonusBalancePoints
+        }
+      };
     }
   );
 
@@ -837,10 +1074,17 @@ export function registerAppointmentRoutes(
         return reply.code(409).send({ error: "appointment_not_closable" });
       }
 
+      const bonusBalance = await database!.clientLoyaltyTransaction.aggregate({
+        where: { clientId: current.clientId },
+        _sum: { pointsDelta: true }
+      });
+
       const evaluation = evaluateAppointmentClose({
         priceMinor: current.priceMinor,
         payments: input.data.payments,
-        adjustmentReason: input.data.adjustmentReason
+        adjustmentReason: input.data.adjustmentReason,
+        bonusRedemptionPoints: input.data.bonusRedemptionPoints,
+        bonusBalancePoints: bonusBalance._sum.pointsDelta ?? 0
       });
       if (!evaluation.ok) {
         return reply.code(409).send({ error: evaluation.error });
@@ -856,9 +1100,34 @@ export function registerAppointmentRoutes(
               amountMinor: payment.amountMinor,
               currency: current.currency,
               externalTransactionId: payment.externalTransactionId ?? null,
+              note: payment.note ?? null,
               receivedByUserId: request.crmUser!.id,
               occurredAt: now
             }))
+          });
+        }
+        if (input.data.bonusRedemptionPoints > 0) {
+          await transaction.clientLoyaltyTransaction.create({
+            data: {
+              clientId: current.clientId,
+              appointmentId: current.id,
+              createdByUserId: request.crmUser!.id,
+              type: LoyaltyTransactionType.redemption,
+              pointsDelta: -input.data.bonusRedemptionPoints,
+              reason: "Списание при закрытии записи"
+            }
+          });
+        }
+        if (input.data.bonusAccrualPoints > 0) {
+          await transaction.clientLoyaltyTransaction.create({
+            data: {
+              clientId: current.clientId,
+              appointmentId: current.id,
+              createdByUserId: request.crmUser!.id,
+              type: LoyaltyTransactionType.accrual,
+              pointsDelta: input.data.bonusAccrualPoints,
+              reason: "Начисление за завершённый визит"
+            }
           });
         }
         const updated = await transaction.appointment.update({
@@ -927,6 +1196,33 @@ export function registerAppointmentRoutes(
           where: { appointmentId: current.id, voidedAt: null },
           data: { voidedAt: new Date() }
         });
+        const loyaltyTransactions =
+          await transaction.clientLoyaltyTransaction.findMany({
+            where: {
+              appointmentId: current.id,
+              type: {
+                in: [
+                  LoyaltyTransactionType.accrual,
+                  LoyaltyTransactionType.redemption,
+                  LoyaltyTransactionType.adjustment
+                ]
+              },
+              reversal: null
+            }
+          });
+        for (const loyaltyTransaction of loyaltyTransactions) {
+          await transaction.clientLoyaltyTransaction.create({
+            data: {
+              clientId: loyaltyTransaction.clientId,
+              appointmentId: current.id,
+              createdByUserId: request.crmUser!.id,
+              type: LoyaltyTransactionType.reversal,
+              pointsDelta: -loyaltyTransaction.pointsDelta,
+              reason: `Переоткрытие записи: ${input.data.reason}`,
+              reversesTransactionId: loyaltyTransaction.id
+            }
+          });
+        }
         const consumedMaterials = await transaction.stockMovement.findMany({
           where: { appointmentId: current.id, type: StockMovementType.consumption },
           select: { materialId: true, quantity: true }

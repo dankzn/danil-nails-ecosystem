@@ -109,3 +109,39 @@ test("closing a free appointment does not require a payment", () => {
     { ok: true }
   );
 });
+
+test("redeemed bonuses reduce the amount that must be paid", () => {
+  assert.deepEqual(
+    evaluateAppointmentClose({
+      priceMinor: 3_000,
+      payments: [{ amountMinor: 2_500 }],
+      bonusRedemptionPoints: 5,
+      bonusBalancePoints: 20
+    }),
+    { ok: true }
+  );
+});
+
+test("closing rejects more bonus points than the client owns", () => {
+  assert.deepEqual(
+    evaluateAppointmentClose({
+      priceMinor: 3_000,
+      payments: [{ amountMinor: 2_500 }],
+      bonusRedemptionPoints: 5,
+      bonusBalancePoints: 4
+    }),
+    { ok: false, error: "appointment_bonus_insufficient" }
+  );
+});
+
+test("closing rejects bonuses worth more than the appointment", () => {
+  assert.deepEqual(
+    evaluateAppointmentClose({
+      priceMinor: 300,
+      payments: [],
+      bonusRedemptionPoints: 4,
+      bonusBalancePoints: 10
+    }),
+    { ok: false, error: "appointment_bonus_exceeds_price" }
+  );
+});

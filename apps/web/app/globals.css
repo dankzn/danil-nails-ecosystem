@@ -1891,6 +1891,12 @@ td strong {
   width: min(980px, 100%);
 }
 
+.modal-workspace {
+  width: min(1380px, calc(100vw - 48px));
+  height: min(920px, calc(100vh - 48px));
+  max-height: calc(100vh - 48px);
+}
+
 .modal-header {
   min-height: 76px;
   display: flex;
@@ -2310,7 +2316,7 @@ td strong {
 
 .payroll-toolbar {
   display: flex;
-  align-items: end;
+  align-items: flex-end;
   justify-content: space-between;
   gap: 14px;
 }
@@ -2765,6 +2771,375 @@ td strong {
   padding: 0;
 }
 
+.appointment-workspace-shell {
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+}
+
+.workspace-tabs {
+  display: flex;
+  gap: 0;
+  overflow-x: auto;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface-soft);
+  scrollbar-width: thin;
+}
+
+.workspace-tabs button {
+  min-width: max-content;
+  height: 48px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: 0;
+  border-right: 1px solid var(--border);
+  border-bottom: 2px solid transparent;
+  padding: 0 17px;
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.workspace-tabs button:hover {
+  color: var(--text);
+}
+
+.workspace-tabs button.is-active {
+  border-bottom-color: var(--accent);
+  background: var(--surface);
+  color: var(--text);
+}
+
+.appointment-workspace-body {
+  align-content: start;
+}
+
+.workspace-loading {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  border-bottom: 1px solid var(--border);
+  padding: 12px 20px;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.spin {
+  animation: workspace-spin 0.9s linear infinite;
+}
+
+@keyframes workspace-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.workspace-panel {
+  display: grid;
+  align-content: start;
+  gap: 0;
+}
+
+.workspace-panel-heading,
+.workspace-client-hero {
+  min-height: 100px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  border-bottom: 1px solid var(--border);
+  padding: 22px 24px;
+}
+
+.workspace-panel-heading > div,
+.workspace-client-hero > div:not(.workspace-avatar) {
+  display: grid;
+  gap: 5px;
+}
+
+.workspace-panel-heading h2,
+.workspace-client-hero h2,
+.workspace-subsection h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+.workspace-panel-heading > strong {
+  font-size: 28px;
+  font-weight: 650;
+}
+
+.workspace-client-hero {
+  justify-content: flex-start;
+}
+
+.workspace-client-hero p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.workspace-avatar {
+  width: 54px;
+  height: 54px;
+  flex: 0 0 54px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--border-strong);
+  border-radius: 50%;
+  background: var(--surface-soft);
+  font-size: 18px;
+  font-weight: 750;
+}
+
+.workspace-loyalty-status {
+  margin-left: auto;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  padding: 7px 10px;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.workspace-alert {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 12px;
+  border-bottom: 1px solid var(--border);
+  padding: 16px 24px;
+  background: var(--red-soft);
+  color: var(--red);
+}
+
+.workspace-alert div {
+  display: grid;
+  gap: 4px;
+}
+
+.workspace-alert p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.workspace-definition-grid,
+.workspace-metrics,
+.workspace-finance-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0;
+  margin: 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.workspace-definition-grid > div,
+.workspace-metrics > div,
+.workspace-finance-grid > div {
+  min-height: 92px;
+  display: grid;
+  align-content: center;
+  gap: 7px;
+  border-right: 1px solid var(--border);
+  padding: 16px 20px;
+}
+
+.workspace-definition-grid > div:last-child,
+.workspace-metrics > div:nth-child(4n),
+.workspace-finance-grid > div:nth-child(4n) {
+  border-right: 0;
+}
+
+.workspace-definition-grid dt,
+.workspace-metrics span,
+.workspace-finance-grid span {
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.workspace-definition-grid dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.workspace-metrics strong,
+.workspace-finance-grid strong {
+  font-size: 19px;
+  font-weight: 650;
+}
+
+.workspace-finance-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.workspace-finance-grid small {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.workspace-subsection {
+  display: grid;
+  gap: 14px;
+  padding: 22px 24px;
+}
+
+.workspace-tag-cloud {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.workspace-tag-cloud span {
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  padding: 6px 9px;
+  background: var(--surface-soft);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.workspace-note,
+.workspace-empty {
+  margin: 0;
+  padding: 18px 24px;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.workspace-subsection .workspace-note {
+  padding: 0;
+}
+
+.workspace-table-wrap {
+  overflow-x: auto;
+}
+
+.workspace-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+
+.workspace-table th,
+.workspace-table td {
+  border-bottom: 1px solid var(--border);
+  padding: 14px 18px;
+  text-align: left;
+  vertical-align: middle;
+}
+
+.workspace-table th {
+  color: var(--text-muted);
+  font-size: 9px;
+  font-weight: 750;
+  text-transform: uppercase;
+}
+
+.workspace-ledger,
+.workspace-timeline {
+  display: grid;
+}
+
+.workspace-ledger > div {
+  min-height: 68px;
+  display: grid;
+  grid-template-columns: 92px minmax(0, 1fr);
+  align-items: center;
+  gap: 16px;
+  border-bottom: 1px solid var(--border);
+  padding: 12px 24px;
+}
+
+.workspace-ledger > div > div,
+.workspace-timeline > div > div {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.workspace-ledger small,
+.workspace-timeline small {
+  color: var(--text-muted);
+  font-size: 10px;
+}
+
+.workspace-ledger p,
+.workspace-timeline p {
+  margin: 0;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.ledger-positive,
+.ledger-negative,
+.notification-channel {
+  font-size: 13px;
+  font-weight: 750;
+}
+
+.ledger-positive {
+  color: var(--green);
+}
+
+.ledger-negative {
+  color: var(--red);
+}
+
+.notification-channel {
+  color: var(--accent);
+}
+
+.workspace-timeline {
+  padding: 10px 24px 22px;
+}
+
+.workspace-timeline > div {
+  display: grid;
+  grid-template-columns: 12px minmax(0, 1fr);
+  gap: 14px;
+  padding: 12px 0;
+}
+
+.workspace-timeline > div > span {
+  width: 9px;
+  height: 9px;
+  margin-top: 4px;
+  border: 2px solid var(--surface);
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+.workspace-bonus-close {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) minmax(140px, 0.6fr) minmax(140px, 0.6fr);
+  align-items: end;
+  gap: 12px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  padding: 14px;
+  background: var(--surface-soft);
+}
+
+.workspace-bonus-close > div {
+  display: grid;
+  gap: 5px;
+}
+
+.workspace-bonus-close > div span,
+.workspace-bonus-close > div small {
+  color: var(--text-muted);
+  font-size: 10px;
+}
+
 .appointment-details {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -3075,6 +3450,11 @@ td strong {
     max-height: calc(100vh - 24px);
   }
 
+  .modal-workspace {
+    width: 100%;
+    height: calc(100vh - 24px);
+  }
+
   .form-grid-two,
   .form-grid-three,
   .form-grid-four {
@@ -3163,6 +3543,50 @@ td strong {
 
   .appointment-details {
     grid-template-columns: 1fr;
+  }
+
+  .workspace-tabs button {
+    height: 44px;
+    padding: 0 13px;
+  }
+
+  .workspace-tabs button span {
+    display: none;
+  }
+
+  .workspace-panel-heading,
+  .workspace-client-hero {
+    min-height: 82px;
+    padding: 17px 16px;
+  }
+
+  .workspace-definition-grid,
+  .workspace-metrics,
+  .workspace-finance-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .workspace-definition-grid > div,
+  .workspace-metrics > div,
+  .workspace-finance-grid > div {
+    min-height: 78px;
+    border-bottom: 1px solid var(--border);
+    padding: 13px 15px;
+  }
+
+  .workspace-definition-grid > div:nth-child(2n),
+  .workspace-metrics > div:nth-child(2n),
+  .workspace-finance-grid > div:nth-child(2n) {
+    border-right: 0;
+  }
+
+  .workspace-bonus-close {
+    grid-template-columns: 1fr;
+  }
+
+  .workspace-ledger > div {
+    grid-template-columns: 70px minmax(0, 1fr);
+    padding: 12px 16px;
   }
 
   .appointment-details > div:nth-child(odd),

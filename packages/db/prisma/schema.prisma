@@ -127,33 +127,47 @@ enum PaymentMethod {
   online_acquiring
   cash
   phone_transfer
+  bank_card
+  sbp
+  qr
+  bank_transfer
+  other
+}
+
+enum LoyaltyTransactionType {
+  accrual
+  redemption
+  adjustment
+  reversal
 }
 
 model User {
-  id           String   @id @default(cuid())
+  id           String    @id @default(cuid())
   role         UserRole
-  email        String?  @unique
-  phone        String?  @unique
+  email        String?   @unique
+  phone        String?   @unique
   passwordHash String?
-  isActive     Boolean  @default(true)
+  isActive     Boolean   @default(true)
   lastLoginAt  DateTime?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
 
-  staffProfile StaffProfile?
-  client       Client?
-  sessions     Session[]
-  employeeNotesAuthored  EmployeeNote[]  @relation("EmployeeNoteAuthor")
-  employeeEventsAuthored EmployeeEvent[] @relation("EmployeeEventActor")
-  appointmentsCreated    Appointment[]   @relation("AppointmentCreator")
-  appointmentsClosed     Appointment[]   @relation("AppointmentCloser")
-  compensationRulesAuthored EmployeeCompensationRule[] @relation("CompensationRuleAuthor")
-  payrollsCreated        EmployeePayroll[] @relation("PayrollCreator")
-  payrollEntriesAuthored PayrollEntry[] @relation("PayrollEntryAuthor")
-  payrollPaymentsAuthored PayrollPayment[] @relation("PayrollPaymentAuthor")
-  appointmentPaymentsReceived Payment[] @relation("PaymentReceiver")
-  stockMovementsRecorded StockMovement[] @relation("StockMovementActor")
-  waitlistEntriesCreated WaitlistEntry[] @relation("WaitlistCreator")
+  staffProfile                StaffProfile?
+  client                      Client?
+  sessions                    Session[]
+  employeeNotesAuthored       EmployeeNote[]             @relation("EmployeeNoteAuthor")
+  employeeEventsAuthored      EmployeeEvent[]            @relation("EmployeeEventActor")
+  appointmentsCreated         Appointment[]              @relation("AppointmentCreator")
+  appointmentsClosed          Appointment[]              @relation("AppointmentCloser")
+  compensationRulesAuthored   EmployeeCompensationRule[] @relation("CompensationRuleAuthor")
+  payrollsCreated             EmployeePayroll[]          @relation("PayrollCreator")
+  payrollEntriesAuthored      PayrollEntry[]             @relation("PayrollEntryAuthor")
+  payrollPaymentsAuthored     PayrollPayment[]           @relation("PayrollPaymentAuthor")
+  appointmentPaymentsReceived Payment[]                  @relation("PaymentReceiver")
+  appointmentEventsAuthored   AppointmentEvent[]         @relation("AppointmentEventActor")
+  loyaltyTransactionsAuthored ClientLoyaltyTransaction[] @relation("LoyaltyTransactionAuthor")
+  stockMovementsRecorded      StockMovement[]            @relation("StockMovementActor")
+  waitlistEntriesCreated      WaitlistEntry[]            @relation("WaitlistCreator")
 }
 
 model Session {
@@ -166,33 +180,33 @@ model Session {
   userAgent  String?
   createdAt  DateTime @default(now())
 
-  user       User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([expiresAt])
 }
 
 model Client {
-  id                    String   @id @default(cuid())
-  userId                String?  @unique
-  fullName              String?
-  phone                 String   @unique
-  email                 String?
-  telegramUsername      String?
-  telegramChatId        String?
-  whatsappPhone         String?
-  allergies             String?
-  noKnownAllergies      Boolean  @default(false)
-  customAllergyNote     String?
-  notes                 String?
-  requiresPrepayment    Boolean  @default(false)
-  prepaymentReason      String?
-  loyaltyStatusId       String?
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
+  id                 String   @id @default(cuid())
+  userId             String?  @unique
+  fullName           String?
+  phone              String   @unique
+  email              String?
+  telegramUsername   String?
+  telegramChatId     String?
+  whatsappPhone      String?
+  allergies          String?
+  noKnownAllergies   Boolean  @default(false)
+  customAllergyNote  String?
+  notes              String?
+  requiresPrepayment Boolean  @default(false)
+  prepaymentReason   String?
+  loyaltyStatusId    String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
-  user                  User?                     @relation(fields: [userId], references: [id])
-  loyaltyStatus         ClientLoyaltyStatus?      @relation(fields: [loyaltyStatusId], references: [id])
+  user                  User?                        @relation(fields: [userId], references: [id])
+  loyaltyStatus         ClientLoyaltyStatus?         @relation(fields: [loyaltyStatusId], references: [id])
   appointments          Appointment[]
   privateTagAssignments ClientPrivateTagAssignment[]
   allergenAssignments   ClientAllergenAssignment[]
@@ -201,6 +215,7 @@ model Client {
   nailPhotos            NailPhoto[]
   consentRecords        ConsentRecord[]
   waitlistEntries       WaitlistEntry[]
+  loyaltyTransactions   ClientLoyaltyTransaction[]
 
   @@index([telegramUsername])
 }
@@ -215,7 +230,7 @@ model ClientLoyaltyStatus {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  clients     Client[]
+  clients Client[]
 }
 
 model ClientPrivateTag {
@@ -235,8 +250,8 @@ model ClientPrivateTagAssignment {
   tagId     String
   createdAt DateTime @default(now())
 
-  client    Client           @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  tag       ClientPrivateTag @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  client Client           @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  tag    ClientPrivateTag @relation(fields: [tagId], references: [id], onDelete: Cascade)
 
   @@unique([clientId, tagId])
 }
@@ -265,56 +280,56 @@ model ClientAllergenAssignment {
 }
 
 model StaffProfile {
-  id                   String           @id @default(cuid())
-  userId               String           @unique
-  displayName          String
-  legalName            String?
-  primaryOrgUnitId     String?
+  id                    String           @id @default(cuid())
+  userId                String           @unique
+  displayName           String
+  legalName             String?
+  primaryOrgUnitId      String?
   primaryOrganizationId String?
-  cityId               String?
-  countryId            String?
+  cityId                String?
+  countryId             String?
   // Internal HR note ("Служебная информация" in the CRM) — never exposed
   // via any public/client-facing API. See AGENTS.md: private/internal
   // labels must never mix with what clients or site visitors see.
-  bio                  String?
+  bio                   String?
   // The two fields below are the opposite: written by the owner
   // specifically to be shown on the public masters page.
-  philosophy           String?
-  worksVideoUrl        String?
-  employmentStatus     EmploymentStatus @default(active)
-  employmentType       EmploymentType   @default(full_time)
-  hiredAt              DateTime?
-  probationEndsAt      DateTime?
-  dismissedAt          DateTime?
-  dateOfBirth          DateTime?
-  workPhone            String?
-  personalEmail        String?
-  address              String?
-  emergencyContactName String?
+  philosophy            String?
+  worksVideoUrl         String?
+  employmentStatus      EmploymentStatus @default(active)
+  employmentType        EmploymentType   @default(full_time)
+  hiredAt               DateTime?
+  probationEndsAt       DateTime?
+  dismissedAt           DateTime?
+  dateOfBirth           DateTime?
+  workPhone             String?
+  personalEmail         String?
+  address               String?
+  emergencyContactName  String?
   emergencyContactPhone String?
-  isBookable           Boolean          @default(true)
-  createdAt            DateTime         @default(now())
-  updatedAt            DateTime         @updatedAt
+  isBookable            Boolean          @default(true)
+  createdAt             DateTime         @default(now())
+  updatedAt             DateTime         @updatedAt
 
-  user         User                @relation(fields: [userId], references: [id])
-  positions        StaffPosition[]
-  primaryOrgUnit   OrgUnit?      @relation(fields: [primaryOrgUnitId], references: [id])
-  primaryOrganization Organization? @relation(fields: [primaryOrganizationId], references: [id])
-  city             City?         @relation(fields: [cityId], references: [id])
-  country          Country?      @relation(fields: [countryId], references: [id])
-  services     StaffService[]
-  workingHours WorkingHour[]
-  exceptions   ScheduleException[]
-  appointments Appointment[]
-  employeeNotes EmployeeNote[]
-  trainings     EmployeeTraining[]
-  documents     EmployeeDocument[]
-  employeeEvents EmployeeEvent[]
-  compensationRules EmployeeCompensationRule[]
-  payrolls       EmployeePayroll[]
+  user                      User                       @relation(fields: [userId], references: [id])
+  positions                 StaffPosition[]
+  primaryOrgUnit            OrgUnit?                   @relation(fields: [primaryOrgUnitId], references: [id])
+  primaryOrganization       Organization?              @relation(fields: [primaryOrganizationId], references: [id])
+  city                      City?                      @relation(fields: [cityId], references: [id])
+  country                   Country?                   @relation(fields: [countryId], references: [id])
+  services                  StaffService[]
+  workingHours              WorkingHour[]
+  exceptions                ScheduleException[]
+  appointments              Appointment[]
+  employeeNotes             EmployeeNote[]
+  trainings                 EmployeeTraining[]
+  documents                 EmployeeDocument[]
+  employeeEvents            EmployeeEvent[]
+  compensationRules         EmployeeCompensationRule[]
+  payrolls                  EmployeePayroll[]
   orgUnitManagerAssignments OrgUnitManager[]
-  waitlistEntries WaitlistEntry[]
-  photo          StaffPhoto?
+  waitlistEntries           WaitlistEntry[]
+  photo                     StaffPhoto?
 }
 
 // Kept as its own model (not a column on StaffProfile) so ordinary employee
@@ -330,15 +345,15 @@ model StaffPhoto {
 }
 
 model Position {
-  id         String   @id @default(cuid())
-  titleRu    String   @unique
-  titleEn    String?
-  titleEs    String?
-  titleFr    String?
+  id           String   @id @default(cuid())
+  titleRu      String   @unique
+  titleEn      String?
+  titleEs      String?
+  titleFr      String?
   // Internal-only positions (e.g. "Основатель") never reach the public site
   // or client-facing APIs — see AGENTS.md: private/internal labels must
   // never mix with what clients or site visitors see.
-  isInternal Boolean  @default(false)
+  isInternal   Boolean  @default(false)
   // Marks an actual client-facing craft role (e.g. "Мастер маникюра") as
   // opposed to a public-but-organizational title (e.g. "Сооснователь",
   // "SMM-менеджер") — only staff holding a master-role position appear on
@@ -348,9 +363,9 @@ model Position {
   // its holder off the masters page — admin-only titles must be unchecked
   // explicitly.
   isMasterRole Boolean  @default(true)
-  isArchived Boolean  @default(false)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  isArchived   Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
   staffAssignments StaffPosition[]
 }
@@ -445,12 +460,12 @@ model OrgUnit {
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
-  type          OrgUnitType     @relation(fields: [typeId], references: [id])
-  parent        OrgUnit?        @relation("OrgUnitHierarchy", fields: [parentId], references: [id])
-  children      OrgUnit[]       @relation("OrgUnitHierarchy")
-  organization  Organization    @relation(fields: [organizationId], references: [id])
-  city          City?           @relation(fields: [cityId], references: [id])
-  country       Country?        @relation(fields: [countryId], references: [id])
+  type          OrgUnitType      @relation(fields: [typeId], references: [id])
+  parent        OrgUnit?         @relation("OrgUnitHierarchy", fields: [parentId], references: [id])
+  children      OrgUnit[]        @relation("OrgUnitHierarchy")
+  organization  Organization     @relation(fields: [organizationId], references: [id])
+  city          City?            @relation(fields: [cityId], references: [id])
+  country       Country?         @relation(fields: [countryId], references: [id])
   managers      OrgUnitManager[]
   staffProfiles StaffProfile[]
 
@@ -486,8 +501,8 @@ model EmployeeNote {
   createdAt       DateTime             @default(now())
   updatedAt       DateTime             @updatedAt
 
-  staff           StaffProfile @relation(fields: [staffId], references: [id], onDelete: Cascade)
-  createdBy       User?        @relation("EmployeeNoteAuthor", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  staff     StaffProfile @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  createdBy User?        @relation("EmployeeNoteAuthor", fields: [createdByUserId], references: [id], onDelete: SetNull)
 
   @@index([staffId, createdAt])
 }
@@ -508,7 +523,7 @@ model EmployeeTraining {
   createdAt      DateTime       @default(now())
   updatedAt      DateTime       @updatedAt
 
-  staff          StaffProfile @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  staff StaffProfile @relation(fields: [staffId], references: [id], onDelete: Cascade)
 
   @@index([staffId, status])
   @@index([endsAt])
@@ -525,7 +540,7 @@ model EmployeeDocument {
   createdAt DateTime             @default(now())
   updatedAt DateTime             @updatedAt
 
-  staff     StaffProfile @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  staff StaffProfile @relation(fields: [staffId], references: [id], onDelete: Cascade)
 
   @@index([staffId, type])
   @@index([expiresAt])
@@ -541,57 +556,57 @@ model EmployeeEvent {
   actorUserId String?
   createdAt   DateTime          @default(now())
 
-  staff       StaffProfile @relation(fields: [staffId], references: [id], onDelete: Cascade)
-  actor       User?        @relation("EmployeeEventActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+  staff StaffProfile @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  actor User?        @relation("EmployeeEventActor", fields: [actorUserId], references: [id], onDelete: SetNull)
 
   @@index([staffId, occurredAt])
 }
 
 model EmployeeCompensationRule {
-  id                        String   @id @default(cuid())
+  id                        String    @id @default(cuid())
   staffId                   String
   effectiveFrom             DateTime
   effectiveTo               DateTime?
-  masterCommissionBps       Int      @default(0)
-  adminBookingCommissionBps Int      @default(0)
-  fixedMonthlyMinor         Int      @default(0)
-  currency                  Currency @default(RUB)
+  masterCommissionBps       Int       @default(0)
+  adminBookingCommissionBps Int       @default(0)
+  fixedMonthlyMinor         Int       @default(0)
+  currency                  Currency  @default(RUB)
   createdByUserId           String?
-  createdAt                 DateTime @default(now())
-  updatedAt                 DateTime @updatedAt
+  createdAt                 DateTime  @default(now())
+  updatedAt                 DateTime  @updatedAt
 
-  staff                     StaffProfile @relation(fields: [staffId], references: [id], onDelete: Cascade)
-  createdBy                 User? @relation("CompensationRuleAuthor", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  staff     StaffProfile @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  createdBy User?        @relation("CompensationRuleAuthor", fields: [createdByUserId], references: [id], onDelete: SetNull)
 
   @@unique([staffId, effectiveFrom])
   @@index([staffId, effectiveFrom, effectiveTo])
 }
 
 model EmployeePayroll {
-  id                             String        @id @default(cuid())
-  staffId                        String
-  periodStart                    DateTime
-  periodEnd                      DateTime
-  currency                       Currency      @default(RUB)
-  status                         PayrollStatus @default(accrued)
-  masterCommissionBpsSnapshot    Int           @default(0)
-  adminCommissionBpsSnapshot     Int           @default(0)
-  fixedMonthlyMinorSnapshot      Int           @default(0)
-  appointmentCommissionMinor     Int           @default(0)
-  fixedMinor                     Int           @default(0)
-  adjustmentsMinor               Int           @default(0)
-  totalAccruedMinor              Int           @default(0)
-  totalPaidMinor                 Int           @default(0)
-  accruedAt                      DateTime       @default(now())
-  paidAt                         DateTime?
-  createdByUserId                String?
-  createdAt                      DateTime       @default(now())
-  updatedAt                      DateTime       @updatedAt
+  id                          String        @id @default(cuid())
+  staffId                     String
+  periodStart                 DateTime
+  periodEnd                   DateTime
+  currency                    Currency      @default(RUB)
+  status                      PayrollStatus @default(accrued)
+  masterCommissionBpsSnapshot Int           @default(0)
+  adminCommissionBpsSnapshot  Int           @default(0)
+  fixedMonthlyMinorSnapshot   Int           @default(0)
+  appointmentCommissionMinor  Int           @default(0)
+  fixedMinor                  Int           @default(0)
+  adjustmentsMinor            Int           @default(0)
+  totalAccruedMinor           Int           @default(0)
+  totalPaidMinor              Int           @default(0)
+  accruedAt                   DateTime      @default(now())
+  paidAt                      DateTime?
+  createdByUserId             String?
+  createdAt                   DateTime      @default(now())
+  updatedAt                   DateTime      @updatedAt
 
-  staff                          StaffProfile @relation(fields: [staffId], references: [id], onDelete: Cascade)
-  createdBy                      User? @relation("PayrollCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
-  entries                        PayrollEntry[]
-  payments                       PayrollPayment[]
+  staff     StaffProfile     @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  createdBy User?            @relation("PayrollCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  entries   PayrollEntry[]
+  payments  PayrollPayment[]
 
   @@unique([staffId, periodStart, currency])
   @@index([periodStart, status])
@@ -610,9 +625,9 @@ model PayrollEntry {
   createdByUserId   String?
   createdAt         DateTime         @default(now())
 
-  payroll           EmployeePayroll @relation(fields: [payrollId], references: [id], onDelete: Cascade)
-  appointment       Appointment? @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
-  createdBy         User? @relation("PayrollEntryAuthor", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  payroll     EmployeePayroll @relation(fields: [payrollId], references: [id], onDelete: Cascade)
+  appointment Appointment?    @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+  createdBy   User?           @relation("PayrollEntryAuthor", fields: [createdByUserId], references: [id], onDelete: SetNull)
 
   @@unique([payrollId, appointmentId, type])
   @@index([payrollId, type])
@@ -628,31 +643,31 @@ model PayrollPayment {
   createdByUserId String?
   createdAt       DateTime @default(now())
 
-  payroll         EmployeePayroll @relation(fields: [payrollId], references: [id], onDelete: Cascade)
-  createdBy       User? @relation("PayrollPaymentAuthor", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  payroll   EmployeePayroll @relation(fields: [payrollId], references: [id], onDelete: Cascade)
+  createdBy User?           @relation("PayrollPaymentAuthor", fields: [createdByUserId], references: [id], onDelete: SetNull)
 
   @@index([payrollId, paidAt])
 }
 
 model Service {
-  id                     String   @id @default(cuid())
-  slug                   String   @unique
-  titleRu                String
-  titleEn                String?
-  titleEs                String?
-  category               String?
-  durationMinutes        Int
-  isActive               Boolean  @default(true)
-  requiresManualReview   Boolean  @default(false)
-  bufferAfterMinutes     Int      @default(0)
-  createdAt              DateTime @default(now())
-  updatedAt              DateTime @updatedAt
+  id                   String   @id @default(cuid())
+  slug                 String   @unique
+  titleRu              String
+  titleEn              String?
+  titleEs              String?
+  category             String?
+  durationMinutes      Int
+  isActive             Boolean  @default(true)
+  requiresManualReview Boolean  @default(false)
+  bufferAfterMinutes   Int      @default(0)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
 
-  staffServices          StaffService[]
-  appointments           Appointment[]
-  prices                 ServicePrice[]
-  materials              ServiceMaterial[]
-  waitlistEntries        WaitlistEntry[]
+  staffServices   StaffService[]
+  appointments    Appointment[]
+  prices          ServicePrice[]
+  materials       ServiceMaterial[]
+  waitlistEntries WaitlistEntry[]
 }
 
 model ServicePrice {
@@ -663,7 +678,7 @@ model ServicePrice {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  service     Service @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  service Service @relation(fields: [serviceId], references: [id], onDelete: Cascade)
 
   @@unique([serviceId, currency])
 }
@@ -673,76 +688,77 @@ model StaffService {
   staffId   String
   serviceId String
 
-  staff     StaffProfile @relation(fields: [staffId], references: [id], onDelete: Cascade)
-  service   Service      @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  staff   StaffProfile @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  service Service      @relation(fields: [serviceId], references: [id], onDelete: Cascade)
 
   @@unique([staffId, serviceId])
 }
 
 model WorkingHour {
-  id          String @id @default(cuid())
-  staffId     String
-  weekday     Int
-  startsAt    String
-  endsAt      String
-  isActive    Boolean @default(true)
+  id       String  @id @default(cuid())
+  staffId  String
+  weekday  Int
+  startsAt String
+  endsAt   String
+  isActive Boolean @default(true)
 
-  staff       StaffProfile @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  staff StaffProfile @relation(fields: [staffId], references: [id], onDelete: Cascade)
 
   @@index([staffId, weekday])
 }
 
 model ScheduleException {
-  id          String   @id @default(cuid())
-  staffId     String
-  startsAt    DateTime
-  endsAt      DateTime
-  reason      String?
-  isBookable  Boolean  @default(false)
-  createdAt   DateTime @default(now())
+  id         String   @id @default(cuid())
+  staffId    String
+  startsAt   DateTime
+  endsAt     DateTime
+  reason     String?
+  isBookable Boolean  @default(false)
+  createdAt  DateTime @default(now())
 
-  staff       StaffProfile @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  staff StaffProfile @relation(fields: [staffId], references: [id], onDelete: Cascade)
 
   @@index([staffId, startsAt, endsAt])
 }
 
 model Appointment {
-  id               String            @id @default(cuid())
-  clientId         String
-  staffId          String
-  serviceId        String
-  status           AppointmentStatus @default(pending_admin_confirmation)
-  attendanceConfirmationStatus AttendanceConfirmationStatus @default(not_requested)
-  startsAt         DateTime
-  endsAt           DateTime
-  clientComment    String?
-  internalNote     String?
-  clientConfirmedAt DateTime?
+  id                                String                       @id @default(cuid())
+  clientId                          String
+  staffId                           String
+  serviceId                         String
+  status                            AppointmentStatus            @default(pending_admin_confirmation)
+  attendanceConfirmationStatus      AttendanceConfirmationStatus @default(not_requested)
+  startsAt                          DateTime
+  endsAt                            DateTime
+  clientComment                     String?
+  internalNote                      String?
+  clientConfirmedAt                 DateTime?
   attendanceConfirmationRequestedAt DateTime?
-  adminConfirmedAt  DateTime?
-  canceledAt       DateTime?
-  cancellationReason String?
-  source           BookingSource     @default(online)
-  createdByUserId   String?
-  priceMinor        Int               @default(0)
-  currency          Currency          @default(RUB)
-  completedAt       DateTime?
-  closedByUserId    String?
-  createdAt        DateTime          @default(now())
-  updatedAt        DateTime          @updatedAt
+  adminConfirmedAt                  DateTime?
+  canceledAt                        DateTime?
+  cancellationReason                String?
+  source                            BookingSource                @default(online)
+  createdByUserId                   String?
+  priceMinor                        Int                          @default(0)
+  currency                          Currency                     @default(RUB)
+  completedAt                       DateTime?
+  closedByUserId                    String?
+  createdAt                         DateTime                     @default(now())
+  updatedAt                         DateTime                     @updatedAt
 
-  client           Client       @relation(fields: [clientId], references: [id])
-  staff            StaffProfile @relation(fields: [staffId], references: [id])
-  service          Service      @relation(fields: [serviceId], references: [id])
-  createdBy        User?        @relation("AppointmentCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
-  closedBy         User?        @relation("AppointmentCloser", fields: [closedByUserId], references: [id], onDelete: SetNull)
-  events           AppointmentEvent[]
-  visitNotes       VisitNote[]
-  visitMaterials   VisitMaterial[]
-  nailPhotos       NailPhoto[]
-  payrollEntries   PayrollEntry[]
-  payments         Payment[]
-  stockMovements   StockMovement[]
+  client              Client                     @relation(fields: [clientId], references: [id])
+  staff               StaffProfile               @relation(fields: [staffId], references: [id])
+  service             Service                    @relation(fields: [serviceId], references: [id])
+  createdBy           User?                      @relation("AppointmentCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  closedBy            User?                      @relation("AppointmentCloser", fields: [closedByUserId], references: [id], onDelete: SetNull)
+  events              AppointmentEvent[]
+  visitNotes          VisitNote[]
+  visitMaterials      VisitMaterial[]
+  nailPhotos          NailPhoto[]
+  payrollEntries      PayrollEntry[]
+  payments            Payment[]
+  stockMovements      StockMovement[]
+  loyaltyTransactions ClientLoyaltyTransaction[]
 
   @@index([staffId, startsAt, endsAt])
   @@index([clientId, startsAt])
@@ -752,15 +768,18 @@ model Appointment {
 }
 
 model AppointmentEvent {
-  id            String            @id @default(cuid())
+  id            String             @id @default(cuid())
   appointmentId String
   fromStatus    AppointmentStatus?
   toStatus      AppointmentStatus
   actorUserId   String?
   note          String?
-  createdAt     DateTime          @default(now())
+  createdAt     DateTime           @default(now())
 
-  appointment   Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  appointment Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  actor       User?       @relation("AppointmentEventActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([appointmentId, createdAt])
 }
 
 model VisitNote {
@@ -771,8 +790,8 @@ model VisitNote {
   note          String
   createdAt     DateTime @default(now())
 
-  client        Client       @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  appointment   Appointment? @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+  client      Client       @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  appointment Appointment? @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
 }
 
 model VisitMaterial {
@@ -785,8 +804,8 @@ model VisitMaterial {
   notes         String?
   createdAt     DateTime @default(now())
 
-  client        Client       @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  appointment   Appointment? @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+  client      Client       @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  appointment Appointment? @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
 }
 
 model NailPhoto {
@@ -797,8 +816,8 @@ model NailPhoto {
   caption       String?
   createdAt     DateTime @default(now())
 
-  client        Client       @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  appointment   Appointment? @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+  client      Client       @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  appointment Appointment? @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
 }
 
 model NotificationTemplate {
@@ -813,16 +832,16 @@ model NotificationTemplate {
 }
 
 model NotificationJob {
-  id          String   @id @default(cuid())
-  channel     String
-  recipient   String
+  id           String    @id @default(cuid())
+  channel      String
+  recipient    String
   templateCode String?
-  payload     Json?
-  scheduledAt DateTime
-  sentAt      DateTime?
-  failedAt    DateTime?
-  error       String?
-  createdAt   DateTime @default(now())
+  payload      Json?
+  scheduledAt  DateTime
+  sentAt       DateTime?
+  failedAt     DateTime?
+  error        String?
+  createdAt    DateTime  @default(now())
 
   @@index([scheduledAt, sentAt])
 }
@@ -834,15 +853,37 @@ model Payment {
   amountMinor           Int
   currency              Currency      @default(RUB)
   externalTransactionId String?
+  note                  String?
   receivedByUserId      String?
   occurredAt            DateTime      @default(now())
   voidedAt              DateTime?
   createdAt             DateTime      @default(now())
 
-  appointment           Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
-  receivedBy            User?       @relation("PaymentReceiver", fields: [receivedByUserId], references: [id], onDelete: SetNull)
+  appointment Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  receivedBy  User?       @relation("PaymentReceiver", fields: [receivedByUserId], references: [id], onDelete: SetNull)
 
   @@index([appointmentId])
+}
+
+model ClientLoyaltyTransaction {
+  id                    String                 @id @default(cuid())
+  clientId              String
+  appointmentId         String?
+  createdByUserId       String?
+  type                  LoyaltyTransactionType
+  pointsDelta           Int
+  reason                String?
+  reversesTransactionId String?                @unique
+  createdAt             DateTime               @default(now())
+
+  client              Client                    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  appointment         Appointment?              @relation(fields: [appointmentId], references: [id], onDelete: SetNull)
+  createdBy           User?                     @relation("LoyaltyTransactionAuthor", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  reversesTransaction ClientLoyaltyTransaction? @relation("LoyaltyTransactionReversal", fields: [reversesTransactionId], references: [id], onDelete: Restrict)
+  reversal            ClientLoyaltyTransaction? @relation("LoyaltyTransactionReversal")
+
+  @@index([clientId, createdAt])
+  @@index([appointmentId, createdAt])
 }
 
 model Review {
@@ -856,15 +897,15 @@ model Review {
 }
 
 model ConsentRecord {
-  id          String   @id @default(cuid())
-  clientId    String
-  type        String
-  grantedAt   DateTime?
-  revokedAt   DateTime?
-  source      String?
-  createdAt   DateTime @default(now())
+  id        String    @id @default(cuid())
+  clientId  String
+  type      String
+  grantedAt DateTime?
+  revokedAt DateTime?
+  source    String?
+  createdAt DateTime  @default(now())
 
-  client      Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  client Client @relation(fields: [clientId], references: [id], onDelete: Cascade)
 
   @@index([clientId, type])
 }
@@ -907,8 +948,8 @@ model Material {
   createdAt        DateTime     @default(now())
   updatedAt        DateTime     @updatedAt
 
-  serviceLinks     ServiceMaterial[]
-  stockMovements   StockMovement[]
+  serviceLinks   ServiceMaterial[]
+  stockMovements StockMovement[]
 }
 
 model ServiceMaterial {
@@ -917,24 +958,24 @@ model ServiceMaterial {
   materialId String
   quantity   Float
 
-  service    Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
-  material   Material @relation(fields: [materialId], references: [id], onDelete: Cascade)
+  service  Service  @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  material Material @relation(fields: [materialId], references: [id], onDelete: Cascade)
 
   @@unique([serviceId, materialId])
   @@index([materialId])
 }
 
 model StockMovement {
-  id            String            @id @default(cuid())
-  materialId    String
-  appointmentId String?
-  type          StockMovementType
+  id             String               @id @default(cuid())
+  materialId     String
+  appointmentId  String?
+  type           StockMovementType
   writeOffReason StockWriteOffReason?
-  quantity      Float
-  note          String?
-  actorUserId   String?
-  occurredAt    DateTime          @default(now())
-  createdAt     DateTime          @default(now())
+  quantity       Float
+  note           String?
+  actorUserId    String?
+  occurredAt     DateTime             @default(now())
+  createdAt      DateTime             @default(now())
 
   material    Material     @relation(fields: [materialId], references: [id], onDelete: Cascade)
   appointment Appointment? @relation(fields: [appointmentId], references: [id], onDelete: SetNull)

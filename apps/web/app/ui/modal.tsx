@@ -7,7 +7,7 @@ type ModalProps = {
   children: ReactNode;
   description?: string;
   onClose: () => void;
-  size?: "default" | "wide";
+  size?: "default" | "wide" | "workspace";
   title: string;
 };
 
@@ -44,7 +44,9 @@ export function Modal({
         aria-describedby={description ? "modal-description" : undefined}
         aria-labelledby="modal-title"
         aria-modal="true"
-        className={`modal${size === "wide" ? " modal-wide" : ""}`}
+        className={`modal${size === "wide" ? " modal-wide" : ""}${
+          size === "workspace" ? " modal-workspace" : ""
+        }`}
         role="dialog"
       >
         <header className="modal-header">
