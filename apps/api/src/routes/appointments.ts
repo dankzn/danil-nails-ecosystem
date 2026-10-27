@@ -4,6 +4,7 @@ import {
   BookingSource,
   Currency,
   PaymentMethod,
+  StockMovementType,
   UserRole,
   type DatabaseClient
 } from "@danil-nails/db";
@@ -14,13 +15,10 @@ import {
   findAvailableSlots,
   isDateWithinBookingHorizon
 } from "../availability.js";
-import { authorize } from "../auth/session.js";
+import { authorize, resolveSessionClient } from "../auth/session.js";
+import { isUniqueConstraintError, normalizePhone } from "./clients.js";
 
-const appointmentStatuses = [
-  "confirmed",
-  "canceled",
-  "no_show"
-] as const;
+const appointmentStatuses = ["confirmed", "canceled", "no_show"] as const;
 const paymentMethods = [
   "online_acquiring",
   "cash",
@@ -56,24 +54,24 @@ const createAppointmentSchema = z.object({
   clientComment: z.string().trim().max(2000).nullable().optional(),
   internalNote: z.string().trim().max(4000).nullable().optional()
 });
+const publicBookingSchema = z.object({
+  serviceId: z.string().cuid(),
+  staffId: z.string().cuid(),
+  startsAt: z.iso.datetime(),
+  clientComment: z.string().trim().max(2000).nullable().optional(),
+  guest: z
+    .object({
+      fullName: z.string().trim().min(2).max(160),
+      phone: z.string().trim().min(7).max(30),
+      email: z.email().nullable().optional()
+    })
+    .optional()
+});
 const statusUpdateSchema = z.object({
   status: z.enum(appointmentStatuses),
   note: z.string().trim().max(1000).nullable().optional(),
   cancellationReason: z.string().trim().max(1000).nullable().optional(),
   canceledBy: z.enum(["client", "studio"]).optional()
-});
-const closeAppointmentSchema = z.object({
-  priceMinor: z.number().int().positive(),
-  payments: z
-    .array(
-      z.object({
-        method: z.enum(paymentMethods),
-        amountMinor: z.number().int().positive(),
-        externalTransactionId: z.string().trim().max(200).nullable().optional()
-      })
-    )
-    .min(1)
-    .max(5)
 });
 const attendanceUpdateSchema = z.object({
   status: z.enum(attendanceStatuses)
@@ -84,6 +82,19 @@ const rescheduleSchema = z.object({
   serviceId: z.string().cuid().optional(),
   requestedBy: z.enum(["client", "studio"]).default("studio"),
   note: z.string().trim().max(1000).nullable().optional()
+});
+const closePaymentSchema = z.object({
+  method: z.enum(paymentMethods),
+  amountMinor: z.number().int().positive(),
+  externalTransactionId: z.string().trim().max(200).nullable().optional()
+});
+const closeAppointmentSchema = z.object({
+  payments: z.array(closePaymentSchema).max(10).default([]),
+  note: z.string().trim().max(1000).nullable().optional(),
+  adjustmentReason: z.string().trim().max(1000).nullable().optional()
+});
+const reopenAppointmentSchema = z.object({
+  reason: z.string().trim().min(1).max(1000)
 });
 const idSchema = z.object({ id: z.string().cuid() });
 
@@ -119,22 +130,22 @@ const appointmentInclude = {
     }
   },
   payments: {
+    where: { voidedAt: null },
+    orderBy: { occurredAt: "asc" },
     select: {
       id: true,
+      method: true,
       amountMinor: true,
       currency: true,
-      method: true,
-      status: true,
       externalTransactionId: true,
-      paidAt: true,
-      acceptedBy: {
+      occurredAt: true,
+      receivedBy: {
         select: {
           email: true,
           staffProfile: { select: { displayName: true } }
         }
       }
-    },
-    orderBy: { paidAt: "asc" }
+    }
   }
 } as const;
 
@@ -180,10 +191,25 @@ export function requiresPrepaymentPenalty(options: {
   return options.appointmentStartsAt.getTime() - now.getTime() <= cutoff;
 }
 
-export function paymentTotalMinor(
-  payments: Array<{ amountMinor: number }>
-) {
-  return payments.reduce((total, payment) => total + payment.amountMinor, 0);
+export function evaluateAppointmentClose(options: {
+  priceMinor: number;
+  payments: Array<{ amountMinor: number }>;
+  adjustmentReason?: string | null | undefined;
+}):
+  | { ok: true }
+  | { ok: false; error: "appointment_payment_mismatch" | "appointment_payment_required" } {
+  if (options.priceMinor > 0 && options.payments.length === 0) {
+    return { ok: false, error: "appointment_payment_required" };
+  }
+  const totalMinor = options.payments.reduce(
+    (sum, payment) => sum + payment.amountMinor,
+    0
+  );
+  const isBalanced = totalMinor === options.priceMinor;
+  if (!isBalanced && !options.adjustmentReason) {
+    return { ok: false, error: "appointment_payment_mismatch" };
+  }
+  return { ok: true };
 }
 
 async function conflictingAppointment(
@@ -226,6 +252,138 @@ export function registerAppointmentRoutes(
     UserRole.master
   ]);
   const adminGuard = authorize(database, [UserRole.owner, UserRole.admin]);
+  const ownerGuard = authorize(database, [UserRole.owner]);
+
+  server.post(
+    "/v1/appointments",
+    { config: { rateLimit: { max: 8, timeWindow: "1 minute" } } },
+    async (request, reply) => {
+      if (!database) {
+        return reply.code(503).send({ error: "database_not_configured" });
+      }
+
+      const input = publicBookingSchema.safeParse(request.body);
+      if (!input.success) return sendInvalidPayload(reply);
+
+      const sessionClient = await resolveSessionClient(database, request);
+
+      if (!sessionClient && !input.data.guest) {
+        return reply.code(400).send({ error: "guest_details_required" });
+      }
+
+      const startsAt = new Date(input.data.startsAt);
+      const [service, staff] = await Promise.all([
+        database.service.findFirst({
+          where: { id: input.data.serviceId, isActive: true },
+          include: { prices: { where: { currency: Currency.RUB }, take: 1 } }
+        }),
+        database.staffProfile.findFirst({
+          where: { id: input.data.staffId, isBookable: true }
+        })
+      ]);
+
+      if (!service) return reply.code(404).send({ error: "service_not_found" });
+      if (!staff) return reply.code(404).send({ error: "staff_not_found" });
+
+      if (!isDateWithinBookingHorizon(moscowDateKey(startsAt))) {
+        return reply.code(409).send({ error: "appointment_slot_unavailable" });
+      }
+
+      const availability = await findAvailableSlots(database, {
+        staffId: staff.id,
+        serviceId: service.id,
+        date: moscowDateKey(startsAt)
+      });
+      if (
+        !availability.ok ||
+        !availability.slots.some(
+          (slot) => slot.startsAt.getTime() === startsAt.getTime()
+        )
+      ) {
+        return reply.code(409).send({ error: "appointment_slot_unavailable" });
+      }
+
+      const endsAt = appointmentEnd(startsAt, service.durationMinutes);
+      if (await conflictingAppointment(database, staff.id, startsAt, endsAt)) {
+        return reply.code(409).send({ error: "appointment_time_conflict" });
+      }
+
+      try {
+        const appointment = await database.$transaction(async (transaction) => {
+          let clientId: string;
+
+          if (sessionClient) {
+            clientId = sessionClient.id;
+          } else {
+            const phone = normalizePhone(input.data.guest!.phone);
+            const existing = await transaction.client.findUnique({
+              where: { phone }
+            });
+
+            if (existing) {
+              clientId = existing.id;
+              if (!existing.fullName) {
+                await transaction.client.update({
+                  where: { id: existing.id },
+                  data: { fullName: input.data.guest!.fullName }
+                });
+              }
+            } else {
+              const created = await transaction.client.create({
+                data: {
+                  fullName: input.data.guest!.fullName,
+                  phone,
+                  email: input.data.guest!.email ?? null
+                }
+              });
+              clientId = created.id;
+            }
+          }
+
+          const created = await transaction.appointment.create({
+            data: {
+              clientId,
+              staffId: staff.id,
+              serviceId: service.id,
+              source: BookingSource.online,
+              priceMinor: service.prices[0]?.amountMinor ?? 0,
+              currency: Currency.RUB,
+              startsAt,
+              endsAt,
+              ...(input.data.clientComment !== undefined
+                ? { clientComment: input.data.clientComment }
+                : {})
+            }
+          });
+
+          await transaction.appointmentEvent.create({
+            data: {
+              appointmentId: created.id,
+              toStatus: created.status,
+              note: "Создана клиентом онлайн"
+            }
+          });
+
+          return transaction.appointment.findUniqueOrThrow({
+            where: { id: created.id },
+            include: {
+              service: {
+                select: { id: true, titleRu: true, durationMinutes: true }
+              },
+              staff: { select: { id: true, displayName: true } }
+            }
+          });
+        });
+
+        return reply.code(201).send({ appointment });
+      } catch (error) {
+        if (isUniqueConstraintError(error)) {
+          return reply.code(409).send({ error: "appointment_time_conflict" });
+        }
+        throw error;
+      }
+    }
+  );
 
   server.get(
     "/v1/admin/booking-options",
@@ -400,14 +558,6 @@ export function registerAppointmentRoutes(
       });
       if (!current) return reply.code(404).send({ error: "appointment_not_found" });
       if (
-        current.status === AppointmentStatus.completed ||
-        current.status === AppointmentStatus.canceled ||
-        current.status === AppointmentStatus.rescheduled ||
-        current.status === AppointmentStatus.no_show
-      ) {
-        return reply.code(409).send({ error: "appointment_status_locked" });
-      }
-      if (
         !canManageAppointment(request.crmUser!, current.staff.userId)
       ) {
         return reply.code(403).send({ error: "insufficient_permissions" });
@@ -471,103 +621,6 @@ export function registerAppointmentRoutes(
     }
   );
 
-  server.post(
-    "/v1/admin/appointments/:id/close",
-    { preHandler: adminGuard },
-    async (request, reply) => {
-      const parameters = idSchema.safeParse(request.params);
-      const input = closeAppointmentSchema.safeParse(request.body);
-      if (!parameters.success || !input.success) return sendInvalidPayload(reply);
-
-      const current = await database!.appointment.findUnique({
-        where: { id: parameters.data.id }
-      });
-      if (!current) return reply.code(404).send({ error: "appointment_not_found" });
-      if (current.status === AppointmentStatus.completed) {
-        return reply.code(409).send({ error: "appointment_already_closed" });
-      }
-      if (
-        current.status !== AppointmentStatus.confirmed &&
-        current.status !== AppointmentStatus.pending_admin_confirmation
-      ) {
-        return reply.code(409).send({ error: "appointment_not_closable" });
-      }
-
-      const receivedMinor = paymentTotalMinor(input.data.payments);
-      if (receivedMinor !== input.data.priceMinor) {
-        return reply.code(409).send({
-          error: "appointment_payment_total_mismatch",
-          expectedMinor: input.data.priceMinor,
-          receivedMinor
-        });
-      }
-
-      const now = new Date();
-      try {
-        const appointment = await database!.$transaction(async (transaction) => {
-          const closed = await transaction.appointment.updateMany({
-            where: {
-              id: current.id,
-              status: {
-                in: [
-                  AppointmentStatus.confirmed,
-                  AppointmentStatus.pending_admin_confirmation
-                ]
-              }
-            },
-            data: {
-              status: AppointmentStatus.completed,
-              priceMinor: input.data.priceMinor,
-              completedAt: now,
-              closedByUserId: request.crmUser!.id
-            }
-          });
-          if (closed.count !== 1) {
-            throw new Error("appointment_close_conflict");
-          }
-          await transaction.payment.createMany({
-            data: input.data.payments.map((payment) => ({
-              appointmentId: current.id,
-              clientId: current.clientId,
-              acceptedByUserId: request.crmUser!.id,
-              amountMinor: payment.amountMinor,
-              currency: current.currency,
-              method: PaymentMethod[payment.method],
-              ...(payment.externalTransactionId
-                ? { externalTransactionId: payment.externalTransactionId }
-                : {}),
-              paidAt: now
-            }))
-          });
-          await transaction.appointmentEvent.create({
-            data: {
-              appointmentId: current.id,
-              fromStatus: current.status,
-              toStatus: AppointmentStatus.completed,
-              actorUserId: request.crmUser!.id,
-              note: "Визит закрыт с полной оплатой"
-            }
-          });
-
-          return transaction.appointment.findUniqueOrThrow({
-            where: { id: current.id },
-            include: appointmentInclude
-          });
-        });
-
-        return { appointment };
-      } catch (error) {
-        if (
-          error instanceof Error &&
-          error.message === "appointment_close_conflict"
-        ) {
-          return reply.code(409).send({ error: "appointment_already_closed" });
-        }
-        throw error;
-      }
-    }
-  );
-
   server.patch(
     "/v1/admin/appointments/:id/attendance",
     { preHandler: staffGuard },
@@ -581,9 +634,6 @@ export function registerAppointmentRoutes(
         include: { staff: { select: { userId: true } } }
       });
       if (!current) return reply.code(404).send({ error: "appointment_not_found" });
-      if (!activeAppointmentStatuses.includes(current.status)) {
-        return reply.code(409).send({ error: "appointment_status_locked" });
-      }
       if (
         !canManageAppointment(request.crmUser!, current.staff.userId)
       ) {
@@ -620,12 +670,9 @@ export function registerAppointmentRoutes(
 
       const current = await database!.appointment.findUnique({
         where: { id: parameters.data.id },
-        select: { id: true, staffId: true, serviceId: true, status: true }
+        select: { id: true, staffId: true, serviceId: true }
       });
       if (!current) return reply.code(404).send({ error: "appointment_not_found" });
-      if (!activeAppointmentStatuses.includes(current.status)) {
-        return reply.code(409).send({ error: "appointment_status_locked" });
-      }
       if (!isDateWithinBookingHorizon(query.data.date)) {
         return sendInvalidPayload(reply);
       }
@@ -662,9 +709,6 @@ export function registerAppointmentRoutes(
         where: { id: parameters.data.id }
       });
       if (!current) return reply.code(404).send({ error: "appointment_not_found" });
-      if (!activeAppointmentStatuses.includes(current.status)) {
-        return reply.code(409).send({ error: "appointment_status_locked" });
-      }
 
       const staffId = input.data.staffId ?? current.staffId;
       const serviceId = input.data.serviceId ?? current.serviceId;
@@ -774,6 +818,155 @@ export function registerAppointmentRoutes(
       });
 
       return reply.code(201).send({ appointment });
+    }
+  );
+
+  server.post(
+    "/v1/admin/appointments/:id/close",
+    { preHandler: adminGuard },
+    async (request, reply) => {
+      const parameters = idSchema.safeParse(request.params);
+      const input = closeAppointmentSchema.safeParse(request.body);
+      if (!parameters.success || !input.success) return sendInvalidPayload(reply);
+
+      const current = await database!.appointment.findUnique({
+        where: { id: parameters.data.id }
+      });
+      if (!current) return reply.code(404).send({ error: "appointment_not_found" });
+      if (!activeAppointmentStatuses.includes(current.status)) {
+        return reply.code(409).send({ error: "appointment_not_closable" });
+      }
+
+      const evaluation = evaluateAppointmentClose({
+        priceMinor: current.priceMinor,
+        payments: input.data.payments,
+        adjustmentReason: input.data.adjustmentReason
+      });
+      if (!evaluation.ok) {
+        return reply.code(409).send({ error: evaluation.error });
+      }
+
+      const now = new Date();
+      const appointment = await database!.$transaction(async (transaction) => {
+        if (input.data.payments.length) {
+          await transaction.payment.createMany({
+            data: input.data.payments.map((payment) => ({
+              appointmentId: current.id,
+              method: PaymentMethod[payment.method],
+              amountMinor: payment.amountMinor,
+              currency: current.currency,
+              externalTransactionId: payment.externalTransactionId ?? null,
+              receivedByUserId: request.crmUser!.id,
+              occurredAt: now
+            }))
+          });
+        }
+        const updated = await transaction.appointment.update({
+          where: { id: current.id },
+          data: {
+            status: AppointmentStatus.completed,
+            completedAt: now,
+            closedByUserId: request.crmUser!.id
+          }
+        });
+        await transaction.appointmentEvent.create({
+          data: {
+            appointmentId: current.id,
+            fromStatus: current.status,
+            toStatus: AppointmentStatus.completed,
+            actorUserId: request.crmUser!.id,
+            note:
+              input.data.adjustmentReason ??
+              input.data.note ??
+              "Запись закрыта с фиксацией оплаты"
+          }
+        });
+        const recipe = await transaction.serviceMaterial.findMany({
+          where: { serviceId: current.serviceId }
+        });
+        if (recipe.length) {
+          await transaction.stockMovement.createMany({
+            data: recipe.map((item) => ({
+              materialId: item.materialId,
+              appointmentId: current.id,
+              type: StockMovementType.consumption,
+              quantity: -item.quantity,
+              actorUserId: request.crmUser!.id,
+              occurredAt: now
+            }))
+          });
+        }
+        return transaction.appointment.findUniqueOrThrow({
+          where: { id: updated.id },
+          include: appointmentInclude
+        });
+      });
+
+      return { appointment };
+    }
+  );
+
+  server.post(
+    "/v1/admin/appointments/:id/reopen",
+    { preHandler: ownerGuard },
+    async (request, reply) => {
+      const parameters = idSchema.safeParse(request.params);
+      const input = reopenAppointmentSchema.safeParse(request.body);
+      if (!parameters.success || !input.success) return sendInvalidPayload(reply);
+
+      const current = await database!.appointment.findUnique({
+        where: { id: parameters.data.id }
+      });
+      if (!current) return reply.code(404).send({ error: "appointment_not_found" });
+      if (current.status !== AppointmentStatus.completed) {
+        return reply.code(409).send({ error: "appointment_not_completed" });
+      }
+
+      const appointment = await database!.$transaction(async (transaction) => {
+        await transaction.payment.updateMany({
+          where: { appointmentId: current.id, voidedAt: null },
+          data: { voidedAt: new Date() }
+        });
+        const consumedMaterials = await transaction.stockMovement.findMany({
+          where: { appointmentId: current.id, type: StockMovementType.consumption },
+          select: { materialId: true, quantity: true }
+        });
+        if (consumedMaterials.length) {
+          await transaction.stockMovement.createMany({
+            data: consumedMaterials.map((movement) => ({
+              materialId: movement.materialId,
+              appointmentId: current.id,
+              type: StockMovementType.adjustment,
+              quantity: -movement.quantity,
+              note: "Возврат материалов при переоткрытии записи",
+              actorUserId: request.crmUser!.id
+            }))
+          });
+        }
+        const updated = await transaction.appointment.update({
+          where: { id: current.id },
+          data: {
+            status: AppointmentStatus.confirmed,
+            completedAt: null,
+            closedByUserId: null
+          }
+        });
+        await transaction.appointmentEvent.create({
+          data: {
+            appointmentId: current.id,
+            fromStatus: current.status,
+            toStatus: AppointmentStatus.confirmed,
+            actorUserId: request.crmUser!.id,
+            note: input.data.reason
+          }
+        });
+        return transaction.appointment.findUniqueOrThrow({
+          where: { id: updated.id },
+          include: appointmentInclude
+        });
+      });
+
+      return { appointment };
     }
   );
 }

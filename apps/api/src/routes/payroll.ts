@@ -224,9 +224,6 @@ export function registerPayrollRoutes(
       if (!parameters.success || !input.success) return invalid(reply);
       const context = await payrollPreview(database!, parameters.data.id, input.data.month);
       if (!context) return reply.code(404).send({ error: "employee_not_found" });
-      if (context.payroll && context.payroll.totalPaidMinor > 0) {
-        return reply.code(409).send({ error: "paid_payroll_is_locked" });
-      }
 
       await database!.$transaction(async (transaction) => {
         const payroll = context.payroll

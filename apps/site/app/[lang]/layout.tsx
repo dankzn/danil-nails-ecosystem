@@ -1,0 +1,40 @@
+import type { Metadata } from "next";
+import { notFound } from "next/navigation";
+import { Preloader } from "../components/Preloader";
+import { SetHtmlLang } from "../components/SetHtmlLang";
+import { SiteFooter } from "../components/SiteFooter";
+import { SiteHeader } from "../components/SiteHeader";
+import { getDictionary } from "../i18n/get-dictionary";
+import { isLocale, locales } from "../i18n/locales";
+
+export async function generateStaticParams() {
+  return locales.map((lang) => ({ lang }));
+}
+
+export async function generateMetadata({
+  params
+}: LayoutProps<"/[lang]">): Promise<Metadata> {
+  const { lang } = await params;
+  if (!isLocale(lang)) return {};
+  const dict = getDictionary(lang);
+  return {
+    title: dict.meta.title,
+    description: dict.meta.description
+  };
+}
+
+export default async function LangLayout({ children, params }: LayoutProps<"/[lang]">) {
+  const { lang } = await params;
+  if (!isLocale(lang)) notFound();
+  const dict = getDictionary(lang);
+
+  return (
+    <>
+      <Preloader />
+      <SetHtmlLang lang={lang} />
+      <SiteHeader lang={lang} dict={dict} />
+      {children}
+      <SiteFooter lang={lang} dict={dict} />
+    </>
+  );
+}

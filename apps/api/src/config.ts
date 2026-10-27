@@ -12,10 +12,39 @@ const environmentSchema = z.object({
   PORT: z.coerce.number().int().positive().default(4000),
   HOST: z.string().default("0.0.0.0"),
   APP_PUBLIC_URL: z.url().default("http://localhost:3000"),
+  // Third-party integration URLs stay loosely typed and are validated (with
+  // new URL()) only where they're actually used. A malformed value here must
+  // never crash the whole process at boot — SITE_PUBLIC_URL is an optional
+  // feature, not the app's own required config, so a typo in it should
+  // disable that feature, not take down the CRM and the API with it.
+  SITE_PUBLIC_URL: z.string().trim().min(1).optional(),
+  // Set when the CRM is deployed separately from the API (e.g. both on
+  // Vercel as two projects) so the CRM's origin is CORS-allowed even
+  // though it no longer shares APP_PUBLIC_URL. Unused when the API still
+  // serves the CRM's static build itself (same-origin, e.g. on Render).
+  CRM_PUBLIC_URL: z.string().trim().min(1).optional(),
   CRM_STATIC_DIR: z.string().min(1).optional(),
   DATABASE_URL: z.string().min(1).optional(),
   SESSION_COOKIE_NAME: z.string().min(1).default("danil_nails_session"),
   SESSION_TTL_DAYS: z.coerce.number().int().min(1).max(365).default(30)
 });
 
-export const environment = environmentSchema.parse(process.env);
+const parsedEnvironment = environmentSchema.parse(process.env);
+
+function validUrlOrUndefined(value: string | undefined, label: string) {
+  if (!value) return undefined;
+  try {
+    return new URL(value).toString().replace(/\/$/, "");
+  } catch {
+    console.error(
+      `[config] ${label} is not a valid URL ("${value}") — ignoring it, the feature it enables stays off.`
+    );
+    return undefined;
+  }
+}
+
+export const environment = {
+  ...parsedEnvironment,
+  SITE_PUBLIC_URL: validUrlOrUndefined(parsedEnvironment.SITE_PUBLIC_URL, "SITE_PUBLIC_URL"),
+  CRM_PUBLIC_URL: validUrlOrUndefined(parsedEnvironment.CRM_PUBLIC_URL, "CRM_PUBLIC_URL")
+};

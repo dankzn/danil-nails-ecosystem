@@ -149,6 +149,58 @@ a {
   color: var(--sidebar);
 }
 
+.nav-group {
+  display: grid;
+  gap: 2px;
+}
+
+.nav-group-toggle {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  font: inherit;
+  text-align: left;
+}
+
+.nav-group-chevron {
+  margin-left: auto;
+  transition: transform 150ms ease;
+}
+
+.nav-group-chevron-open {
+  transform: rotate(180deg);
+}
+
+.nav-sublist {
+  display: grid;
+  gap: 3px;
+  padding-left: 29px;
+}
+
+.nav-subitem {
+  height: 36px;
+  display: flex;
+  align-items: center;
+  border-radius: 7px;
+  padding: 0 12px;
+  color: #c9ced3;
+  font-size: 13px;
+  font-weight: 550;
+  transition:
+    background-color 150ms ease,
+    color 150ms ease;
+}
+
+.nav-subitem.nav-item-active {
+  color: var(--sidebar);
+}
+
+.nav-subitem:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: #ffffff;
+}
+
 .account {
   margin-top: auto;
   padding: 17px 6px 0;
@@ -512,9 +564,7 @@ h2 {
 .appointment-time,
 .appointment-client,
 .agenda-time,
-.agenda-content > div,
-table td:first-child,
-table td:nth-child(2) {
+.agenda-content > div {
   display: grid;
   gap: 4px;
 }
@@ -532,6 +582,20 @@ table td:nth-child(2) {
 table small {
   color: var(--text-muted);
   font-size: 11px;
+}
+
+/*
+ * table td:first-child/nth-child(2) used to get `display: grid` here to
+ * stack a <strong> name over a <small> subtitle. Overriding `display` on a
+ * <td> un-does its table-cell box type, which table-layout: fixed (and even
+ * auto, more subtly) relies on for column sizing — it was quietly shifting
+ * every column after the first two. Get the same stacked look through
+ * normal block flow instead, which never touches the cell's display type.
+ */
+table td:first-child small,
+table td:nth-child(2) small {
+  display: block;
+  margin-top: 4px;
 }
 
 .appointment-client strong,
@@ -597,6 +661,59 @@ table small {
   color: var(--red);
 }
 
+.clients-table {
+  table-layout: fixed;
+}
+
+.clients-table th:nth-child(1) {
+  width: 17%;
+}
+
+.clients-table th:nth-child(2) {
+  width: 15%;
+}
+
+.clients-table th:nth-child(3) {
+  width: 10%;
+}
+
+.clients-table th:nth-child(4) {
+  width: 9%;
+}
+
+.clients-table th:nth-child(5) {
+  width: 21%;
+}
+
+.clients-table th:nth-child(6) {
+  width: 17%;
+}
+
+.clients-table th:nth-child(7) {
+  width: 9%;
+}
+
+.clients-table th:nth-child(8) {
+  width: 58px;
+}
+
+.tag-cell {
+  overflow: hidden;
+}
+
+.tag-cell .private-tag-list {
+  min-width: 0;
+}
+
+.tag-cell .allergen-badge,
+.tag-cell .private-badge {
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
 .private-tag-list,
 .tag-cloud {
   display: flex;
@@ -660,6 +777,16 @@ table small {
   color: var(--amber);
 }
 
+.legacy-allergy-note {
+  margin: 0;
+  border-radius: 6px;
+  background: var(--amber-soft);
+  padding: 8px 10px;
+  color: var(--amber);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
 .tag-create-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
@@ -707,6 +834,83 @@ table small {
   color: var(--text-muted);
   font-size: 11px;
   line-height: 1.45;
+}
+
+.arrival-groups {
+  display: grid;
+  gap: 4px;
+  padding: 4px 20px 12px;
+}
+
+.arrival-group-label {
+  margin: 16px 0 6px;
+  font-size: 11px;
+  font-weight: 750;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.arrival-group-label:first-child {
+  margin-top: 8px;
+}
+
+.arrival-group-15 {
+  color: var(--red);
+}
+
+.arrival-group-60 {
+  color: var(--amber);
+}
+
+.arrival-group-90 {
+  color: var(--blue);
+}
+
+.arrival-list {
+  display: grid;
+}
+
+.arrival-row {
+  min-height: 60px;
+  display: grid;
+  grid-template-columns: 84px minmax(160px, 1fr) auto;
+  align-items: center;
+  gap: 16px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.arrival-row:last-child {
+  border-bottom: 0;
+}
+
+.arrival-countdown,
+.arrival-client {
+  display: grid;
+  gap: 3px;
+}
+
+.arrival-countdown strong {
+  font-size: 15px;
+}
+
+.arrival-countdown span,
+.arrival-client span {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.arrival-client strong {
+  font-size: 13px;
+}
+
+.arrival-master {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-muted);
+  font-size: 12px;
+  white-space: nowrap;
 }
 
 .calendar-summary {
@@ -1273,6 +1477,132 @@ td strong {
   min-height: 44px;
 }
 
+.org-unit-tree {
+  padding: 10px 14px;
+}
+
+.org-unit-list {
+  display: grid;
+}
+
+.org-unit-row {
+  min-height: 52px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 6px;
+  border-bottom: 1px solid var(--border);
+}
+
+.org-unit-node:last-child > .org-unit-row {
+  border-bottom: 0;
+}
+
+.org-unit-collapse,
+.org-unit-collapse-spacer {
+  width: 22px;
+  height: 22px;
+  flex: 0 0 22px;
+}
+
+.org-unit-collapse {
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.org-unit-collapse:hover {
+  background: var(--surface-soft);
+}
+
+.org-unit-collapse-icon {
+  transition: transform 150ms ease;
+}
+
+.org-unit-collapse-icon-open {
+  transform: rotate(90deg);
+}
+
+.org-unit-copy {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.org-unit-copy strong {
+  font-size: 13px;
+}
+
+.org-unit-copy small {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.org-unit-copy small.org-unit-managers {
+  color: var(--accent-strong);
+}
+
+.org-unit-actions {
+  display: flex;
+  gap: 4px;
+  flex: 0 0 auto;
+}
+
+.tab-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.tab-button {
+  min-height: 36px;
+  border: 1px solid var(--border-strong);
+  border-radius: 999px;
+  padding: 7px 14px;
+  background: var(--surface);
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.tab-button:hover {
+  border-color: var(--accent);
+}
+
+.tab-button-active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+}
+
+.directory-add-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.directory-add-fields input,
+.directory-add-fields select {
+  min-width: 220px;
+}
+
+.directory-add-fields-position input {
+  min-width: 160px;
+  flex: 1 1 160px;
+}
+
+.directory-internal-toggle {
+  min-height: 0;
+  flex: 1 1 260px;
+  padding: 9px 12px;
+}
+
 .segmented-control {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1423,6 +1753,22 @@ td strong {
 .form-field > span {
   font-size: 12px;
   font-weight: 700;
+}
+
+.block-small {
+  display: block;
+  margin-top: 2px;
+}
+
+.form-field-inline {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 140px;
+  align-items: center;
+  gap: 10px;
+}
+
+.form-field-inline input {
+  width: 100%;
 }
 
 .form-field input {
@@ -1592,6 +1938,21 @@ td strong {
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
+.close-payment-row {
+  align-items: end;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.payment-summary-list {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 13px;
+}
+
 .checkbox-field {
   min-height: 54px;
   display: flex;
@@ -1745,6 +2106,40 @@ td strong {
   background: var(--accent-soft);
   color: var(--accent);
   font-weight: 800;
+  overflow: hidden;
+}
+
+.employee-avatar img,
+.employee-profile-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.employee-profile-avatar-upload {
+  position: relative;
+  cursor: pointer;
+}
+
+.employee-profile-avatar-hint {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fff;
+  font-size: 8px;
+  font-weight: 700;
+  text-align: center;
+  line-height: 1.2;
+  padding: 2px;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.employee-profile-avatar-upload:hover .employee-profile-avatar-hint,
+.employee-profile-avatar-upload:focus-within .employee-profile-avatar-hint {
+  opacity: 1;
 }
 
 .employee-avatar {
@@ -2441,93 +2836,6 @@ td strong {
   gap: 14px;
 }
 
-.payment-section > .editor-section-heading > svg {
-  color: var(--green);
-}
-
-.payment-price-field {
-  max-width: 260px;
-}
-
-.payment-rows {
-  display: grid;
-  gap: 10px;
-}
-
-.payment-row {
-  display: grid;
-  grid-template-columns: minmax(180px, 1.2fr) minmax(120px, 0.7fr) minmax(160px, 1fr) 36px;
-  align-items: end;
-  gap: 10px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 12px;
-  background: var(--surface-muted);
-}
-
-.payment-reference-field {
-  grid-column: 3;
-}
-
-.payment-remove-button {
-  grid-column: 4;
-}
-
-.payment-remove-button:disabled {
-  cursor: not-allowed;
-  opacity: 0.35;
-}
-
-.payment-actions {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-}
-
-.payment-total {
-  min-width: 150px;
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 14px;
-  margin: 0;
-  border-left: 3px solid var(--amber);
-  padding: 9px 11px;
-  background: var(--amber-soft);
-  color: var(--amber);
-  font-size: 12px;
-}
-
-.payment-total strong {
-  font-size: 14px;
-}
-
-.payment-total-success {
-  border-color: var(--green);
-  background: var(--green-soft);
-  color: var(--green);
-}
-
-.payment-summary-list {
-  display: grid;
-  gap: 8px;
-}
-
-.payment-summary-list > div {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 4px 16px;
-  border-bottom: 1px solid var(--border);
-  padding: 8px 0;
-  font-size: 12px;
-}
-
-.payment-summary-list small {
-  grid-column: 1 / -1;
-  color: var(--text-muted);
-}
-
 .appointment-editor > .feedback {
   margin: 16px 20px 20px;
 }
@@ -2627,6 +2935,16 @@ td strong {
   }
 
   .appointment-row .status {
+    grid-column: 2;
+  }
+
+  .arrival-row {
+    grid-template-columns: 64px minmax(0, 1fr);
+    gap: 12px;
+    padding: 10px 0;
+  }
+
+  .arrival-master {
     grid-column: 2;
   }
 
@@ -2861,28 +3179,6 @@ td strong {
   .editor-action {
     width: 100%;
     justify-self: stretch;
-  }
-
-  .payment-price-field {
-    max-width: none;
-  }
-
-  .payment-row {
-    grid-template-columns: minmax(0, 1fr) minmax(110px, 0.7fr);
-  }
-
-  .payment-reference-field {
-    grid-column: 1 / -1;
-  }
-
-  .payment-remove-button {
-    grid-column: 2;
-    justify-self: end;
-  }
-
-  .payment-actions {
-    align-items: stretch;
-    flex-direction: column;
   }
 
   .login-page {

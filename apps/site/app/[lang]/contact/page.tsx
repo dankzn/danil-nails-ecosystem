@@ -1,0 +1,34 @@
+import { notFound } from "next/navigation";
+import { Reveal } from "../../components/Reveal";
+import { BookingForm } from "../../components/BookingForm";
+import { getDictionary } from "../../i18n/get-dictionary";
+import { isLocale } from "../../i18n/locales";
+
+export default async function ContactPage({ params }: PageProps<"/[lang]/contact">) {
+  const { lang } = await params;
+  if (!isLocale(lang)) notFound();
+  const dict = getDictionary(lang);
+
+  return (
+    <main>
+      <section className="section section-first section-dark">
+        <div className="wrap">
+          <Reveal>
+            <div className="contact-panel">
+              <p className="section-kicker">{dict.contact.kicker}</p>
+              <h1 className="contact-heading">
+                {dict.contact.headingPre}
+                <em>{dict.contact.headingEm}</em>
+              </h1>
+              <p className="contact-lede">{dict.contact.lede}</p>
+            </div>
+          </Reveal>
+
+          <Reveal delay={100}>
+            <BookingForm dict={dict.booking} lang={lang} />
+          </Reveal>
+        </div>
+      </section>
+    </main>
+  );
+}

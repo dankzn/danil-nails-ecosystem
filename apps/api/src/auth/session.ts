@@ -6,7 +6,7 @@ import { environment } from "../config.js";
 const sessionCookieOptions = {
   httpOnly: true,
   path: "/",
-  sameSite: "lax" as const,
+  sameSite: environment.NODE_ENV === "production" ? ("none" as const) : ("lax" as const),
   secure: environment.NODE_ENV === "production"
 };
 
@@ -39,6 +39,25 @@ export function clearSessionCookie(reply: FastifyReply) {
   reply.clearCookie(environment.SESSION_COOKIE_NAME, sessionCookieOptions);
 }
 
+export async function resolveSessionClient(
+  database: DatabaseClient,
+  request: FastifyRequest
+) {
+  const token = request.cookies[environment.SESSION_COOKIE_NAME];
+  if (!token) return null;
+
+  const session = await database.session.findUnique({
+    where: { tokenHash: hashSessionToken(token) },
+    include: { user: { include: { client: true } } }
+  });
+
+  if (!session || session.expiresAt <= new Date() || !session.user.isActive) {
+    return null;
+  }
+
+  return session.user.client ?? null;
+}
+
 export function authorize(
   database: DatabaseClient | null,
   allowedRoles?: readonly UserRole[]
@@ -62,7 +81,7 @@ export function authorize(
 
     const session = await database.session.findUnique({
       where: { tokenHash: hashSessionToken(token) },
-      include: { user: { include: { staffProfile: true } } }
+      include: { user: { include: { staffProfile: true, client: true } } }
     });
 
     if (!session || session.expiresAt <= new Date() || !session.user.isActive) {
@@ -73,7 +92,9 @@ export function authorize(
     request.crmUser = {
       id: session.user.id,
       email: session.user.email,
-      displayName: session.user.staffProfile?.displayName ?? null,
+      phone: session.user.phone ?? session.user.client?.phone ?? null,
+      displayName:
+        session.user.staffProfile?.displayName ?? session.user.client?.fullName ?? null,
       role: session.user.role
     };
 

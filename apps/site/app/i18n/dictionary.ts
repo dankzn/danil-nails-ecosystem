@@ -1,0 +1,188 @@
+export type Dictionary = {
+  meta: {
+    title: string;
+    description: string;
+  };
+  nav: {
+    home: string;
+    about: string;
+    services: string;
+    gallery: string;
+    master: string;
+    contact: string;
+    cta: string;
+    register: string;
+    account: string;
+    login: string;
+    logout: string;
+  };
+  hero: {
+    titleLines: string[];
+    lede: string;
+    ctaPrimary: string;
+    ctaSecondary: string;
+  };
+  philosophy: {
+    kicker: string;
+    headingLines: string[];
+    formula: string;
+    manifesto: string;
+    principles: { index: string; title: string; body: string }[];
+  };
+  home: {
+    servicesKicker: string;
+    servicesHeadingPre: string;
+    servicesHeadingEm: string;
+    servicesLede: string;
+    servicesCta: string;
+    contactKicker: string;
+    contactHeadingPre: string;
+    contactHeadingEm: string;
+    contactLede: string;
+    contactCta: string;
+  };
+  services: {
+    kicker: string;
+    headingPre: string;
+    headingEm: string;
+    lede: string;
+    priceLabel: string;
+    items: { title: string; duration: string; note: string }[];
+  };
+  gallery: {
+    kicker: string;
+    headingPre: string;
+    headingEm: string;
+    lede: string;
+    items: { label: string }[];
+  };
+  master: {
+    kicker: string;
+    headingPre: string;
+    headingEm: string;
+    lede: string;
+    countryLabel: string;
+    cityLabel: string;
+    allCountriesLabel: string;
+    allCitiesLabel: string;
+  };
+  about: {
+    kicker: string;
+    headingPre: string;
+    headingEm: string;
+    lede: string;
+    staff: { index: string; title: string; body: string }[];
+  };
+  team: {
+    heading: string;
+    loading: string;
+    empty: string;
+    bookCta: string;
+  };
+  masterProfile: {
+    backLink: string;
+    philosophyHeading: string;
+    videoHeading: string;
+    videoFallback: string;
+    loading: string;
+    notFound: string;
+  };
+  contact: {
+    kicker: string;
+    headingPre: string;
+    headingEm: string;
+    lede: string;
+  };
+  booking: {
+    serviceLabel: string;
+    servicePlaceholder: string;
+    masterLabel: string;
+    dateLabel: string;
+    timeLabel: string;
+    timePlaceholder: string;
+    loadingSlotsLabel: string;
+    noSlotsLabel: string;
+    fullNameLabel: string;
+    phoneLabel: string;
+    emailLabel: string;
+    commentLabel: string;
+    signedInAs: string;
+    submitLabel: string;
+    submittingLabel: string;
+    successTitle: string;
+    successBody: string;
+    errorInvalid: string;
+    errorSlotTaken: string;
+    errorUnavailable: string;
+    errorNetwork: string;
+  };
+  register: {
+    kicker: string;
+    headingPre: string;
+    headingEm: string;
+    lede: string;
+    fullNameLabel: string;
+    phoneLabel: string;
+    emailLabel: string;
+    passwordLabel: string;
+    passwordHint: string;
+    confirmPasswordLabel: string;
+    submitLabel: string;
+    submittingLabel: string;
+    successTitle: string;
+    successBody: string;
+    errorPasswordMismatch: string;
+    errorInvalid: string;
+    errorExists: string;
+    errorUnavailable: string;
+    errorNetwork: string;
+  };
+  login: {
+    kicker: string;
+    headingPre: string;
+    headingEm: string;
+    lede: string;
+    emailLabel: string;
+    passwordLabel: string;
+    submitLabel: string;
+    submittingLabel: string;
+    errorInvalid: string;
+    errorUnavailable: string;
+    errorNetwork: string;
+    registerPrompt: string;
+    registerLink: string;
+  };
+  account: {
+    kicker: string;
+    heading: string;
+    loadingLabel: string;
+    signedOutMessage: string;
+    loginLink: string;
+    emailLabel: string;
+    phoneLabel: string;
+    bookingsHeading: string;
+    bookingsPlaceholder: string;
+    logoutLabel: string;
+    allergiesHeading: string;
+    allergiesLede: string;
+    noKnownAllergiesLabel: string;
+    customAllergyLabel: string;
+    customAllergyPlaceholder: string;
+    saveLabel: string;
+    savingLabel: string;
+    savedLabel: string;
+    allergiesErrorConflict: string;
+    allergiesErrorInvalid: string;
+    allergiesErrorNetwork: string;
+  };
+  footer: {
+    tagline: string;
+    navLabel: string;
+    studioLabel: string;
+    studioCity: string;
+    studioNote: string;
+    languageLabel: string;
+    rights: string;
+    toTop: string;
+  };
+};

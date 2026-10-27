@@ -15,6 +15,8 @@ import { z } from "zod";
 import { authorize } from "../auth/session.js";
 import { currentMonthKey, payrollPreview } from "../payroll/calculation.js";
 
+const allowedPhotoMimeTypes = new Set(["image/jpeg", "image/png", "image/webp"]);
+
 const dateSchema = z.iso.date().nullable().optional();
 const optionalEmailSchema = z.union([z.email(), z.literal("")]).nullable().optional();
 const staffRoleSchema = z.enum(["admin", "master"]);
@@ -40,7 +42,11 @@ const employeeCreateSchema = z.object({
   email: optionalEmailSchema,
   phone: z.string().trim().max(30).nullable().optional(),
   role: staffRoleSchema.default("master"),
-  position: z.string().trim().max(120).nullable().optional(),
+  positionIds: z.array(z.string().cuid()).max(20).default([]),
+  primaryOrgUnitId: z.string().cuid().nullable().optional(),
+  primaryOrganizationId: z.string().cuid().nullable().optional(),
+  cityId: z.string().cuid().nullable().optional(),
+  countryId: z.string().cuid().nullable().optional(),
   employmentStatus: employmentStatusSchema.default("active"),
   employmentType: employmentTypeSchema.default("full_time"),
   hiredAt: dateSchema,
@@ -52,14 +58,34 @@ const employeeCreateSchema = z.object({
   emergencyContactName: z.string().trim().max(160).nullable().optional(),
   emergencyContactPhone: z.string().trim().max(30).nullable().optional(),
   bio: z.string().trim().max(2000).nullable().optional(),
+  philosophy: z.string().trim().max(2000).nullable().optional(),
+  worksVideoUrl: z.union([z.url(), z.literal("")]).nullable().optional(),
   isBookable: z.boolean().default(true),
   serviceIds: z.array(z.string().cuid()).max(100).default([])
 });
 
 const employeeUpdateSchema = employeeCreateSchema
-  .omit({ serviceIds: true })
+  .omit({
+    serviceIds: true,
+    positionIds: true,
+    role: true,
+    employmentStatus: true,
+    employmentType: true,
+    isBookable: true
+  })
   .partial()
-  .extend({ serviceIds: z.array(z.string().cuid()).max(100).optional() });
+  .extend({
+    // z.default() survives .partial() (an omitted key still resolves to the
+    // default instead of undefined), which silently reset these fields to
+    // their create-time defaults on every single-field edit. Redeclare them
+    // without a default so "omitted" genuinely means "leave unchanged".
+    serviceIds: z.array(z.string().cuid()).max(100).optional(),
+    positionIds: z.array(z.string().cuid()).max(20).optional(),
+    role: staffRoleSchema.optional(),
+    employmentStatus: employmentStatusSchema.optional(),
+    employmentType: employmentTypeSchema.optional(),
+    isBookable: z.boolean().optional()
+  });
 
 const dismissalSchema = z.object({
   dismissedAt: z.iso.date(),
@@ -120,6 +146,26 @@ const employeeListInclude = {
       passwordHash: true
     }
   },
+  positions: {
+    orderBy: { order: "asc" },
+    include: {
+      position: {
+        select: {
+          id: true,
+          titleRu: true,
+          titleEn: true,
+          titleEs: true,
+          titleFr: true,
+          isInternal: true
+        }
+      }
+    }
+  },
+  primaryOrgUnit: { select: { id: true, title: true } },
+  primaryOrganization: { select: { id: true, title: true } },
+  city: { select: { id: true, title: true } },
+  country: { select: { id: true, title: true } },
+  photo: { select: { updatedAt: true } },
   services: {
     include: {
       service: { select: { id: true, titleRu: true, isActive: true } }
@@ -174,20 +220,64 @@ function isUniqueConstraintError(error: unknown) {
   );
 }
 
+function isForeignKeyConstraintError(error: unknown) {
+  return (
+    typeof error === "object" &&
+    error !== null &&
+    "code" in error &&
+    error.code === "P2003"
+  );
+}
+
 function sendInvalidPayload(reply: FastifyReply) {
   return reply.code(400).send({ error: "invalid_employee_payload" });
 }
 
-function serializeEmployee<T extends { user: { passwordHash: string | null } }>(employee: T) {
+type PositionAssignment = {
+  position: {
+    id: string;
+    titleRu: string;
+    titleEn: string | null;
+    titleEs: string | null;
+    titleFr: string | null;
+    isInternal: boolean;
+  };
+};
+
+function serializeEmployee<
+  T extends {
+    id: string;
+    user: { passwordHash: string | null };
+    photo?: { updatedAt: Date } | null;
+    positions?: PositionAssignment[];
+  }
+>(employee: T) {
   const { passwordHash, ...user } = employee.user;
-  return { ...employee, user: { ...user, accountReady: Boolean(passwordHash) } };
+  const { photo, positions, ...rest } = employee;
+  return {
+    ...rest,
+    user: { ...user, accountReady: Boolean(passwordHash) },
+    photoUrl: photo ? `/v1/staff/${employee.id}/photo?v=${photo.updatedAt.getTime()}` : null,
+    positions: positions?.map((assignment) => assignment.position) ?? []
+  };
 }
 
 function profileData(input: z.infer<typeof employeeUpdateSchema>) {
   return {
     ...(input.legalName !== undefined ? { legalName: optionalText(input.legalName) } : {}),
-    ...(input.position !== undefined ? { position: optionalText(input.position) } : {}),
+    ...(input.primaryOrgUnitId !== undefined
+      ? { primaryOrgUnitId: input.primaryOrgUnitId }
+      : {}),
+    ...(input.primaryOrganizationId !== undefined
+      ? { primaryOrganizationId: input.primaryOrganizationId }
+      : {}),
+    ...(input.cityId !== undefined ? { cityId: input.cityId } : {}),
+    ...(input.countryId !== undefined ? { countryId: input.countryId } : {}),
     ...(input.bio !== undefined ? { bio: optionalText(input.bio) } : {}),
+    ...(input.philosophy !== undefined ? { philosophy: optionalText(input.philosophy) } : {}),
+    ...(input.worksVideoUrl !== undefined
+      ? { worksVideoUrl: optionalText(input.worksVideoUrl) }
+      : {}),
     ...(input.employmentStatus !== undefined
       ? { employmentStatus: EmploymentStatus[input.employmentStatus] }
       : {}),
@@ -223,6 +313,13 @@ async function validateServices(database: DatabaseClient, serviceIds: string[]) 
   return count === uniqueIds.length;
 }
 
+async function validatePositions(database: DatabaseClient, positionIds: string[]) {
+  if (positionIds.length === 0) return true;
+  const uniqueIds = [...new Set(positionIds)];
+  const count = await database.position.count({ where: { id: { in: uniqueIds } } });
+  return count === uniqueIds.length;
+}
+
 export function registerEmployeeRoutes(
   server: FastifyInstance,
   database: DatabaseClient | null
@@ -245,7 +342,15 @@ export function registerEmployeeRoutes(
               OR: [
                 { displayName: { contains: query.data.search, mode: "insensitive" } },
                 { legalName: { contains: query.data.search, mode: "insensitive" } },
-                { position: { contains: query.data.search, mode: "insensitive" } },
+                {
+                  positions: {
+                    some: {
+                      position: {
+                        titleRu: { contains: query.data.search, mode: "insensitive" }
+                      }
+                    }
+                  }
+                },
                 { user: { email: { contains: query.data.search, mode: "insensitive" } } }
               ]
             }
@@ -340,6 +445,9 @@ export function registerEmployeeRoutes(
       if (!(await validateServices(database!, input.data.serviceIds))) {
         return reply.code(400).send({ error: "invalid_employee_services" });
       }
+      if (!(await validatePositions(database!, input.data.positionIds))) {
+        return reply.code(400).send({ error: "invalid_employee_positions" });
+      }
 
       try {
         const employee = await database!.$transaction(async (transaction) => {
@@ -359,6 +467,12 @@ export function registerEmployeeRoutes(
               services: {
                 create: [...new Set(input.data.serviceIds)].map((serviceId) => ({
                   serviceId
+                }))
+              },
+              positions: {
+                create: [...new Set(input.data.positionIds)].map((positionId, order) => ({
+                  positionId,
+                  order
                 }))
               }
             }
@@ -386,6 +500,9 @@ export function registerEmployeeRoutes(
         if (isUniqueConstraintError(error)) {
           return reply.code(409).send({ error: "employee_contact_already_exists" });
         }
+        if (isForeignKeyConstraintError(error)) {
+          return reply.code(404).send({ error: "employee_reference_not_found" });
+        }
         throw error;
       }
     }
@@ -403,6 +520,12 @@ export function registerEmployeeRoutes(
         !(await validateServices(database!, input.data.serviceIds))
       ) {
         return reply.code(400).send({ error: "invalid_employee_services" });
+      }
+      if (
+        input.data.positionIds &&
+        !(await validatePositions(database!, input.data.positionIds))
+      ) {
+        return reply.code(400).send({ error: "invalid_employee_positions" });
       }
 
       const current = await database!.staffProfile.findUnique({
@@ -453,6 +576,19 @@ export function registerEmployeeRoutes(
             }
           }
 
+          if (input.data.positionIds) {
+            await transaction.staffPosition.deleteMany({ where: { staffProfileId: current.id } });
+            if (input.data.positionIds.length) {
+              await transaction.staffPosition.createMany({
+                data: [...new Set(input.data.positionIds)].map((positionId, order) => ({
+                  staffProfileId: current.id,
+                  positionId,
+                  order
+                }))
+              });
+            }
+          }
+
           if (
             input.data.employmentStatus &&
             input.data.employmentStatus !== current.employmentStatus
@@ -496,8 +632,45 @@ export function registerEmployeeRoutes(
         if (isUniqueConstraintError(error)) {
           return reply.code(409).send({ error: "employee_contact_already_exists" });
         }
+        if (isForeignKeyConstraintError(error)) {
+          return reply.code(404).send({ error: "employee_reference_not_found" });
+        }
         throw error;
       }
+    }
+  );
+
+  server.post(
+    "/v1/owner/employees/:id/photo",
+    { preHandler: ownerGuard },
+    async (request, reply) => {
+      const parameters = idSchema.safeParse(request.params);
+      if (!parameters.success) return sendInvalidPayload(reply);
+
+      const current = await database!.staffProfile.findUnique({
+        where: { id: parameters.data.id }
+      });
+      if (!current) return reply.code(404).send({ error: "employee_not_found" });
+
+      const file = await request.file();
+      if (!file) return sendInvalidPayload(reply);
+      if (!allowedPhotoMimeTypes.has(file.mimetype)) {
+        return reply.code(400).send({ error: "unsupported_photo_type" });
+      }
+
+      const data = new Uint8Array(await file.toBuffer());
+
+      await database!.staffPhoto.upsert({
+        where: { staffProfileId: current.id },
+        create: { staffProfileId: current.id, data, contentType: file.mimetype },
+        update: { data, contentType: file.mimetype }
+      });
+
+      const employee = await database!.staffProfile.findUniqueOrThrow({
+        where: { id: current.id },
+        include: employeeDetailInclude
+      });
+      return { employee: serializeEmployee(employee) };
     }
   );
 

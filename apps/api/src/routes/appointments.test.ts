@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
-  paymentTotalMinor,
+  evaluateAppointmentClose,
   requiresPrepaymentPenalty
 } from "./appointments.js";
 
@@ -65,9 +65,47 @@ test("client changes outside 12 hours do not require prepayment", () => {
   );
 });
 
-test("sums split appointment payments in minor units", () => {
-  assert.equal(
-    paymentTotalMinor([{ amountMinor: 125 }, { amountMinor: 75 }]),
-    200
+test("closing succeeds when payments exactly cover the price", () => {
+  assert.deepEqual(
+    evaluateAppointmentClose({
+      priceMinor: 300,
+      payments: [{ amountMinor: 200 }, { amountMinor: 100 }]
+    }),
+    { ok: true }
+  );
+});
+
+test("closing rejects a mismatched total without an adjustment reason", () => {
+  assert.deepEqual(
+    evaluateAppointmentClose({
+      priceMinor: 300,
+      payments: [{ amountMinor: 200 }]
+    }),
+    { ok: false, error: "appointment_payment_mismatch" }
+  );
+});
+
+test("closing accepts a mismatched total when an adjustment reason is given", () => {
+  assert.deepEqual(
+    evaluateAppointmentClose({
+      priceMinor: 300,
+      payments: [{ amountMinor: 200 }],
+      adjustmentReason: "Скидка постоянному клиенту"
+    }),
+    { ok: true }
+  );
+});
+
+test("closing rejects a priced appointment with no payments at all", () => {
+  assert.deepEqual(
+    evaluateAppointmentClose({ priceMinor: 300, payments: [] }),
+    { ok: false, error: "appointment_payment_required" }
+  );
+});
+
+test("closing a free appointment does not require a payment", () => {
+  assert.deepEqual(
+    evaluateAppointmentClose({ priceMinor: 0, payments: [] }),
+    { ok: true }
   );
 });

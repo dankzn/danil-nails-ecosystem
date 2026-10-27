@@ -1,0 +1,225 @@
+import type { Dictionary } from "../dictionary";
+
+export const es: Dictionary = {
+  meta: {
+    title: "Danil Nails Studio — manicura premium",
+    description:
+      "Danil Nails Studio: trabajo preciso, protocolo estéril, reservas — en el próximo paso"
+  },
+  nav: {
+    home: "Inicio",
+    about: "Sobre nosotros",
+    services: "Servicios",
+    gallery: "Trabajos",
+    master: "Maestro",
+    contact: "Contacto",
+    cta: "Reservar",
+    register: "Registrarse",
+    account: "Cuenta",
+    login: "Iniciar sesión",
+    logout: "Cerrar sesión"
+  },
+  hero: {
+    titleLines: ["Precisión", "que se nota", "en cada detalle"],
+    lede: "Danil Nails Studio es trabajo preciso, atención al detalle y cuidado personal para cada clienta",
+    ctaPrimary: "Reservar",
+    ctaSecondary: "Ver servicios"
+  },
+  philosophy: {
+    kicker: "Filosofía",
+    headingLines: ["Una belleza en la que", "nada es casual"],
+    formula: "Nothing accidental.",
+    manifesto:
+      "Para nosotros, la manicura no es un detalle aislado del look. Es parte del lenguaje visual de una persona: forma, proporción, tono, textura y cómo se siente todo eso, exactamente en ti. Por eso no repetimos soluciones. Buscamos la que parece una extensión natural de ti",
+    principles: [
+      {
+        index: "01",
+        title: "No decorar. Realzar",
+        body: "No nos interesa que te parezcas a otra persona. La forma, el largo, el color y el diseño deben trabajar junto a tus rasgos, tu estilo y tu carácter — nunca en su contra"
+      },
+      {
+        index: "02",
+        title: "La precisión es una estética",
+        body: "La belleza empieza antes que el color. En las proporciones. En la arquitectura de la forma. En la limpieza de la línea. En milímetros casi imperceptibles por separado, pero que definen la impresión del resultado completo"
+      },
+      {
+        index: "03",
+        title: "El lujo no tiene que ser ruidoso",
+        body: "Para nosotros, lo premium no es exhibir estatus ni exceso. Es tiempo, espacio, materiales, atención — y la sensación de que nada hay que pedirlo dos veces"
+      }
+    ]
+  },
+  home: {
+    servicesKicker: "Servicios",
+    servicesHeadingPre: "Tres formatos, ",
+    servicesHeadingEm: "sin nada de más",
+    servicesLede: "El precio se confirma al reservar — lo actualizaremos aquí en cuanto quede definitivo",
+    servicesCta: "Ver todos los servicios",
+    contactKicker: "Reserva",
+    contactHeadingPre: "Reserva ",
+    contactHeadingEm: "online",
+    contactLede: "Elige un servicio, un maestro y una hora que te convenga — la solicitud se envía al momento y la confirmamos a mano",
+    contactCta: "Ir a la reserva"
+  },
+  services: {
+    kicker: "Servicios",
+    headingPre: "Tres formatos, ",
+    headingEm: "sin nada de más",
+    lede: "El precio se confirma al reservar — lo actualizaremos aquí en cuanto quede definitivo",
+    priceLabel: "Según reserva",
+    items: [
+      { title: "Manicura sin esmalte", duration: "60 min", note: "Forma, cutícula, cuidado" },
+      { title: "Manicura con esmalte semipermanente", duration: "120 min", note: "Esmalte gel, color preciso" },
+      { title: "Manicura japonesa", duration: "75 min", note: "Pulido y fortalecimiento" }
+    ]
+  },
+  gallery: {
+    kicker: "Trabajos",
+    headingPre: "Una paleta ",
+    headingEm: "que nos encanta",
+    lede: "Las fotos de los trabajos aparecerán aquí a medida que las tomemos. Por ahora, los tonos con los que más trabaja el estudio",
+    items: [
+      { label: "Granate cálido" },
+      { label: "Porcelana leche" },
+      { label: "Grafito profundo" },
+      { label: "Champán" },
+      { label: "Terciopelo vino" },
+      { label: "Arena cálida" }
+    ]
+  },
+  master: {
+    kicker: "Maestros",
+    headingPre: "Oficio, ",
+    headingEm: "visible en los detalles",
+    lede: "Conoce al equipo de maestras y maestros del estudio — elige con quién reservar",
+    countryLabel: "País",
+    cityLabel: "Ciudad",
+    allCountriesLabel: "Todos los países",
+    allCitiesLabel: "Todas las ciudades"
+  },
+  about: {
+    kicker: "Sobre nosotros",
+    headingPre: "Quién lleva ",
+    headingEm: "tu reserva",
+    lede: "La parte administrativa del estudio — quien responde los mensajes, confirma las reservas y evita que el horario se cruce",
+    staff: [
+      {
+        index: "01",
+        title: "Danil Afliátov — fundador y administrador",
+        body: "Danil lleva el estudio desde cero: confirma las reservas a mano, responde dudas antes de tu visita y cuida que el horario no se cruce. Durante el soft launch también se encarga él mismo de la parte administrativa — un administrador dedicado se incorporará a medida que crezca el estudio"
+      }
+    ]
+  },
+  team: {
+    heading: "Equipo",
+    loading: "Cargando el equipo…",
+    empty: "El equipo aparecerá aquí muy pronto.",
+    bookCta: "Reservar"
+  },
+  masterProfile: {
+    backLink: "Todos los maestros",
+    philosophyHeading: "Mi filosofía",
+    videoHeading: "Video de trabajos",
+    videoFallback: "Ver video de trabajos",
+    loading: "Cargando la ficha del maestro…",
+    notFound: "Maestro no encontrado."
+  },
+  contact: {
+    kicker: "Reserva",
+    headingPre: "Reserva ",
+    headingEm: "online",
+    lede: "Elige un servicio, un maestro y una hora que te convenga. Cada reserva se confirma a mano, no automáticamente — te contactaremos para confirmar tu hora. El bot de reservas por Telegram llega en el próximo paso"
+  },
+  booking: {
+    serviceLabel: "Servicio",
+    servicePlaceholder: "Elige un servicio",
+    masterLabel: "Maestro",
+    dateLabel: "Fecha",
+    timeLabel: "Hora",
+    timePlaceholder: "Elige primero un servicio y una fecha",
+    loadingSlotsLabel: "Cargando horarios disponibles…",
+    noSlotsLabel: "No hay horarios libres ese día — prueba con otra fecha",
+    fullNameLabel: "Nombre completo",
+    phoneLabel: "Teléfono",
+    emailLabel: "Email (opcional)",
+    commentLabel: "Comentario (opcional)",
+    signedInAs: "Esta reserva se hará con tu cuenta",
+    submitLabel: "Enviar solicitud",
+    submittingLabel: "Enviando…",
+    successTitle: "Solicitud enviada",
+    successBody: "Te contactaremos para confirmar tu reserva — la hora final queda fijada tras la confirmación manual",
+    errorInvalid: "Revisa, por favor, los campos completados",
+    errorSlotTaken: "Ese horario se acaba de ocupar — elige otro",
+    errorUnavailable: "El servicio no está disponible por ahora — inténtalo de nuevo en un momento",
+    errorNetwork: "No se pudo contactar con el servidor — revisa tu conexión"
+  },
+  register: {
+    kicker: "Cuenta",
+    headingPre: "Crea tu ",
+    headingEm: "cuenta",
+    lede: "Con una cuenta puedes ver tus reservas e historial de visitas. También puedes reservar una manicura sin registrarte — en la página de reserva",
+    fullNameLabel: "Nombre completo",
+    phoneLabel: "Teléfono",
+    emailLabel: "Email",
+    passwordLabel: "Contraseña",
+    passwordHint: "Al menos 12 caracteres",
+    confirmPasswordLabel: "Confirma la contraseña",
+    submitLabel: "Crear cuenta",
+    submittingLabel: "Creando cuenta…",
+    successTitle: "Cuenta creada",
+    successBody: "¡Bienvenida! Un panel personal con tus reservas aparecerá aquí en el próximo paso",
+    errorPasswordMismatch: "Las contraseñas no coinciden",
+    errorInvalid: "Revisa, por favor, los campos completados",
+    errorExists: "Ya existe una cuenta con ese email o teléfono",
+    errorUnavailable: "El servicio no está disponible por ahora — inténtalo de nuevo en un momento",
+    errorNetwork: "No se pudo contactar con el servidor — revisa tu conexión"
+  },
+  login: {
+    kicker: "Cuenta",
+    headingPre: "Inicia sesión en tu ",
+    headingEm: "cuenta",
+    lede: "Introduce el email y la contraseña que usaste al registrarte",
+    emailLabel: "Email",
+    passwordLabel: "Contraseña",
+    submitLabel: "Iniciar sesión",
+    submittingLabel: "Iniciando sesión…",
+    errorInvalid: "Email o contraseña incorrectos",
+    errorUnavailable: "El servicio no está disponible por ahora — inténtalo de nuevo en un momento",
+    errorNetwork: "No se pudo contactar con el servidor — revisa tu conexión",
+    registerPrompt: "¿Aún no tienes cuenta?",
+    registerLink: "Crear cuenta"
+  },
+  account: {
+    kicker: "Cuenta",
+    heading: "Tu cuenta",
+    loadingLabel: "Cargando…",
+    signedOutMessage: "Inicia sesión para ver tu espacio personal",
+    loginLink: "Iniciar sesión",
+    emailLabel: "Email",
+    phoneLabel: "Teléfono",
+    bookingsHeading: "Tus reservas",
+    bookingsPlaceholder: "Tus reservas aparecerán aquí — esta parte de la cuenta llega en el próximo paso",
+    logoutLabel: "Cerrar sesión",
+    allergiesHeading: "Alergias y sensibilidades",
+    allergiesLede: "El administrador y tu maestro ven esto antes de tu visita — marca todo lo importante para una manicura segura",
+    noKnownAllergiesLabel: "No tengo alergias conocidas",
+    customAllergyLabel: "Otro alérgeno",
+    customAllergyPlaceholder: "Descríbelo con tus palabras",
+    saveLabel: "Guardar",
+    savingLabel: "Guardando…",
+    savedLabel: "Guardado",
+    allergiesErrorConflict: "No puedes marcar «sin alergias» junto con un alérgeno concreto",
+    allergiesErrorInvalid: "No se pudo guardar — revisa los datos",
+    allergiesErrorNetwork: "No se pudo contactar con el servidor — revisa tu conexión"
+  },
+  footer: {
+    tagline: "Trabajo preciso y atención al detalle en cada cita",
+    navLabel: "Navegación",
+    studioLabel: "Estudio",
+    studioCity: "",
+    studioNote: "Los datos de contacto y la dirección llegarán tras el lanzamiento",
+    languageLabel: "Idioma",
+    rights: "Danil Nails Studio",
+    toTop: "Volver arriba ↑"
+  }
+};

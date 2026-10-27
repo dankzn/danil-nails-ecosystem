@@ -5,11 +5,8 @@ import {
   CalendarPlus,
   ChevronLeft,
   ChevronRight,
-  CircleDollarSign,
   Clock3,
   Pencil,
-  Plus,
-  Trash2,
   TriangleAlert
 } from "lucide-react";
 import Link from "next/link";
@@ -30,21 +27,19 @@ type AttendanceStatus =
   | "pending"
   | "confirmed"
   | "declined";
-type Currency = "RUB" | "EUR" | "USD";
 type PaymentMethod = "online_acquiring" | "cash" | "phone_transfer";
 
 type AppointmentPayment = {
   id: string;
-  amountMinor: number;
-  currency: Currency;
   method: PaymentMethod;
-  status: "captured" | "refunded" | "voided";
+  amountMinor: number;
+  currency: string;
   externalTransactionId: string | null;
-  paidAt: string;
-  acceptedBy: {
+  occurredAt: string;
+  receivedBy: {
     email: string | null;
     staffProfile: { displayName: string } | null;
-  };
+  } | null;
 };
 
 type Appointment = {
@@ -58,8 +53,7 @@ type Appointment = {
   internalNote: string | null;
   cancellationReason: string | null;
   priceMinor: number;
-  currency: Currency;
-  completedAt: string | null;
+  currency: string;
   client: {
     id: string;
     fullName: string | null;
@@ -115,12 +109,25 @@ type BookingForm = {
   internalNote: string;
 };
 
-type PaymentDraft = {
-  id: string;
+type ClosePaymentRow = {
   method: PaymentMethod;
   amount: string;
   externalTransactionId: string;
 };
+
+function formatMoney(amountMinor: number, currency: string) {
+  return new Intl.NumberFormat("ru-RU", {
+    style: "currency",
+    currency,
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2
+  }).format(amountMinor / 100);
+}
+
+function minorAmount(value: string) {
+  const parsed = Number(value.replace(",", "."));
+  return Number.isFinite(parsed) ? Math.round(parsed * 100) : Number.NaN;
+}
 
 const statusMeta: Record<
   AppointmentStatus,
@@ -145,17 +152,18 @@ const attendanceMeta: Record<AttendanceStatus, string> = {
   declined: "Клиент не подтвердил"
 };
 
-const manageableStatuses = [
-  "confirmed",
-  "canceled",
-  "no_show"
-] as const;
-
-const paymentMethodLabels: Record<PaymentMethod, string> = {
+const paymentMethodMeta: Record<PaymentMethod, string> = {
   online_acquiring: "Онлайн-эквайринг",
-  cash: "Наличными",
+  cash: "Наличные",
   phone_transfer: "Перевод по номеру телефона"
 };
+
+const manageableStatuses = ["confirmed", "canceled", "no_show"] as const;
+const closableStatuses = [
+  "draft",
+  "pending_admin_confirmation",
+  "confirmed"
+] as const;
 
 const timeFormatter = new Intl.DateTimeFormat("ru-RU", {
   timeZone: "Europe/Moscow",
@@ -196,6 +204,8 @@ function moscowDateTimeInput(date: Date) {
     parts.find((item) => item.type === type)?.value ?? "";
   return `${part("year")}-${part("month")}-${part("day")}T${part("hour")}:${part("minute")}`;
 }
+
+const datePattern = /^\d{4}-\d{2}-\d{2}$/;
 
 function moveDate(date: string, days: number) {
   const value = new Date(`${date}T12:00:00.000Z`);
@@ -296,32 +306,6 @@ function formatBusyTime(minutes: number) {
   return rest ? `${hours} ч ${rest} мин` : `${hours} ч`;
 }
 
-function formatMoney(amountMinor: number, currency: Currency) {
-  return new Intl.NumberFormat("ru-RU", {
-    style: "currency",
-    currency,
-    maximumFractionDigits: 2
-  }).format(amountMinor / 100);
-}
-
-function minorAmount(value: string) {
-  const parsed = Number(value.replace(",", "."));
-  return Number.isFinite(parsed) ? Math.round(parsed * 100) : Number.NaN;
-}
-
-function moneyInput(amountMinor: number) {
-  return (amountMinor / 100).toFixed(2);
-}
-
-function paymentDraft(amountMinor = 0): PaymentDraft {
-  return {
-    id: `payment-${Date.now()}-${Math.random().toString(36).slice(2)}`,
-    method: "cash",
-    amount: amountMinor ? moneyInput(amountMinor) : "",
-    externalTransactionId: ""
-  };
-}
-
 function appointmentSourceLabel(appointment: Appointment) {
   if (appointment.source === "online") return "Online";
   return (
@@ -342,17 +326,17 @@ function appointmentErrorMessage(error: unknown) {
     if (error.code === "client_not_found") return "Клиент больше не найден.";
     if (error.code === "service_not_found") return "Услуга недоступна.";
     if (error.code === "staff_not_found") return "Мастер недоступен.";
-    if (error.code === "appointment_payment_total_mismatch") {
-      return "Сумма платежей должна точно совпадать с итоговой стоимостью.";
-    }
-    if (error.code === "appointment_already_closed") {
-      return "Запись уже закрыта.";
-    }
     if (error.code === "appointment_not_closable") {
-      return "Запись в этом статусе нельзя закрыть.";
+      return "Эту запись нельзя закрыть в её текущем статусе.";
     }
-    if (error.code === "appointment_status_locked") {
-      return "Итоговый статус записи заблокирован.";
+    if (error.code === "appointment_payment_required") {
+      return "Добавьте хотя бы один платёж или укажите причину расхождения.";
+    }
+    if (error.code === "appointment_payment_mismatch") {
+      return "Сумма платежей не совпадает со стоимостью записи. Укажите причину расхождения (скидка, долг, возврат) или исправьте суммы.";
+    }
+    if (error.code === "appointment_not_completed") {
+      return "Запись ещё не закрыта.";
     }
     if (error.status === 401 || error.status === 403) {
       return "Недостаточно прав или сессия завершилась.";
@@ -363,6 +347,18 @@ function appointmentErrorMessage(error: unknown) {
 
 export default function AppointmentsPage() {
   const [selectedDate, setSelectedDate] = useState(moscowDateKey);
+
+  useEffect(() => {
+    // Read this from the real, committed navigation rather than at initial
+    // render: Next prefetches Link targets speculatively, rendering (and
+    // running lazy useState initializers) against the *previous* page's
+    // window.location before the URL actually changes. Effects only run
+    // once a navigation is actually committed, so this reliably sees the
+    // destination URL's query string.
+    const requested = new URLSearchParams(window.location.search).get("date");
+    if (requested && datePattern.test(requested)) setSelectedDate(requested);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [options, setOptions] = useState<BookingOptions | null>(null);
   const [bookingDate, setBookingDate] = useState(moscowDateKey);
@@ -391,8 +387,6 @@ export default function AppointmentsPage() {
     useState<AttendanceStatus>("not_requested");
   const [cancellationReason, setCancellationReason] = useState("");
   const [canceledBy, setCanceledBy] = useState<"client" | "studio">("studio");
-  const [closePrice, setClosePrice] = useState("");
-  const [paymentRows, setPaymentRows] = useState<PaymentDraft[]>([]);
   const [isRescheduling, setIsRescheduling] = useState(false);
   const [rescheduleDate, setRescheduleDate] = useState(moscowDateKey);
   const [rescheduleStaffId, setRescheduleStaffId] = useState("");
@@ -410,6 +404,11 @@ export default function AppointmentsPage() {
     useState<"client" | "studio">("studio");
   const [formError, setFormError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [closePayments, setClosePayments] = useState<ClosePaymentRow[]>([]);
+  const [closeAdjustmentReason, setCloseAdjustmentReason] = useState("");
+  const [closeNote, setCloseNote] = useState("");
+  const [reopenReason, setReopenReason] = useState("");
+  const [isClosing, setIsClosing] = useState(false);
 
   const loadAppointments = useCallback(async (date: string) => {
     setIsLoading(true);
@@ -582,16 +581,23 @@ export default function AppointmentsPage() {
         : today;
     setSelectedAppointment(appointment);
     setStatus(
-      appointment.status === "canceled" ||
-        appointment.status === "no_show"
+      appointment.status === "canceled" || appointment.status === "no_show"
         ? appointment.status
         : "confirmed"
     );
+    setClosePayments(
+      closableStatuses.includes(
+        appointment.status as (typeof closableStatuses)[number]
+      )
+        ? [{ method: "cash", amount: "", externalTransactionId: "" }]
+        : []
+    );
+    setCloseAdjustmentReason("");
+    setCloseNote("");
+    setReopenReason("");
     setAttendanceStatus(appointment.attendanceConfirmationStatus);
     setCancellationReason(appointment.cancellationReason ?? "");
     setCanceledBy("studio");
-    setClosePrice(moneyInput(appointment.priceMinor));
-    setPaymentRows([paymentDraft(appointment.priceMinor)]);
     setIsRescheduling(false);
     setRescheduleDate(initialDate);
     setRescheduleStaffId(appointment.staff.id);
@@ -653,91 +659,6 @@ export default function AppointmentsPage() {
     }
   }
 
-  function updateClosePrice(value: string) {
-    setClosePrice(value);
-    setPaymentRows((current) =>
-      current.length === 1 ? [{ ...current[0]!, amount: value }] : current
-    );
-  }
-
-  function updatePaymentRow(
-    id: string,
-    patch: Partial<Omit<PaymentDraft, "id">>
-  ) {
-    setPaymentRows((current) =>
-      current.map((payment) =>
-        payment.id === id ? { ...payment, ...patch } : payment
-      )
-    );
-  }
-
-  function addPaymentRow() {
-    setPaymentRows((current) =>
-      current.length >= 5 ? current : [...current, paymentDraft()]
-    );
-  }
-
-  function removePaymentRow(id: string) {
-    setPaymentRows((current) =>
-      current.length === 1
-        ? current
-        : current.filter((payment) => payment.id !== id)
-    );
-  }
-
-  async function closeAppointment() {
-    if (!selectedAppointment) return;
-    const priceMinor = minorAmount(closePrice);
-    const payments = paymentRows.map((payment) => ({
-      method: payment.method,
-      amountMinor: minorAmount(payment.amount),
-      externalTransactionId: payment.externalTransactionId.trim() || null
-    }));
-    if (!Number.isInteger(priceMinor) || priceMinor <= 0) {
-      setFormError("Укажите корректную итоговую стоимость.");
-      return;
-    }
-    if (
-      !payments.length ||
-      payments.some(
-        (payment) =>
-          !Number.isInteger(payment.amountMinor) || payment.amountMinor <= 0
-      )
-    ) {
-      setFormError("Каждый платёж должен иметь положительную сумму.");
-      return;
-    }
-    if (
-      payments.reduce((total, payment) => total + payment.amountMinor, 0) !==
-      priceMinor
-    ) {
-      setFormError(
-        "Сумма платежей должна точно совпадать с итоговой стоимостью."
-      );
-      return;
-    }
-
-    setIsSaving(true);
-    setFormError(null);
-    setNotice(null);
-    try {
-      await apiRequest(
-        `/v1/admin/appointments/${selectedAppointment.id}/close`,
-        {
-          method: "POST",
-          body: JSON.stringify({ priceMinor, payments })
-        }
-      );
-      setSelectedAppointment(null);
-      setNotice("Визит закрыт, оплата зафиксирована.");
-      await refresh();
-    } catch (error) {
-      setFormError(appointmentErrorMessage(error));
-    } finally {
-      setIsSaving(false);
-    }
-  }
-
   async function updateStatus() {
     if (!selectedAppointment) return;
     setIsSaving(true);
@@ -789,6 +710,96 @@ export default function AppointmentsPage() {
       setFormError(appointmentErrorMessage(error));
     } finally {
       setIsSaving(false);
+    }
+  }
+
+  function addClosePaymentRow() {
+    setClosePayments((current) => [
+      ...current,
+      { method: "cash", amount: "", externalTransactionId: "" }
+    ]);
+  }
+
+  function updateClosePaymentRow(
+    index: number,
+    patch: Partial<ClosePaymentRow>
+  ) {
+    setClosePayments((current) =>
+      current.map((row, rowIndex) =>
+        rowIndex === index ? { ...row, ...patch } : row
+      )
+    );
+  }
+
+  function removeClosePaymentRow(index: number) {
+    setClosePayments((current) =>
+      current.filter((_, rowIndex) => rowIndex !== index)
+    );
+  }
+
+  async function closeAppointment() {
+    if (!selectedAppointment) return;
+    const payments = [];
+    for (const row of closePayments) {
+      const amountMinor = minorAmount(row.amount);
+      if (!Number.isFinite(amountMinor) || amountMinor <= 0) {
+        setFormError("Проверьте суммы платежей — они должны быть больше нуля.");
+        return;
+      }
+      payments.push({
+        method: row.method,
+        amountMinor,
+        externalTransactionId: row.externalTransactionId.trim() || null
+      });
+    }
+
+    setIsClosing(true);
+    setFormError(null);
+    setNotice(null);
+    try {
+      await apiRequest(`/v1/admin/appointments/${selectedAppointment.id}/close`, {
+        method: "POST",
+        body: JSON.stringify({
+          payments,
+          note: closeNote.trim() || null,
+          adjustmentReason: closeAdjustmentReason.trim() || null
+        })
+      });
+      setSelectedAppointment(null);
+      setNotice("Запись закрыта, оплата зафиксирована.");
+      await refresh();
+    } catch (error) {
+      setFormError(appointmentErrorMessage(error));
+    } finally {
+      setIsClosing(false);
+    }
+  }
+
+  async function reopenAppointment() {
+    if (!selectedAppointment) return;
+    if (!reopenReason.trim()) {
+      setFormError("Укажите причину повторного открытия записи.");
+      return;
+    }
+
+    setIsClosing(true);
+    setFormError(null);
+    setNotice(null);
+    try {
+      await apiRequest(
+        `/v1/admin/appointments/${selectedAppointment.id}/reopen`,
+        {
+          method: "POST",
+          body: JSON.stringify({ reason: reopenReason.trim() })
+        }
+      );
+      setSelectedAppointment(null);
+      setNotice("Запись снова открыта.");
+      await refresh();
+    } catch (error) {
+      setFormError(appointmentErrorMessage(error));
+    } finally {
+      setIsClosing(false);
     }
   }
 
@@ -854,17 +865,6 @@ export default function AppointmentsPage() {
   const selectedService = options?.services.find(
     (service) => service.id === form.serviceId
   );
-  const closePriceMinor = minorAmount(closePrice);
-  const closePaymentTotalMinor = paymentRows.reduce((total, payment) => {
-    const amountMinor = minorAmount(payment.amount);
-    return Number.isFinite(amountMinor) ? total + amountMinor : total;
-  }, 0);
-  const closePaymentMatches =
-    Number.isInteger(closePriceMinor) &&
-    closePriceMinor > 0 &&
-    paymentRows.length > 0 &&
-    paymentRows.every((payment) => minorAmount(payment.amount) > 0) &&
-    closePaymentTotalMinor === closePriceMinor;
 
   return (
     <div className="page-stack">
@@ -1215,7 +1215,7 @@ export default function AppointmentsPage() {
                 <dd>{appointmentSourceLabel(selectedAppointment)}</dd>
               </div>
               <div>
-                <dt>Итоговая стоимость</dt>
+                <dt>Стоимость</dt>
                 <dd>
                   {formatMoney(
                     selectedAppointment.priceMinor,
@@ -1233,10 +1233,7 @@ export default function AppointmentsPage() {
               </div>
             </dl>
 
-            {selectedAppointment.status === "draft" ||
-            selectedAppointment.status === "pending_admin_confirmation" ||
-            selectedAppointment.status === "confirmed" ? (
-              <section className="editor-section">
+            <section className="editor-section">
               <div className="editor-section-heading">
                 <div>
                   <p className="section-kicker">Модерация</p>
@@ -1294,182 +1291,163 @@ export default function AppointmentsPage() {
               >
                 Обновить статус
               </button>
-              </section>
-            ) : null}
+            </section>
 
-            {selectedAppointment.status === "completed" ? (
-              <section className="editor-section payment-section">
+            {closableStatuses.includes(
+              selectedAppointment.status as (typeof closableStatuses)[number]
+            ) ? (
+              <section className="editor-section">
                 <div className="editor-section-heading">
                   <div>
-                    <p className="section-kicker">Финансы</p>
-                    <h2>Оплата зафиксирована</h2>
+                    <p className="section-kicker">Визит состоялся</p>
+                    <h2>Закрыть запись с оплатой</h2>
                   </div>
-                  <span className="status status-success">Закрыта</span>
                 </div>
-                <div className="payment-summary-list">
-                  {selectedAppointment.payments.length ? (
-                    selectedAppointment.payments.map((payment) => (
-                      <div key={payment.id}>
-                        <span>{paymentMethodLabels[payment.method]}</span>
-                        <strong>
-                          {formatMoney(payment.amountMinor, payment.currency)}
-                        </strong>
-                        <small>
-                          Принял: {payment.acceptedBy.staffProfile?.displayName ??
-                            payment.acceptedBy.email ??
-                            "Сотрудник"}
-                        </small>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="feedback feedback-warning">
-                      Историческая запись: способ оплаты не был
-                      зафиксирован.
-                    </p>
-                  )}
-                </div>
-                <p className="payment-total payment-total-success">
-                  <span>Итого</span>
-                  <strong>
-                    {formatMoney(
-                      selectedAppointment.priceMinor,
-                      selectedAppointment.currency
-                    )}
-                  </strong>
-                </p>
-              </section>
-            ) : selectedAppointment.status === "pending_admin_confirmation" ||
-              selectedAppointment.status === "confirmed" ? (
-              <section className="editor-section payment-section">
-                <div className="editor-section-heading">
-                  <div>
-                    <p className="section-kicker">Финансы</p>
-                    <h2>Закрыть визит</h2>
-                  </div>
-                  <CircleDollarSign aria-hidden="true" size={20} />
-                </div>
-                <label className="form-field payment-price-field">
-                  <span>Итоговая стоимость, {selectedAppointment.currency}</span>
-                  <input
-                    inputMode="decimal"
-                    min="0.01"
-                    onChange={(event) => updateClosePrice(event.target.value)}
-                    step="0.01"
-                    type="number"
-                    value={closePrice}
-                  />
-                </label>
-
-                <div className="payment-rows">
-                  {paymentRows.map((payment, index) => (
-                    <div className="payment-row" key={payment.id}>
+                {closePayments.map((row, index) => (
+                  <div className="form-grid form-grid-two close-payment-row" key={index}>
+                    <label className="form-field">
+                      <span>Способ оплаты</span>
+                      <select
+                        onChange={(event) =>
+                          updateClosePaymentRow(index, {
+                            method: event.target.value as PaymentMethod
+                          })
+                        }
+                        value={row.method}
+                      >
+                        {Object.entries(paymentMethodMeta).map(
+                          ([value, label]) => (
+                            <option key={value} value={value}>
+                              {label}
+                            </option>
+                          )
+                        )}
+                      </select>
+                    </label>
+                    <label className="form-field">
+                      <span>Сумма</span>
+                      <input
+                        inputMode="decimal"
+                        onChange={(event) =>
+                          updateClosePaymentRow(index, {
+                            amount: event.target.value
+                          })
+                        }
+                        placeholder="0"
+                        value={row.amount}
+                      />
+                    </label>
+                    {row.method !== "cash" ? (
                       <label className="form-field">
-                        <span>Способ оплаты {index + 1}</span>
-                        <select
-                          onChange={(event) =>
-                            updatePaymentRow(payment.id, {
-                              method: event.target.value as PaymentMethod
-                            })
-                          }
-                          value={payment.method}
-                        >
-                          {Object.entries(paymentMethodLabels).map(
-                            ([value, label]) => (
-                              <option key={value} value={value}>
-                                {label}
-                              </option>
-                            )
-                          )}
-                        </select>
-                      </label>
-                      <label className="form-field">
-                        <span>Сумма, {selectedAppointment.currency}</span>
+                        <span>Номер транзакции</span>
                         <input
-                          inputMode="decimal"
-                          min="0.01"
+                          maxLength={200}
                           onChange={(event) =>
-                            updatePaymentRow(payment.id, {
-                              amount: event.target.value
+                            updateClosePaymentRow(index, {
+                              externalTransactionId: event.target.value
                             })
                           }
-                          step="0.01"
-                          type="number"
-                          value={payment.amount}
+                          value={row.externalTransactionId}
                         />
                       </label>
-                      {payment.method === "online_acquiring" ? (
-                        <label className="form-field payment-reference-field">
-                          <span>ID внешней транзакции</span>
-                          <input
-                            maxLength={200}
-                            onChange={(event) =>
-                              updatePaymentRow(payment.id, {
-                                externalTransactionId: event.target.value
-                              })
-                            }
-                            placeholder="Необязательно"
-                            value={payment.externalTransactionId}
-                          />
-                        </label>
-                      ) : null}
-                      <button
-                        aria-label={`Удалить способ оплаты ${index + 1}`}
-                        className="icon-button payment-remove-button"
-                        disabled={paymentRows.length === 1}
-                        onClick={() => removePaymentRow(payment.id)}
-                        title="Удалить платёж"
-                        type="button"
-                      >
-                        <Trash2 aria-hidden="true" size={15} />
-                      </button>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="payment-actions">
-                  <button
-                    className="secondary-button"
-                    disabled={paymentRows.length >= 5}
-                    onClick={addPaymentRow}
-                    type="button"
-                  >
-                    <Plus aria-hidden="true" size={16} />
-                    Разделить оплату
-                  </button>
-                  <p
-                    className={`payment-total${
-                      closePaymentMatches ? " payment-total-success" : ""
-                    }`}
-                  >
-                    <span>Платежи</span>
-                    <strong>
-                      {formatMoney(
-                        closePaymentTotalMinor,
-                        selectedAppointment.currency
-                      )}
-                    </strong>
-                  </p>
-                </div>
-                {!closePaymentMatches ? (
-                  <p className="feedback feedback-warning">
-                    Сумма платежей должна совпадать с итоговой
-                    стоимостью.
-                  </p>
-                ) : null}
+                    ) : null}
+                    <button
+                      aria-label="Удалить платёж"
+                      className="secondary-button"
+                      onClick={() => removeClosePaymentRow(index)}
+                      type="button"
+                    >
+                      Убрать
+                    </button>
+                  </div>
+                ))}
+                <button
+                  className="secondary-button"
+                  onClick={addClosePaymentRow}
+                  type="button"
+                >
+                  Добавить платёж
+                </button>
+                <label className="form-field">
+                  <span>Причина расхождения (скидка, долг, возврат)</span>
+                  <input
+                    maxLength={1000}
+                    onChange={(event) =>
+                      setCloseAdjustmentReason(event.target.value)
+                    }
+                    placeholder="Заполните, если сумма платежей не равна стоимости"
+                    value={closeAdjustmentReason}
+                  />
+                </label>
+                <label className="form-field">
+                  <span>Комментарий к закрытию</span>
+                  <input
+                    maxLength={1000}
+                    onChange={(event) => setCloseNote(event.target.value)}
+                    value={closeNote}
+                  />
+                </label>
                 <button
                   className="primary-button editor-action"
-                  disabled={isSaving || !closePaymentMatches}
+                  disabled={isClosing}
                   onClick={() => void closeAppointment()}
                   type="button"
                 >
-                  {isSaving ? "Закрываем…" : "Закрыть и зафиксировать оплату"}
+                  {isClosing ? "Закрываем…" : "Закрыть запись"}
                 </button>
               </section>
             ) : null}
 
-            {selectedAppointment.status === "draft" ||
-            selectedAppointment.status === "pending_admin_confirmation" ||
-            selectedAppointment.status === "confirmed" ? (
+            {selectedAppointment.status === "completed" ? (
+              <section className="editor-section">
+                <div className="editor-section-heading">
+                  <div>
+                    <p className="section-kicker">Оплата</p>
+                    <h2>Запись закрыта</h2>
+                  </div>
+                </div>
+                {selectedAppointment.payments.length ? (
+                  <ul className="payment-summary-list">
+                    {selectedAppointment.payments.map((payment) => (
+                      <li key={payment.id}>
+                        {paymentMethodMeta[payment.method]} ·{" "}
+                        {formatMoney(payment.amountMinor, payment.currency)}
+                        {payment.externalTransactionId
+                          ? ` · ${payment.externalTransactionId}`
+                          : ""}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="muted-label">
+                    Платежи не зафиксированы (закрыто с корректировкой).
+                  </p>
+                )}
+                <p className="muted-label">
+                  Закрыл:{" "}
+                  {selectedAppointment.closedBy?.staffProfile?.displayName ??
+                    selectedAppointment.closedBy?.email ??
+                    "—"}
+                </p>
+                <label className="form-field">
+                  <span>Причина повторного открытия</span>
+                  <input
+                    maxLength={1000}
+                    onChange={(event) => setReopenReason(event.target.value)}
+                    value={reopenReason}
+                  />
+                </label>
+                <button
+                  className="secondary-button editor-action"
+                  disabled={isClosing}
+                  onClick={() => void reopenAppointment()}
+                  type="button"
+                >
+                  Переоткрыть запись
+                </button>
+              </section>
+            ) : null}
+
             <section className="editor-section">
               <div className="editor-section-heading">
                 <div>
@@ -1503,11 +1481,7 @@ export default function AppointmentsPage() {
                 </button>
               </div>
             </section>
-            ) : null}
 
-            {selectedAppointment.status === "draft" ||
-            selectedAppointment.status === "pending_admin_confirmation" ||
-            selectedAppointment.status === "confirmed" ? (
             <section className="editor-section">
               <div className="editor-section-heading">
                 <div>
@@ -1609,7 +1583,6 @@ export default function AppointmentsPage() {
                 </div>
               ) : null}
             </section>
-            ) : null}
 
             {formError ? (
               <p className="feedback feedback-error" role="alert">

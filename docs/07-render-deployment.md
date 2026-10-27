@@ -22,6 +22,10 @@ CRM разворачивается как один бесплатный Render W
 - Health Check Path: `/ready`.
 - Compute: Free, `$0/month`.
 
+`pnpm start:deploy` сначала выполняет `pnpm db:deploy` (`prisma migrate deploy` — применяет накопленные миграции к боевой Supabase-базе) и только затем запускает API. Миграции применяются при каждом старте процесса, поэтому это работает вне зависимости от того, как настроен Web Service в Render (Blueprint из `render.yaml` или служба, заведённая вручную через дашборд, где правки `render.yaml` не действуют). Если Web Service всё же является Blueprint-сервисом, `render.yaml` дополнительно объявляет `preDeployCommand: pnpm db:deploy` — он избыточен, но не вредит (`migrate deploy` идемпотентен).
+
+Если после пуша в `main` изменения не появляются на проде, в первую очередь проверьте в дашборде Render: (1) действительно ли триггернулся новый deploy, (2) не разошлись ли реальные Build/Start Command сервиса с `render.yaml` — при расхождении реальные значения в дашборде побеждают.
+
 ## Environment Variables
 
 | Key | Value |
@@ -31,8 +35,11 @@ CRM разворачивается как один бесплатный Render W
 | `DATABASE_URL` | Supabase pooler URL; вводится только в Render как secret |
 | `SESSION_COOKIE_NAME` | `danil_nails_crm_session` |
 | `SESSION_TTL_DAYS` | `30` |
+| `SITE_PUBLIC_URL` | фактический HTTPS URL публичного сайта на Vercel (см. `docs/08-vercel-site-deployment.md`), без завершающего `/` |
 
 `NEXT_PUBLIC_API_URL` в production не задаётся: CRM обращается к API через тот же origin.
+
+`SITE_PUBLIC_URL` нужен для формы регистрации на публичном сайте (`POST /v1/auth/register`): сайт на Vercel — это отдельный origin от API, и без этой переменной CORS отклонит запрос с сайта. Session-cookie в production выставляется с `SameSite=None`, чтобы браузер отправлял её и с чужого origin.
 
 ## Проверка после deploy
 

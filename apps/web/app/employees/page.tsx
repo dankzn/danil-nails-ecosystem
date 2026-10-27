@@ -53,12 +53,33 @@ type PayrollEntryType =
   | "adjustment";
 type ServiceOption = { id: string; titleRu: string; isActive: boolean };
 
+type NamedRef = { id: string; title: string };
+type PositionRef = {
+  id: string;
+  titleRu: string;
+  titleEn: string | null;
+  titleEs: string | null;
+  titleFr: string | null;
+  isInternal: boolean;
+};
+
 type Employee = {
   id: string;
   displayName: string;
   legalName: string | null;
-  position: string | null;
+  positions: PositionRef[];
+  primaryOrgUnitId: string | null;
+  primaryOrgUnit: NamedRef | null;
+  primaryOrganizationId: string | null;
+  primaryOrganization: NamedRef | null;
+  cityId: string | null;
+  city: NamedRef | null;
+  countryId: string | null;
+  country: NamedRef | null;
   bio: string | null;
+  philosophy: string | null;
+  worksVideoUrl: string | null;
+  photoUrl: string | null;
   employmentStatus: EmploymentStatus;
   employmentType: EmploymentType;
   hiredAt: string | null;
@@ -191,7 +212,11 @@ type EmployeeForm = {
   email: string;
   phone: string;
   role: UserRole;
-  position: string;
+  positionIds: string[];
+  primaryOrgUnitId: string;
+  primaryOrganizationId: string;
+  cityId: string;
+  countryId: string;
   employmentStatus: Exclude<EmploymentStatus, "dismissed">;
   employmentType: EmploymentType;
   hiredAt: string;
@@ -203,6 +228,8 @@ type EmployeeForm = {
   emergencyContactName: string;
   emergencyContactPhone: string;
   bio: string;
+  philosophy: string;
+  worksVideoUrl: string;
   isBookable: boolean;
   serviceIds: string[];
 };
@@ -318,7 +345,11 @@ function emptyEmployeeForm(): EmployeeForm {
     email: "",
     phone: "",
     role: "master",
-    position: "Мастер маникюра",
+    positionIds: [],
+    primaryOrgUnitId: "",
+    primaryOrganizationId: "",
+    cityId: "",
+    countryId: "",
     employmentStatus: "active",
     employmentType: "full_time",
     hiredAt: today,
@@ -330,6 +361,8 @@ function emptyEmployeeForm(): EmployeeForm {
     emergencyContactName: "",
     emergencyContactPhone: "",
     bio: "",
+    philosophy: "",
+    worksVideoUrl: "",
     isBookable: true,
     serviceIds: []
   };
@@ -373,6 +406,12 @@ function employeeErrorMessage(error: unknown) {
     if (error.code === "invalid_payroll_payment_amount") {
       return "Сумма выплаты превышает остаток к выплате.";
     }
+    if (error.code === "storage_not_configured") {
+      return "Загрузка фото не настроена на сервере (нет доступа к хранилищу).";
+    }
+    if (error.code === "unsupported_photo_type") {
+      return "Поддерживаются только фото в формате JPEG, PNG или WebP.";
+    }
     if (error.status === 401 || error.status === 403) {
       return "Этот раздел доступен только владельцу.";
     }
@@ -387,7 +426,11 @@ function employeeToForm(employee: Employee): EmployeeForm {
     email: employee.user.email ?? "",
     phone: employee.user.phone ?? "",
     role: employee.user.role,
-    position: employee.position ?? "",
+    positionIds: employee.positions.map((position) => position.id),
+    primaryOrgUnitId: employee.primaryOrgUnitId ?? "",
+    primaryOrganizationId: employee.primaryOrganizationId ?? "",
+    cityId: employee.cityId ?? "",
+    countryId: employee.countryId ?? "",
     employmentStatus:
       employee.employmentStatus === "dismissed" ? "active" : employee.employmentStatus,
     employmentType: employee.employmentType,
@@ -400,6 +443,8 @@ function employeeToForm(employee: Employee): EmployeeForm {
     emergencyContactName: employee.emergencyContactName ?? "",
     emergencyContactPhone: employee.emergencyContactPhone ?? "",
     bio: employee.bio ?? "",
+    philosophy: employee.philosophy ?? "",
+    worksVideoUrl: employee.worksVideoUrl ?? "",
     isBookable: employee.isBookable,
     serviceIds: employee.services.map(({ service }) => service.id)
   };
@@ -408,6 +453,13 @@ function employeeToForm(employee: Employee): EmployeeForm {
 export default function EmployeesPage() {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [services, setServices] = useState<ServiceOption[]>([]);
+  const [directories, setDirectories] = useState<{
+    positions: PositionRef[];
+    countries: NamedRef[];
+    cities: Array<NamedRef & { countryId: string }>;
+    organizations: NamedRef[];
+  }>({ positions: [], countries: [], cities: [], organizations: [] });
+  const [orgUnits, setOrgUnits] = useState<NamedRef[]>([]);
   const [metrics, setMetrics] = useState<Metrics>({
     active: 0,
     probation: 0,
@@ -429,6 +481,7 @@ export default function EmployeesPage() {
   );
   const [selectedEmployee, setSelectedEmployee] = useState<EmployeeDetail | null>(null);
   const [isDetailLoading, setIsDetailLoading] = useState(false);
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [detailTab, setDetailTab] = useState<DetailTab>("profile");
   const [actionTarget, setActionTarget] = useState<{
     employee: Employee;
@@ -513,6 +566,27 @@ export default function EmployeesPage() {
     return () => window.clearTimeout(timeout);
   }, [loadEmployees, search, statusFilter]);
 
+  useEffect(() => {
+    void (async () => {
+      try {
+        const [directoriesResponse, orgUnitsResponse] = await Promise.all([
+          apiRequest<{
+            positions: PositionRef[];
+            countries: NamedRef[];
+            cities: Array<NamedRef & { countryId: string }>;
+            organizations: NamedRef[];
+          }>("/v1/owner/directories"),
+          apiRequest<{ orgUnits: NamedRef[] }>("/v1/owner/org-units")
+        ]);
+        setDirectories(directoriesResponse);
+        setOrgUnits(orgUnitsResponse.orgUnits);
+      } catch {
+        setDirectories({ positions: [], countries: [], cities: [], organizations: [] });
+        setOrgUnits([]);
+      }
+    })();
+  }, []);
+
   const loadEmployeeDetail = useCallback(async (employeeId: string) => {
     setIsDetailLoading(true);
     setFormError(null);
@@ -528,6 +602,28 @@ export default function EmployeesPage() {
       setIsDetailLoading(false);
     }
   }, []);
+
+  const uploadEmployeePhoto = useCallback(
+    async (employeeId: string, file: File) => {
+      setIsUploadingPhoto(true);
+      setFormError(null);
+      try {
+        const body = new FormData();
+        body.append("file", file);
+        const response = await apiRequest<{ employee: EmployeeDetail }>(
+          `/v1/owner/employees/${employeeId}/photo`,
+          { method: "POST", body }
+        );
+        setSelectedEmployee(response.employee);
+        await loadEmployees(search, statusFilter);
+      } catch (error) {
+        setFormError(employeeErrorMessage(error));
+      } finally {
+        setIsUploadingPhoto(false);
+      }
+    },
+    [loadEmployees, search, statusFilter]
+  );
 
   const loadPayroll = useCallback(async (employeeId: string, month: string) => {
     setIsPayrollLoading(true);
@@ -590,7 +686,11 @@ export default function EmployeesPage() {
       email: optionalValue(employeeForm.email),
       phone: optionalValue(employeeForm.phone),
       ...(!isOwner ? { role: employeeForm.role } : {}),
-      position: optionalValue(employeeForm.position),
+      positionIds: employeeForm.positionIds,
+      primaryOrgUnitId: optionalValue(employeeForm.primaryOrgUnitId),
+      primaryOrganizationId: optionalValue(employeeForm.primaryOrganizationId),
+      cityId: optionalValue(employeeForm.cityId),
+      countryId: optionalValue(employeeForm.countryId),
       employmentStatus: employeeForm.employmentStatus,
       ...(!isOwner ? { employmentType: employeeForm.employmentType } : {}),
       hiredAt: optionalValue(employeeForm.hiredAt),
@@ -602,6 +702,8 @@ export default function EmployeesPage() {
       emergencyContactName: optionalValue(employeeForm.emergencyContactName),
       emergencyContactPhone: optionalValue(employeeForm.emergencyContactPhone),
       bio: optionalValue(employeeForm.bio),
+      philosophy: optionalValue(employeeForm.philosophy),
+      worksVideoUrl: optionalValue(employeeForm.worksVideoUrl),
       isBookable: employeeForm.isBookable,
       serviceIds: employeeForm.serviceIds
     };
@@ -1080,7 +1182,13 @@ export default function EmployeesPage() {
                     <tr key={employee.id}>
                       <td>
                         <div className="employee-name-cell">
-                          <span className="employee-avatar">{initials(employee.displayName)}</span>
+                          <span className="employee-avatar">
+                            {employee.photoUrl ? (
+                              <img alt="" src={employee.photoUrl} />
+                            ) : (
+                              initials(employee.displayName)
+                            )}
+                          </span>
                           <span>
                             <strong>{employee.displayName}</strong>
                             <small>{employee.user.email ?? employee.user.phone ?? "Без контакта"}</small>
@@ -1088,8 +1196,17 @@ export default function EmployeesPage() {
                         </div>
                       </td>
                       <td>
-                        <span>{employee.position ?? "Не указана"}</span>
-                        <small>{roleLabels[employee.user.role]}</small>
+                        <span>
+                          {employee.positions.length > 0
+                            ? employee.positions.map((position) => position.titleRu).join(" · ")
+                            : "Не указана"}
+                        </span>
+                        <small>
+                          {roleLabels[employee.user.role]}
+                          {employee.primaryOrgUnit
+                            ? ` · ${employee.primaryOrgUnit.title}`
+                            : ""}
+                        </small>
                       </td>
                       <td>
                         <span className={`status status-${meta.tone}`}>{meta.label}</span>
@@ -1185,13 +1302,96 @@ export default function EmployeesPage() {
                     value={employeeForm.legalName}
                   />
                 </label>
+                <div className="form-field form-field-span-two">
+                  <span>Должности (можно несколько, первая — основная)</span>
+                  <div className="service-checkbox-grid">
+                    {directories.positions.map((position) => (
+                      <label className="service-checkbox" key={position.id}>
+                        <input
+                          checked={employeeForm.positionIds.includes(position.id)}
+                          onChange={(event) =>
+                            updateEmployeeForm(
+                              "positionIds",
+                              event.target.checked
+                                ? [...employeeForm.positionIds, position.id]
+                                : employeeForm.positionIds.filter((id) => id !== position.id)
+                            )
+                          }
+                          type="checkbox"
+                        />
+                        <span>
+                          {position.titleRu}
+                          {position.isInternal ? " (внутренняя)" : ""}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
                 <label className="form-field">
-                  <span>Должность</span>
-                  <input
-                    maxLength={120}
-                    onChange={(event) => updateEmployeeForm("position", event.target.value)}
-                    value={employeeForm.position}
-                  />
+                  <span>Основное подразделение</span>
+                  <select
+                    onChange={(event) =>
+                      updateEmployeeForm("primaryOrgUnitId", event.target.value)
+                    }
+                    value={employeeForm.primaryOrgUnitId}
+                  >
+                    <option value="">Не указано</option>
+                    {orgUnits.map((unit) => (
+                      <option key={unit.id} value={unit.id}>
+                        {unit.title}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="form-field">
+                  <span>Основная организация</span>
+                  <select
+                    onChange={(event) =>
+                      updateEmployeeForm("primaryOrganizationId", event.target.value)
+                    }
+                    value={employeeForm.primaryOrganizationId}
+                  >
+                    <option value="">Не указана</option>
+                    {directories.organizations.map((org) => (
+                      <option key={org.id} value={org.id}>
+                        {org.title}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="form-field">
+                  <span>Страна</span>
+                  <select
+                    onChange={(event) => {
+                      updateEmployeeForm("countryId", event.target.value);
+                      updateEmployeeForm("cityId", "");
+                    }}
+                    value={employeeForm.countryId}
+                  >
+                    <option value="">Не указана</option>
+                    {directories.countries.map((country) => (
+                      <option key={country.id} value={country.id}>
+                        {country.title}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="form-field">
+                  <span>Город</span>
+                  <select
+                    disabled={!employeeForm.countryId}
+                    onChange={(event) => updateEmployeeForm("cityId", event.target.value)}
+                    value={employeeForm.cityId}
+                  >
+                    <option value="">Не указан</option>
+                    {directories.cities
+                      .filter((city) => city.countryId === employeeForm.countryId)
+                      .map((city) => (
+                        <option key={city.id} value={city.id}>
+                          {city.title}
+                        </option>
+                      ))}
+                  </select>
                 </label>
                 <label className="form-field">
                   <span>Дата рождения</span>
@@ -1358,11 +1558,38 @@ export default function EmployeesPage() {
                   />
                 </label>
                 <label className="form-field form-field-span-three">
-                  <span>Служебная информация</span>
+                  <span>Служебная информация (видна только в CRM)</span>
                   <textarea
                     maxLength={2000}
                     onChange={(event) => updateEmployeeForm("bio", event.target.value)}
                     value={employeeForm.bio}
+                  />
+                </label>
+              </div>
+            </fieldset>
+
+            <fieldset className="hr-fieldset">
+              <legend>Публичная карточка на сайте</legend>
+              <div className="form-grid">
+                <label className="form-field form-field-span-three">
+                  <span>Моя философия</span>
+                  <textarea
+                    maxLength={2000}
+                    onChange={(event) => updateEmployeeForm("philosophy", event.target.value)}
+                    placeholder="Короткий личный текст о подходе к работе — виден на публичной карточке мастера"
+                    value={employeeForm.philosophy}
+                  />
+                </label>
+                <label className="form-field form-field-span-two">
+                  <span>Видео работ (ссылка на YouTube/Vimeo)</span>
+                  <input
+                    maxLength={500}
+                    onChange={(event) =>
+                      updateEmployeeForm("worksVideoUrl", event.target.value)
+                    }
+                    placeholder="https://..."
+                    type="url"
+                    value={employeeForm.worksVideoUrl}
                   />
                 </label>
               </div>
@@ -1412,7 +1639,11 @@ export default function EmployeesPage() {
         <Modal
           description={
             selectedEmployee
-              ? `${selectedEmployee.position ?? "Должность не указана"} · ${statusMeta[selectedEmployee.employmentStatus].label}`
+              ? `${
+                  selectedEmployee.positions.length > 0
+                    ? selectedEmployee.positions.map((position) => position.titleRu).join(" · ")
+                    : "Должность не указана"
+                } · ${statusMeta[selectedEmployee.employmentStatus].label}`
               : "Загружаем личное дело"
           }
           onClose={() => setSelectedEmployee(null)}
@@ -1422,9 +1653,27 @@ export default function EmployeesPage() {
           {selectedEmployee ? (
             <div className="employee-detail-shell">
               <div className="employee-profile-summary">
-                <span className="employee-profile-avatar">
-                  {initials(selectedEmployee.displayName)}
-                </span>
+                <label className="employee-profile-avatar employee-profile-avatar-upload">
+                  {selectedEmployee.photoUrl ? (
+                    <img alt={selectedEmployee.displayName} src={selectedEmployee.photoUrl} />
+                  ) : (
+                    <span>{initials(selectedEmployee.displayName)}</span>
+                  )}
+                  <input
+                    accept="image/png,image/jpeg,image/webp"
+                    disabled={isUploadingPhoto}
+                    hidden
+                    onChange={(event) => {
+                      const file = event.target.files?.[0];
+                      event.target.value = "";
+                      if (file) void uploadEmployeePhoto(selectedEmployee.id, file);
+                    }}
+                    type="file"
+                  />
+                  <span className="employee-profile-avatar-hint">
+                    {isUploadingPhoto ? "Загружаем…" : "Изменить фото"}
+                  </span>
+                </label>
                 <div>
                   <strong>{selectedEmployee.legalName ?? selectedEmployee.displayName}</strong>
                   <span>
@@ -1531,8 +1780,16 @@ export default function EmployeesPage() {
                       </strong>
                     </div>
                     <div className="employee-profile-wide">
-                      <span>Служебная информация</span>
+                      <span>Служебная информация (видна только в CRM)</span>
                       <strong>{selectedEmployee.bio ?? "Не указана"}</strong>
+                    </div>
+                    <div className="employee-profile-wide">
+                      <span>Моя философия (публичная карточка на сайте)</span>
+                      <strong>{selectedEmployee.philosophy ?? "Не указана"}</strong>
+                    </div>
+                    <div className="employee-profile-wide">
+                      <span>Видео работ (публичная карточка на сайте)</span>
+                      <strong>{selectedEmployee.worksVideoUrl ?? "Не указано"}</strong>
                     </div>
                   </div>
                 ) : null}

@@ -18,6 +18,8 @@ type Client = {
   telegramUsername: string | null;
   whatsappPhone: string | null;
   allergies: string | null;
+  noKnownAllergies: boolean;
+  customAllergyNote: string | null;
   notes: string | null;
   requiresPrepayment: boolean;
   prepaymentReason: string | null;
@@ -194,12 +196,9 @@ export default function ClientsPage() {
       email: client.email ?? "",
       telegramUsername: client.telegramUsername ?? "",
       whatsappPhone: client.whatsappPhone ?? "",
-      allergens: uniqueDictionaryTitles([
-        ...client.allergenAssignments.map(
-          ({ allergen }) => allergen.title
-        ),
-        ...legacyAllergens(client.allergies)
-      ]),
+      allergens: uniqueDictionaryTitles(
+        client.allergenAssignments.map(({ allergen }) => allergen.title)
+      ),
       notes: client.notes ?? "",
       privateTags: client.privateTagAssignments.map(({ tag }) => tag.title),
       requiresPrepayment: client.requiresPrepayment,
@@ -398,7 +397,7 @@ export default function ClientsPage() {
           </div>
         ) : (
           <div className="table-scroll">
-            <table>
+            <table className="clients-table">
               <thead>
                 <tr>
                   <th>Клиент</th>
@@ -448,24 +447,42 @@ export default function ClientsPage() {
                           {client.loyaltyStatus?.titleRu ?? "Без статуса"}
                         </span>
                       </td>
-                      <td>
-                        {clientAllergens.length ? (
+                      <td className="tag-cell">
+                        {client.noKnownAllergies ? (
+                          <span className="muted-label">Нет известных аллергий</span>
+                        ) : clientAllergens.length || client.customAllergyNote ? (
                           <div className="private-tag-list">
                             {clientAllergens.map((title) => (
-                              <span className="allergen-badge" key={title}>
+                              <span
+                                className="allergen-badge"
+                                key={title}
+                                title={title}
+                              >
                                 {title}
                               </span>
                             ))}
+                            {client.customAllergyNote ? (
+                              <span
+                                className="allergen-badge allergen-badge-custom"
+                                title={client.customAllergyNote}
+                              >
+                                Со слов клиента: {client.customAllergyNote}
+                              </span>
+                            ) : null}
                           </div>
                         ) : (
-                          <span className="muted-label">Нет</span>
+                          <span className="muted-label">Не указано</span>
                         )}
                       </td>
-                      <td>
+                      <td className="tag-cell">
                         {privateTags.length ? (
                           <div className="private-tag-list">
                             {privateTags.map((title) => (
-                              <span className="private-badge" key={title}>
+                              <span
+                                className="private-badge"
+                                key={title}
+                                title={title}
+                              >
                                 {title}
                               </span>
                             ))}
@@ -569,6 +586,24 @@ export default function ClientsPage() {
 
             <fieldset className="tag-fieldset allergen-fieldset">
               <legend>Аллергии и чувствительность</legend>
+              {editingClient?.noKnownAllergies ? (
+                <p className="legacy-allergy-note">
+                  Клиент указал в личном кабинете: нет известных аллергий.
+                </p>
+              ) : null}
+              {editingClient?.customAllergyNote ? (
+                <p className="legacy-allergy-note">
+                  Свой аллерген со слов клиента (личный кабинет, не входит в
+                  общий справочник): {editingClient.customAllergyNote}
+                </p>
+              ) : null}
+              {editingClient?.allergies ? (
+                <p className="legacy-allergy-note">
+                  Старая свободная запись об аллергии (сохранена как есть,
+                  перенесите нужное в теги ниже вручную):{" "}
+                  {editingClient.allergies}
+                </p>
+              ) : null}
               <div className="tag-cloud" aria-label="Аллергены клиента">
                 {visibleAllergenOptions.map((allergen) => {
                   const isSelected = form.allergens.some((title) =>

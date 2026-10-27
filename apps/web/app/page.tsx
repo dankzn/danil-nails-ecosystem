@@ -9,6 +9,7 @@ import {
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { apiRequest } from "./lib/api";
+import { ArrivalTracker } from "./components/ArrivalTracker";
 
 type AppointmentStatus =
   | "draft"
@@ -78,6 +79,23 @@ const timeFormatter = new Intl.DateTimeFormat("ru-RU", {
   hour: "2-digit",
   minute: "2-digit"
 });
+const alertDateFormatter = new Intl.DateTimeFormat("ru-RU", {
+  timeZone: "Europe/Moscow",
+  day: "numeric",
+  month: "long"
+});
+
+function moscowDateKey(date: Date) {
+  const parts = new Intl.DateTimeFormat("en", {
+    timeZone: "Europe/Moscow",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit"
+  }).formatToParts(date);
+  const part = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((item) => item.type === type)?.value ?? "";
+  return `${part("year")}-${part("month")}-${part("day")}`;
+}
 
 function formatBusyTime(minutes: number) {
   const hours = Math.floor(minutes / 60);
@@ -114,14 +132,16 @@ function alertCopy(alert: Dashboard["alerts"][number]) {
       href: "/schedule"
     };
   }
-  const time = timeFormatter.format(new Date(alert.startsAt));
+  const startsAt = new Date(alert.startsAt);
+  const time = timeFormatter.format(startsAt);
+  const date = alertDateFormatter.format(startsAt);
   return {
     title:
       alert.type === "appointment_confirmation"
         ? "Подтвердить новую запись"
         : "Проверить ответ клиента",
-    detail: `${alert.clientName}, ${time} · ${alert.serviceName}`,
-    href: "/appointments"
+    detail: `${alert.clientName}, ${date}, ${time} · ${alert.serviceName}`,
+    href: `/appointments?date=${moscowDateKey(startsAt)}`
   };
 }
 
@@ -130,20 +150,26 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const loadDashboard = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
+  const loadDashboard = useCallback(async (options: { silent?: boolean } = {}) => {
+    if (!options.silent) {
+      setIsLoading(true);
+      setError(null);
+    }
     try {
-      setDashboard(await apiRequest<Dashboard>("/v1/admin/dashboard"));
+      const data = await apiRequest<Dashboard>("/v1/admin/dashboard");
+      setDashboard(data);
+      if (options.silent) setError(null);
     } catch {
-      setError("Не удалось загрузить сводку CRM.");
+      if (!options.silent) setError("Не удалось загрузить сводку CRM.");
     } finally {
-      setIsLoading(false);
+      if (!options.silent) setIsLoading(false);
     }
   }, []);
 
   useEffect(() => {
     void loadDashboard();
+    const interval = setInterval(() => void loadDashboard({ silent: true }), 60000);
+    return () => clearInterval(interval);
   }, [loadDashboard]);
 
   const name = dashboard?.displayName?.split(" ")[0] ?? "Данил";
@@ -218,6 +244,8 @@ export default function Home() {
           <span className="metric-note">Активны для записи</span>
         </article>
       </section>
+
+      <ArrivalTracker appointments={dashboard?.appointments ?? []} />
 
       <section className="content-grid content-grid-wide">
         <article className="panel">
