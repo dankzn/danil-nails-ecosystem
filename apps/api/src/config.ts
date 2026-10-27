@@ -25,6 +25,9 @@ const environmentSchema = z.object({
   CRM_PUBLIC_URL: z.string().trim().min(1).optional(),
   CRM_STATIC_DIR: z.string().min(1).optional(),
   DATABASE_URL: z.string().min(1).optional(),
+  DB_POOL_MAX: z.coerce.number().int().min(1).max(20).default(5),
+  DB_CONNECTION_TIMEOUT_MS: z.coerce.number().int().min(500).max(30_000).default(5_000),
+  API_SLOW_REQUEST_MS: z.coerce.number().int().min(100).max(30_000).default(750),
   SESSION_COOKIE_NAME: z.string().min(1).default("danil_nails_session"),
   SESSION_TTL_DAYS: z.coerce.number().int().min(1).max(365).default(30)
 });

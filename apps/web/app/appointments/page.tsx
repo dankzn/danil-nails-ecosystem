@@ -17,7 +17,13 @@ import {
   UserRound
 } from "lucide-react";
 import Link from "next/link";
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type FormEvent
+} from "react";
 import { ApiError, apiRequest } from "../lib/api";
 import { Modal } from "../ui/modal";
 
@@ -449,6 +455,9 @@ function appointmentSourceLabel(appointment: Appointment) {
 
 function appointmentErrorMessage(error: unknown) {
   if (error instanceof ApiError) {
+    if (error.code === "request_timeout") {
+      return "Сервер не ответил за 15 секунд. Запись не была подтверждена — обновите список перед повторной попыткой.";
+    }
     if (error.code === "appointment_time_conflict") {
       return "Это время уже занято другой активной записью.";
     }
@@ -554,6 +563,38 @@ export default function AppointmentsPage() {
   const [bonusAccrualPoints, setBonusAccrualPoints] = useState("");
   const [reopenReason, setReopenReason] = useState("");
   const [isClosing, setIsClosing] = useState(false);
+  const workspaceCacheRef = useRef(new Map<string, AppointmentWorkspace>());
+  const workspaceRequestsRef = useRef(
+    new Map<string, Promise<AppointmentWorkspace>>()
+  );
+
+  const loadWorkspace = useCallback((appointmentId: string) => {
+    const cached = workspaceCacheRef.current.get(appointmentId);
+    if (cached) return Promise.resolve(cached);
+
+    const pending = workspaceRequestsRef.current.get(appointmentId);
+    if (pending) return pending;
+
+    const request = apiRequest<AppointmentWorkspace>(
+      `/v1/admin/appointments/${appointmentId}/workspace`
+    )
+      .then((response) => {
+        workspaceCacheRef.current.set(appointmentId, response);
+        return response;
+      })
+      .finally(() => {
+        workspaceRequestsRef.current.delete(appointmentId);
+      });
+    workspaceRequestsRef.current.set(appointmentId, request);
+    return request;
+  }, []);
+
+  const prefetchWorkspace = useCallback(
+    (appointmentId: string) => {
+      void loadWorkspace(appointmentId).catch(() => undefined);
+    },
+    [loadWorkspace]
+  );
 
   const loadAppointments = useCallback(async (date: string) => {
     setIsLoading(true);
@@ -596,28 +637,37 @@ export default function AppointmentsPage() {
       return;
     }
 
-    const controller = new AbortController();
+    const cached = workspaceCacheRef.current.get(selectedAppointment.id);
+    if (cached) {
+      setWorkspace(cached);
+      setSelectedAppointment(cached.appointment);
+      setIsWorkspaceLoading(false);
+      setWorkspaceError(null);
+      return;
+    }
+
+    let isCurrent = true;
     setIsWorkspaceLoading(true);
     setWorkspaceError(null);
-    void apiRequest<AppointmentWorkspace>(
-      `/v1/admin/appointments/${selectedAppointment.id}/workspace`,
-      { signal: controller.signal }
-    )
+    void loadWorkspace(selectedAppointment.id)
       .then((response) => {
+        if (!isCurrent) return;
         setWorkspace(response);
         setSelectedAppointment(response.appointment);
       })
-      .catch((error) => {
-        if (!(error instanceof DOMException && error.name === "AbortError")) {
+      .catch(() => {
+        if (isCurrent) {
           setWorkspaceError("Не удалось загрузить полную карточку записи.");
         }
       })
       .finally(() => {
-        if (!controller.signal.aborted) setIsWorkspaceLoading(false);
+        if (isCurrent) setIsWorkspaceLoading(false);
       });
 
-    return () => controller.abort();
-  }, [selectedAppointment?.id]);
+    return () => {
+      isCurrent = false;
+    };
+  }, [loadWorkspace, selectedAppointment?.id]);
 
   useEffect(() => {
     if (
@@ -754,8 +804,9 @@ export default function AppointmentsPage() {
       appointmentDate >= today && appointmentDate <= latestDate
         ? appointmentDate
         : today;
-    setSelectedAppointment(appointment);
-    setWorkspace(null);
+    const cachedWorkspace = workspaceCacheRef.current.get(appointment.id);
+    setSelectedAppointment(cachedWorkspace?.appointment ?? appointment);
+    setWorkspace(cachedWorkspace ?? null);
     setWorkspaceTab("appointment");
     setWorkspaceError(null);
     setStatus(
@@ -804,6 +855,7 @@ export default function AppointmentsPage() {
   }
 
   async function refresh() {
+    workspaceCacheRef.current.clear();
     await Promise.all([loadAppointments(selectedDate), loadOptions()]);
   }
 
@@ -1217,6 +1269,9 @@ export default function AppointmentsPage() {
                           appointment.client.fullName ?? appointment.client.phone
                         }`}
                         className="icon-button"
+                        onFocus={() => prefetchWorkspace(appointment.id)}
+                        onMouseEnter={() => prefetchWorkspace(appointment.id)}
+                        onTouchStart={() => prefetchWorkspace(appointment.id)}
                         onClick={() => openAppointment(appointment)}
                         title="Открыть запись"
                         type="button"

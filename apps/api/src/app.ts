@@ -51,8 +51,12 @@ export async function buildServer(
   options: { logger?: boolean } = {}
 ) {
   const server = Fastify({ logger: options.logger ?? true });
+  const requestStartTimes = new WeakMap<object, bigint>();
 
   server.decorateRequest("crmUser", null);
+  server.addHook("onRequest", async (request) => {
+    requestStartTimes.set(request, process.hrtime.bigint());
+  });
 
   await server.register(cookie);
   const allowedOrigins = new Set(
@@ -86,8 +90,24 @@ export async function buildServer(
   await server.register(multipart, {
     limits: { fileSize: 5 * 1024 * 1024, files: 1 }
   });
-  server.addHook("onSend", async (_request, reply, payload) => {
+  server.addHook("onSend", async (request, reply, payload) => {
+    const startedAt = requestStartTimes.get(request);
+    const durationMs = startedAt
+      ? Number(process.hrtime.bigint() - startedAt) / 1_000_000
+      : 0;
+    reply.header("server-timing", `app;dur=${durationMs.toFixed(1)}`);
+    reply.header("x-response-time-ms", durationMs.toFixed(1));
     reply.header("x-robots-tag", "noindex, nofollow, noarchive");
+    if (durationMs >= environment.API_SLOW_REQUEST_MS) {
+      request.log.warn(
+        {
+          durationMs: Number(durationMs.toFixed(1)),
+          method: request.method,
+          route: request.routeOptions.url
+        },
+        "Slow API request"
+      );
+    }
     return payload;
   });
 

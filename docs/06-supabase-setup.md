@@ -50,7 +50,7 @@ grant all on sequences to prisma;
 Ожидаемый формат:
 
 ```text
-postgresql://prisma.PROJECT_REF:PRISMA_PASSWORD@REGION.pooler.supabase.com:5432/postgres
+postgresql://postgres.PROJECT_REF:DATABASE_PASSWORD@REGION.pooler.supabase.com:5432/postgres
 ```
 
 Если пароль содержит специальные символы, они должны быть URL-encoded. Самый

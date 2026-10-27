@@ -42,6 +42,8 @@ const activeAppointmentStatuses: AppointmentStatus[] = [
   AppointmentStatus.confirmed
 ];
 
+class AppointmentTimeConflictError extends Error {}
+
 const datePattern = /^\d{4}-\d{2}-\d{2}$/;
 const listQuerySchema = z.object({
   date: z.string().regex(datePattern).optional(),
@@ -182,6 +184,7 @@ const workspaceAppointmentInclude = {
       },
       loyaltyTransactions: {
         orderBy: { createdAt: "desc" as const },
+        take: 100,
         include: {
           createdBy: {
             select: {
@@ -195,6 +198,7 @@ const workspaceAppointmentInclude = {
   },
   events: {
     orderBy: { createdAt: "desc" as const },
+    take: 100,
     include: {
       actor: {
         select: {
@@ -206,6 +210,7 @@ const workspaceAppointmentInclude = {
   },
   loyaltyTransactions: {
     orderBy: { createdAt: "desc" as const },
+    take: 100,
     include: {
       createdBy: {
         select: {
@@ -378,7 +383,9 @@ export function registerAppointmentRoutes(
       const availability = await findAvailableSlots(database, {
         staffId: staff.id,
         serviceId: service.id,
-        date: moscowDateKey(startsAt)
+        date: moscowDateKey(startsAt),
+        resolvedStaff: staff,
+        resolvedService: service
       });
       if (
         !availability.ok ||
@@ -390,12 +397,21 @@ export function registerAppointmentRoutes(
       }
 
       const endsAt = appointmentEnd(startsAt, service.durationMinutes);
-      if (await conflictingAppointment(database, staff.id, startsAt, endsAt)) {
-        return reply.code(409).send({ error: "appointment_time_conflict" });
-      }
 
       try {
         const appointment = await database.$transaction(async (transaction) => {
+          await transaction.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${staff.id}))`;
+          const conflict = await transaction.appointment.findFirst({
+            where: {
+              staffId: staff.id,
+              status: { in: activeAppointmentStatuses },
+              startsAt: { lt: endsAt },
+              endsAt: { gt: startsAt }
+            },
+            select: { id: true }
+          });
+          if (conflict) throw new AppointmentTimeConflictError();
+
           let clientId: string;
 
           if (sessionClient) {
@@ -439,6 +455,12 @@ export function registerAppointmentRoutes(
               ...(input.data.clientComment !== undefined
                 ? { clientComment: input.data.clientComment }
                 : {})
+            },
+            include: {
+              service: {
+                select: { id: true, titleRu: true, durationMinutes: true }
+              },
+              staff: { select: { id: true, displayName: true } }
             }
           });
 
@@ -449,21 +471,15 @@ export function registerAppointmentRoutes(
               note: "Создана клиентом онлайн"
             }
           });
-
-          return transaction.appointment.findUniqueOrThrow({
-            where: { id: created.id },
-            include: {
-              service: {
-                select: { id: true, titleRu: true, durationMinutes: true }
-              },
-              staff: { select: { id: true, displayName: true } }
-            }
-          });
+          return created;
         });
 
         return reply.code(201).send({ appointment });
       } catch (error) {
-        if (isUniqueConstraintError(error)) {
+        if (
+          error instanceof AppointmentTimeConflictError ||
+          isUniqueConstraintError(error)
+        ) {
           return reply.code(409).send({ error: "appointment_time_conflict" });
         }
         throw error;
@@ -547,36 +563,27 @@ export function registerAppointmentRoutes(
       const parameters = idSchema.safeParse(request.params);
       if (!parameters.success) return sendInvalidPayload(reply);
 
-      const current = await database!.appointment.findUnique({
+      const appointment = await database!.appointment.findUnique({
         where: { id: parameters.data.id },
-        select: {
-          id: true,
-          clientId: true,
-          staffId: true,
-          staff: { select: { userId: true } }
-        }
+        include: workspaceAppointmentInclude
       });
-      if (!current) return reply.code(404).send({ error: "appointment_not_found" });
-      if (!canManageAppointment(request.crmUser!, current.staff.userId)) {
+      if (!appointment) {
+        return reply.code(404).send({ error: "appointment_not_found" });
+      }
+      if (!canManageAppointment(request.crmUser!, appointment.staff.userId)) {
         return reply.code(403).send({ error: "insufficient_permissions" });
       }
 
       const historyWhere = {
-        clientId: current.clientId,
+        clientId: appointment.clientId,
         ...(request.crmUser!.role === UserRole.master
-          ? { staffId: current.staffId }
+          ? { staffId: appointment.staffId }
           : {})
       };
-      const [appointment, history, statisticsSource, notificationJobs] =
-        await Promise.all([
-          database!.appointment.findUniqueOrThrow({
-            where: { id: current.id },
-            include: workspaceAppointmentInclude
-          }),
+      const [statisticsSource, notificationJobs] = await Promise.all([
           database!.appointment.findMany({
             where: historyWhere,
             orderBy: { startsAt: "desc" },
-            take: 50,
             select: {
               id: true,
               startsAt: true,
@@ -592,23 +599,9 @@ export function registerAppointmentRoutes(
               }
             }
           }),
-          database!.appointment.findMany({
-            where: historyWhere,
-            orderBy: { startsAt: "asc" },
-            select: {
-              startsAt: true,
-              status: true,
-              priceMinor: true,
-              currency: true,
-              payments: {
-                where: { voidedAt: null },
-                select: { amountMinor: true }
-              }
-            }
-          }),
           database!.notificationJob.findMany({
             where: {
-              payload: { path: ["appointmentId"], equals: current.id }
+              payload: { path: ["appointmentId"], equals: appointment.id }
             },
             orderBy: { createdAt: "desc" },
             take: 50,
@@ -624,6 +617,7 @@ export function registerAppointmentRoutes(
             }
           })
         ]);
+      const history = statisticsSource.slice(0, 50);
 
       const completed = statisticsSource.filter(
         (item) => item.status === AppointmentStatus.completed
@@ -654,8 +648,8 @@ export function registerAppointmentRoutes(
           Math.round(total / (completedByCurrency[currency] ?? 1))
         ])
       );
-      const firstCompletedAt = completed[0]?.startsAt ?? null;
-      const lastCompletedAt = completed.at(-1)?.startsAt ?? null;
+      const lastCompletedAt = completed[0]?.startsAt ?? null;
+      const firstCompletedAt = completed.at(-1)?.startsAt ?? null;
       const activeMonths = firstCompletedAt
         ? Math.max(
             1,
@@ -720,7 +714,9 @@ export function registerAppointmentRoutes(
       const availability = await findAvailableSlots(database!, {
         staffId: staff.id,
         serviceId: service.id,
-        date: moscowDateKey(startsAt)
+        date: moscowDateKey(startsAt),
+        resolvedStaff: staff,
+        resolvedService: service
       });
       if (
         !availability.ok ||
@@ -732,52 +728,61 @@ export function registerAppointmentRoutes(
       }
 
       const endsAt = appointmentEnd(startsAt, service.durationMinutes);
-      if (
-        await conflictingAppointment(
-          database!,
-          staff.id,
-          startsAt,
-          endsAt
-        )
-      ) {
-        return reply.code(409).send({ error: "appointment_time_conflict" });
+      try {
+        const appointment = await database!.$transaction(async (transaction) => {
+          await transaction.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${staff.id}))`;
+          const conflict = await transaction.appointment.findFirst({
+            where: {
+              staffId: staff.id,
+              status: { in: activeAppointmentStatuses },
+              startsAt: { lt: endsAt },
+              endsAt: { gt: startsAt }
+            },
+            select: { id: true }
+          });
+          if (conflict) throw new AppointmentTimeConflictError();
+
+          const created = await transaction.appointment.create({
+            data: {
+              clientId: client.id,
+              staffId: staff.id,
+              serviceId: service.id,
+              source: BookingSource.admin_manual,
+              createdByUserId: request.crmUser!.id,
+              priceMinor: service.prices[0]?.amountMinor ?? 0,
+              currency: Currency.RUB,
+              startsAt,
+              endsAt,
+              ...(input.data.clientComment !== undefined
+                ? { clientComment: input.data.clientComment }
+                : {}),
+              ...(input.data.internalNote !== undefined
+                ? { internalNote: input.data.internalNote }
+                : {})
+            },
+            include: appointmentInclude
+          });
+          await transaction.appointmentEvent.create({
+            data: {
+              appointmentId: created.id,
+              toStatus: created.status,
+              actorUserId: request.crmUser!.id,
+              note: "Создана администратором"
+            }
+          });
+          return created;
+        });
+
+        return reply.code(201).send({ appointment });
+      } catch (error) {
+        if (
+          error instanceof AppointmentTimeConflictError ||
+          isUniqueConstraintError(error)
+        ) {
+          return reply.code(409).send({ error: "appointment_time_conflict" });
+        }
+        throw error;
       }
-
-      const appointment = await database!.$transaction(async (transaction) => {
-        const created = await transaction.appointment.create({
-          data: {
-            clientId: client.id,
-            staffId: staff.id,
-            serviceId: service.id,
-            source: BookingSource.admin_manual,
-            createdByUserId: request.crmUser!.id,
-            priceMinor: service.prices[0]?.amountMinor ?? 0,
-            currency: Currency.RUB,
-            startsAt,
-            endsAt,
-            ...(input.data.clientComment !== undefined
-              ? { clientComment: input.data.clientComment }
-              : {}),
-            ...(input.data.internalNote !== undefined
-              ? { internalNote: input.data.internalNote }
-              : {})
-          }
-        });
-        await transaction.appointmentEvent.create({
-          data: {
-            appointmentId: created.id,
-            toStatus: created.status,
-            actorUserId: request.crmUser!.id,
-            note: "Создана администратором"
-          }
-        });
-        return transaction.appointment.findUniqueOrThrow({
-          where: { id: created.id },
-          include: appointmentInclude
-        });
-      });
-
-      return reply.code(201).send({ appointment });
     }
   );
 

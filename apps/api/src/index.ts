@@ -3,7 +3,10 @@ import { buildServer } from "./app.js";
 import { environment } from "./config.js";
 
 const database = environment.DATABASE_URL
-  ? createDatabaseClient(environment.DATABASE_URL)
+  ? createDatabaseClient(environment.DATABASE_URL, {
+      maxConnections: environment.DB_POOL_MAX,
+      connectionTimeoutMs: environment.DB_CONNECTION_TIMEOUT_MS
+    })
   : null;
 const server = await buildServer(database);
 

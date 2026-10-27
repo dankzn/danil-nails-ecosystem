@@ -156,25 +156,34 @@ export async function findAvailableSlots(
     date: string;
     now?: Date;
     excludeAppointmentId?: string;
+    resolvedStaff?: { id: string; displayName: string };
+    resolvedService?: {
+      id: string;
+      titleRu: string;
+      durationMinutes: number;
+      bufferAfterMinutes: number;
+    };
   }
 ) {
   const dayStart = timeToDate(input.date, "00:00");
   const dayEnd = new Date(dayStart.getTime() + 86400000);
   const weekday = weekdayForDate(input.date);
   const [staff, service] = await Promise.all([
-    database.staffProfile.findFirst({
-      where: { id: input.staffId, isBookable: true },
-      select: { id: true, displayName: true }
-    }),
-    database.service.findFirst({
-      where: { id: input.serviceId, isActive: true },
-      select: {
-        id: true,
-        titleRu: true,
-        durationMinutes: true,
-        bufferAfterMinutes: true
-      }
-    })
+    input.resolvedStaff ??
+      database.staffProfile.findFirst({
+        where: { id: input.staffId, isBookable: true },
+        select: { id: true, displayName: true }
+      }),
+    input.resolvedService ??
+      database.service.findFirst({
+        where: { id: input.serviceId, isActive: true },
+        select: {
+          id: true,
+          titleRu: true,
+          durationMinutes: true,
+          bufferAfterMinutes: true
+        }
+      })
   ]);
 
   if (!staff) return { ok: false as const, error: "staff_not_found" as const };

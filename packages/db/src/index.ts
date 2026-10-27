@@ -1,4 +1,8 @@
-export { createDatabaseClient, type DatabaseClient } from "./client.js";
+export {
+  createDatabaseClient,
+  type DatabaseClient,
+  type DatabaseClientOptions
+} from "./client.js";
 export { hashPassword, verifyPassword } from "./security.js";
 export {
   AppointmentStatus,

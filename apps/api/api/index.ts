@@ -12,7 +12,10 @@ let serverPromise: ReturnType<typeof buildServer> | null = null;
 function getServer() {
   if (!serverPromise) {
     const database = environment.DATABASE_URL
-      ? createDatabaseClient(environment.DATABASE_URL)
+      ? createDatabaseClient(environment.DATABASE_URL, {
+          maxConnections: environment.DB_POOL_MAX,
+          connectionTimeoutMs: environment.DB_CONNECTION_TIMEOUT_MS
+        })
       : null;
     serverPromise = buildServer(database, { logger: true }).then(async (server) => {
       await server.ready();

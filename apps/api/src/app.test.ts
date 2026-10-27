@@ -18,6 +18,8 @@ test("health reports an unconfigured database", async () => {
   const response = await server.inject({ method: "GET", url: "/health" });
 
   assert.equal(response.statusCode, 200);
+  assert.match(String(response.headers["server-timing"]), /^app;dur=\d/);
+  assert.match(String(response.headers["x-response-time-ms"]), /^\d/);
   assert.deepEqual(response.json(), {
     ok: true,
     service: "danil-nails-api",

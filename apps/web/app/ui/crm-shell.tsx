@@ -18,6 +18,31 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { apiUrl } from "../lib/api-url";
 
+const sessionUserCacheKey = "danil-nails.crm-user";
+
+type SessionUser = {
+  displayName: string | null;
+  email: string | null;
+  role: string;
+};
+
+function cachedSessionUser(): SessionUser | null {
+  try {
+    const value = window.sessionStorage.getItem(sessionUserCacheKey);
+    if (!value) return null;
+    const parsed = JSON.parse(value) as Partial<SessionUser>;
+    if (typeof parsed.role !== "string") return null;
+    return {
+      displayName:
+        typeof parsed.displayName === "string" ? parsed.displayName : null,
+      email: typeof parsed.email === "string" ? parsed.email : null,
+      role: parsed.role
+    };
+  } catch {
+    return null;
+  }
+}
+
 type NavLeaf = { href: string; label: string };
 type NavItem = {
   href?: string;
@@ -64,17 +89,19 @@ export function CrmShell({ children }: { children: ReactNode }) {
   const isLoginPage = normalizedPathname === "/login";
   const router = useRouter();
   const activeNavItemRef = useRef<HTMLAnchorElement>(null);
-  const [user, setUser] = useState<{
-    displayName: string | null;
-    email: string | null;
-    role: string;
-  } | null>(null);
+  const [user, setUser] = useState<SessionUser | null>(null);
   const [isCheckingSession, setIsCheckingSession] = useState(!isLoginPage);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({});
   useEffect(() => {
     if (isLoginPage) {
       setIsCheckingSession(false);
       return;
+    }
+
+    const cachedUser = cachedSessionUser();
+    if (cachedUser) {
+      setUser(cachedUser);
+      setIsCheckingSession(false);
     }
 
     const controller = new AbortController();
@@ -87,6 +114,8 @@ export function CrmShell({ children }: { children: ReactNode }) {
         });
 
         if (!response.ok) {
+          window.sessionStorage.removeItem(sessionUserCacheKey);
+          setUser(null);
           router.replace("/login");
           return;
         }
@@ -99,9 +128,13 @@ export function CrmShell({ children }: { children: ReactNode }) {
           };
         };
         setUser(body.user);
+        window.sessionStorage.setItem(
+          sessionUserCacheKey,
+          JSON.stringify(body.user)
+        );
       } catch (error) {
         if (!(error instanceof DOMException && error.name === "AbortError")) {
-          router.replace("/login");
+          if (!cachedUser) router.replace("/login");
         }
       } finally {
         setIsCheckingSession(false);
@@ -127,6 +160,7 @@ export function CrmShell({ children }: { children: ReactNode }) {
       method: "POST",
       credentials: "include"
     });
+    window.sessionStorage.removeItem(sessionUserCacheKey);
     setUser(null);
     router.replace("/login");
   }

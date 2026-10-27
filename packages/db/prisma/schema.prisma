@@ -761,6 +761,7 @@ model Appointment {
   loyaltyTransactions ClientLoyaltyTransaction[]
 
   @@index([staffId, startsAt, endsAt])
+  @@index([staffId, status, startsAt, endsAt])
   @@index([clientId, startsAt])
   @@index([status])
   @@index([createdByUserId, source, completedAt])

@@ -31,6 +31,9 @@
 | --- | --- |
 | `NODE_ENV` | `production` |
 | `DATABASE_URL` | тот же Supabase pooler URL, что сейчас в Render |
+| `DB_POOL_MAX` | `2` для ограничения суммарного числа соединений serverless-инстансов |
+| `DB_CONNECTION_TIMEOUT_MS` | `5000` |
+| `API_SLOW_REQUEST_MS` | `750` |
 | `APP_PUBLIC_URL` | фактический HTTPS URL этого Vercel-проекта (например `https://danil-nails-api.vercel.app`) |
 | `CRM_PUBLIC_URL` | фактический HTTPS URL проекта CRM (см. ниже) — без него CORS отклонит запросы из CRM |
 | `SITE_PUBLIC_URL` | фактический HTTPS URL `apps/site` на Vercel (уже используется) |
