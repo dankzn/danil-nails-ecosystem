@@ -2974,9 +2974,9 @@ td strong {
 }
 
 .workspace-record-summary {
-  min-height: 118px;
+  min-height: 72px;
   display: grid;
-  grid-template-columns: minmax(220px, 0.8fr) minmax(480px, 2fr) auto;
+  grid-template-columns: minmax(220px, 1fr) auto;
   align-items: stretch;
   border-bottom: 1px solid var(--border);
   background: var(--surface);
@@ -3014,23 +3014,20 @@ td strong {
   font-weight: 750;
 }
 
-.workspace-record-client > span:last-child,
-.workspace-record-facts > div {
+.workspace-record-client > span:last-child {
   min-width: 0;
   display: grid;
   gap: 5px;
 }
 
-.workspace-record-client small,
-.workspace-record-facts small {
+.workspace-record-client small {
   color: var(--text-muted);
   font-size: 9px;
   font-weight: 750;
   text-transform: uppercase;
 }
 
-.workspace-record-client strong,
-.workspace-record-facts strong {
+.workspace-record-client strong {
   min-width: 0;
   overflow: hidden;
   font-size: 13px;
@@ -3044,18 +3041,6 @@ td strong {
   gap: 5px;
   color: var(--text-muted);
   font-size: 10px;
-}
-
-.workspace-record-facts {
-  min-width: 0;
-  display: grid;
-  grid-template-columns: 1.4fr 1fr 1fr 0.8fr;
-}
-
-.workspace-record-facts > div {
-  align-content: center;
-  border-right: 1px solid var(--border);
-  padding: 18px;
 }
 
 .workspace-record-actions {
@@ -3086,11 +3071,6 @@ td strong {
 
 .workspace-payment-button:hover {
   filter: brightness(0.94);
-}
-
-.workspace-payment-button.is-complete {
-  border-color: var(--green);
-  background: var(--green);
 }
 
 .workspace-tabs {
@@ -3134,23 +3114,362 @@ td strong {
   align-content: start;
 }
 
-.workspace-appointment-layout {
+.dikidi-record {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+  padding: 20px 22px 8px;
+}
+
+.dikidi-row {
+  display: grid;
+  gap: 14px;
+}
+
+.dikidi-row-top {
+  grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr) minmax(0, 1fr);
+}
+
+.dikidi-row-notify {
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: end;
+}
+
+.dikidi-row-comment {
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: start;
 }
 
-.workspace-appointment-layout > .appointment-details,
-.workspace-appointment-layout > .workspace-payment-section {
-  grid-column: 1 / -1;
+.dikidi-field {
+  min-width: 0;
+  display: grid;
+  gap: 6px;
 }
 
-.workspace-appointment-layout > .editor-section:not(.workspace-payment-section) {
-  min-height: 100%;
+.dikidi-field > span {
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
 }
 
-.workspace-appointment-layout > .editor-section:nth-of-type(even) {
-  border-left: 1px solid var(--border);
+.dikidi-field select,
+.dikidi-field input,
+.dikidi-field textarea {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 9px 11px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 12px;
+}
+
+.dikidi-field select:focus,
+.dikidi-field input:focus,
+.dikidi-field textarea:focus {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.dikidi-field select:disabled,
+.dikidi-field input:disabled {
+  color: var(--text-muted);
+  cursor: not-allowed;
+  background: var(--surface-soft);
+}
+
+.dikidi-field-block {
+  max-width: 320px;
+}
+
+.dikidi-field-grow {
+  min-width: 0;
+}
+
+.dikidi-field-grow textarea {
+  min-height: 86px;
+  resize: vertical;
+}
+
+.dikidi-notice {
+  margin: -4px 0 0;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.dikidi-inline-apply {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.dikidi-divider {
+  height: 1px;
+  background: var(--border);
+}
+
+.dikidi-service-row {
+  display: grid;
+  gap: 8px;
+}
+
+.dikidi-service-row-head,
+.dikidi-service-row-body {
+  display: grid;
+  grid-template-columns: 2fr 0.9fr 1fr 0.8fr 0.8fr 1fr auto;
+  gap: 10px;
+  align-items: center;
+}
+
+.dikidi-service-row-head span {
+  color: var(--text-muted);
+  font-size: 9px;
+  font-weight: 750;
+  text-transform: uppercase;
+}
+
+.dikidi-service-name {
+  overflow: hidden;
+  font-size: 13px;
+  font-weight: 650;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.dikidi-service-static {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.dikidi-service-total {
+  color: var(--text);
+  font-weight: 700;
+}
+
+.dikidi-service-input {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 9px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 12px;
+}
+
+.dikidi-add-service {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: var(--surface-soft);
+  color: var(--text-muted);
+  cursor: not-allowed;
+}
+
+.dikidi-checkbox-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text);
+  font-size: 12px;
+}
+
+.dikidi-checkbox-row select {
+  margin-left: auto;
+  min-width: 140px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 7px 9px;
+  background: var(--surface-soft);
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 11px;
+}
+
+.dikidi-field-label {
+  display: block;
+  margin-bottom: 2px;
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 750;
+  text-transform: uppercase;
+}
+
+.dikidi-client-block {
+  display: grid;
+  gap: 8px;
+}
+
+.dikidi-client-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+}
+
+.dikidi-client-name {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 9px 11px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.dikidi-client-name:hover {
+  background: var(--surface-soft);
+}
+
+.dikidi-client-name svg {
+  color: var(--accent);
+}
+
+.dikidi-inline-checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--text);
+  font-size: 12px;
+}
+
+.dikidi-attendance-buttons {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.dikidi-attendance-buttons button {
+  border: 0;
+  border-right: 1px solid var(--border);
+  padding: 8px 14px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.dikidi-attendance-buttons button:last-child {
+  border-right: 0;
+}
+
+.dikidi-attendance-buttons button:hover {
+  background: var(--surface-soft);
+}
+
+.dikidi-attendance-buttons button.is-active {
+  background: var(--accent);
+  color: #fff;
+}
+
+.dikidi-client-sub {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.dikidi-link {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--accent);
+  font: inherit;
+  font-size: 11px;
+  text-decoration: underline;
+  cursor: pointer;
+  width: fit-content;
+}
+
+.dikidi-link:hover {
+  filter: brightness(0.9);
+}
+
+.dikidi-color-block {
+  display: grid;
+  gap: 8px;
+  justify-items: start;
+}
+
+.dikidi-color-block > span {
+  color: var(--text-muted);
+  font-size: 10px;
+  font-weight: 750;
+  text-transform: uppercase;
+}
+
+.dikidi-attachment {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px dashed var(--border);
+  border-radius: 6px;
+  padding: 12px 14px;
+  color: var(--text-muted);
+  font-size: 12px;
+  cursor: not-allowed;
+}
+
+.dikidi-footer {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-top: 1px solid var(--border);
+  padding: 16px 22px;
+  background: var(--surface);
+}
+
+.dikidi-footer-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.dikidi-footer-actions .secondary-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.dikidi-footer-cancel {
+  display: flex;
+  align-items: center;
+}
+
+.dikidi-cancel-prompt {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.dikidi-cancel-prompt select,
+.dikidi-cancel-prompt input {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 10px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 11px;
+}
+
+.dikidi-cancel-prompt input {
+  min-width: 220px;
 }
 
 .workspace-payment-section {
@@ -3480,43 +3799,6 @@ td strong {
   font-size: 10px;
 }
 
-.appointment-details {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0;
-  margin: 0;
-  padding: 4px 20px 14px;
-}
-
-.appointment-details > div {
-  min-height: 62px;
-  display: grid;
-  align-content: center;
-  gap: 5px;
-  border-bottom: 1px solid var(--border);
-}
-
-.appointment-details > div:nth-child(odd) {
-  padding-right: 18px;
-}
-
-.appointment-details > div:nth-child(even) {
-  padding-left: 18px;
-}
-
-.appointment-details dt {
-  color: var(--text-muted);
-  font-size: 10px;
-  font-weight: 700;
-  text-transform: uppercase;
-}
-
-.appointment-details dd {
-  margin: 0;
-  font-size: 12px;
-  font-weight: 650;
-}
-
 .editor-section {
   display: grid;
   gap: 14px;
@@ -3595,20 +3877,8 @@ td strong {
   gap: 16px;
 }
 
-.editor-inline-action {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  align-items: end;
-  gap: 10px;
-}
-
 .editor-action {
   justify-self: end;
-}
-
-.reschedule-fields {
-  display: grid;
-  gap: 14px;
 }
 
 .appointment-editor > .feedback {
@@ -3616,21 +3886,6 @@ td strong {
 }
 
 @media (max-width: 1040px) {
-  .workspace-record-summary {
-    grid-template-columns: minmax(0, 1fr) auto;
-  }
-
-  .workspace-record-facts {
-    grid-column: 1 / -1;
-    grid-row: 2;
-    border-top: 1px solid var(--border);
-  }
-
-  .workspace-record-actions {
-    grid-column: 2;
-    grid-row: 1;
-  }
-
   .metric-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -3860,20 +4115,6 @@ td strong {
     padding: 15px 16px;
   }
 
-  .workspace-record-facts {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    border-top: 1px solid var(--border);
-  }
-
-  .workspace-record-facts > div {
-    min-height: 66px;
-    padding: 12px 15px;
-  }
-
-  .workspace-record-facts > div:nth-child(2n) {
-    border-right: 0;
-  }
-
   .workspace-record-actions {
     min-width: 0;
     display: flex;
@@ -3887,12 +4128,35 @@ td strong {
     height: 36px;
   }
 
-  .workspace-appointment-layout {
+  .dikidi-record {
+    padding: 16px 16px 4px;
+  }
+
+  .dikidi-row-top,
+  .dikidi-row-notify,
+  .dikidi-row-comment {
     grid-template-columns: 1fr;
   }
 
-  .workspace-appointment-layout > .editor-section:nth-of-type(even) {
-    border-left: 0;
+  .dikidi-service-row-head {
+    display: none;
+  }
+
+  .dikidi-service-row-body {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .dikidi-footer {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .dikidi-footer-actions {
+    justify-content: stretch;
+  }
+
+  .dikidi-footer-actions button {
+    flex: 1 1 auto;
   }
 
   .form-grid-two,
@@ -3981,10 +4245,6 @@ td strong {
     grid-column: 1 / -1;
   }
 
-  .appointment-details {
-    grid-template-columns: 1fr;
-  }
-
   .workspace-tabs button {
     height: 44px;
     padding: 0 13px;
@@ -4029,17 +4289,6 @@ td strong {
     padding: 12px 16px;
   }
 
-  .appointment-details > div:nth-child(odd),
-  .appointment-details > div:nth-child(even) {
-    padding-left: 0;
-    padding-right: 0;
-  }
-
-  .editor-inline-action {
-    grid-template-columns: 1fr;
-  }
-
-  .editor-inline-action .secondary-button,
   .editor-action {
     width: 100%;
     justify-self: stretch;

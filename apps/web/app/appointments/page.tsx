@@ -12,8 +12,11 @@ import {
   CreditCard,
   Gift,
   History,
+  Info,
   LoaderCircle,
+  Paperclip,
   Phone,
+  Plus,
   TriangleAlert,
   UserRound
 } from "lucide-react";
@@ -249,6 +252,14 @@ function formatMoney(amountMinor: number, currency: string) {
     minimumFractionDigits: 0,
     maximumFractionDigits: 2
   }).format(amountMinor / 100);
+}
+
+function durationLabel(totalMinutes: number) {
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  if (hours && minutes) return `${hours} ч ${minutes} м`;
+  if (hours) return `${hours} ч`;
+  return `${minutes} м`;
 }
 
 function minorAmount(value: string) {
@@ -677,9 +688,11 @@ export default function AppointmentsPage() {
     useState<AttendanceStatus>("not_requested");
   const [cancellationReason, setCancellationReason] = useState("");
   const [discountAmount, setDiscountAmount] = useState("");
+  const [discountPercent, setDiscountPercent] = useState("");
   const [promoCode, setPromoCode] = useState("");
+  const [internalNote, setInternalNote] = useState("");
+  const [isCancelPromptOpen, setIsCancelPromptOpen] = useState(false);
   const [canceledBy, setCanceledBy] = useState<"client" | "studio">("studio");
-  const [isRescheduling, setIsRescheduling] = useState(false);
   const [rescheduleDate, setRescheduleDate] = useState(moscowDateKey);
   const [rescheduleStaffId, setRescheduleStaffId] = useState("");
   const [rescheduleServiceId, setRescheduleServiceId] = useState("");
@@ -910,7 +923,6 @@ export default function AppointmentsPage() {
   useEffect(() => {
     if (
       !selectedAppointment ||
-      !isRescheduling ||
       !rescheduleDate ||
       !rescheduleStaffId ||
       !rescheduleServiceId
@@ -956,7 +968,6 @@ export default function AppointmentsPage() {
 
     return () => controller.abort();
   }, [
-    isRescheduling,
     rescheduleAvailabilityVersion,
     rescheduleDate,
     rescheduleServiceId,
@@ -1047,20 +1058,31 @@ export default function AppointmentsPage() {
     setAttendanceStatus(appointment.attendanceConfirmationStatus);
     setCancellationReason(appointment.cancellationReason ?? "");
     setCanceledBy("studio");
-    setIsRescheduling(false);
+    setIsCancelPromptOpen(false);
     setRescheduleDate(initialDate);
     setRescheduleStaffId(appointment.staff.id);
     setRescheduleServiceId(appointment.service.id);
-    setRescheduleStartsAt("");
+    setRescheduleStartsAt(
+      appointmentDate === initialDate
+        ? moscowDateTimeInput(new Date(appointment.startsAt))
+        : ""
+    );
     setRescheduleSlots([]);
     setRescheduleAvailabilityError(null);
     setRescheduleRequestedBy("studio");
+    const basePriceMinor = appointment.priceMinor + appointment.discountAmountMinor;
     setDiscountAmount(
       appointment.discountAmountMinor
         ? String(appointment.discountAmountMinor / 100)
         : ""
     );
+    setDiscountPercent(
+      appointment.discountAmountMinor && basePriceMinor > 0
+        ? String(Math.round((appointment.discountAmountMinor / basePriceMinor) * 100))
+        : ""
+    );
     setPromoCode(appointment.promoCode ?? "");
+    setInternalNote(appointment.internalNote ?? "");
     setFormError(null);
   }
 
@@ -1124,8 +1146,11 @@ export default function AppointmentsPage() {
     }
   }
 
-  async function updateStatus() {
+  async function updateStatus(
+    overrideStatus?: (typeof manageableStatuses)[number]
+  ) {
     if (!selectedAppointment) return;
+    const nextStatus = overrideStatus ?? status;
     setIsSaving(true);
     setFormError(null);
     setNotice(null);
@@ -1135,8 +1160,8 @@ export default function AppointmentsPage() {
         {
           method: "PATCH",
           body: JSON.stringify({
-            status,
-            ...(status === "canceled"
+            status: nextStatus,
+            ...(nextStatus === "canceled"
               ? {
                   canceledBy,
                   cancellationReason: cancellationReason.trim() || null
@@ -1146,7 +1171,7 @@ export default function AppointmentsPage() {
         }
       );
       setSelectedAppointment(null);
-      setNotice(`Статус изменён: ${statusMeta[status].label}.`);
+      setNotice(`Статус изменён: ${statusMeta[nextStatus].label}.`);
       await refresh();
     } catch (error) {
       setFormError(appointmentErrorMessage(error));
@@ -1206,29 +1231,107 @@ export default function AppointmentsPage() {
       await refresh();
     } catch (error) {
       setFormError(appointmentErrorMessage(error));
+      throw error;
     } finally {
       setIsSaving(false);
     }
   }
 
-  async function updateAttendance() {
+  function handleDiscountAmountInput(value: string) {
+    setDiscountAmount(value);
+    if (!selectedAppointment) return;
+    const basePriceMinor =
+      selectedAppointment.priceMinor + selectedAppointment.discountAmountMinor;
+    const amount = Number(value.replace(",", "."));
+    if (!value.trim() || !Number.isFinite(amount) || basePriceMinor <= 0) {
+      setDiscountPercent("");
+      return;
+    }
+    const amountMinor = Math.round(amount * 100);
+    const percent = Math.round((amountMinor / basePriceMinor) * 100);
+    setDiscountPercent(percent > 0 ? String(percent) : "");
+  }
+
+  function handleDiscountPercentInput(value: string) {
+    setDiscountPercent(value);
+    if (!selectedAppointment) return;
+    const basePriceMinor =
+      selectedAppointment.priceMinor + selectedAppointment.discountAmountMinor;
+    const percent = Number(value.replace(",", "."));
+    if (!value.trim() || !Number.isFinite(percent)) {
+      setDiscountAmount("");
+      return;
+    }
+    const amountMinor = Math.round((basePriceMinor * percent) / 100);
+    setDiscountAmount(amountMinor > 0 ? String(amountMinor / 100) : "");
+  }
+
+  async function saveAppointmentDetails() {
+    if (!selectedAppointment) return;
+    setFormError(null);
+    try {
+      if (internalNote !== (selectedAppointment.internalNote ?? "")) {
+        await updateNote();
+      }
+      const parsedDiscount = discountAmount.trim()
+        ? Number(discountAmount.replace(",", "."))
+        : 0;
+      const discountChanged =
+        Number.isFinite(parsedDiscount) &&
+        Math.round(parsedDiscount * 100) !== selectedAppointment.discountAmountMinor;
+      const promoChanged = promoCode.trim() !== (selectedAppointment.promoCode ?? "");
+      if (discountChanged || promoChanged) {
+        await updatePricing();
+      }
+      setNotice("Изменения сохранены.");
+    } catch {
+      // ошибка уже отражена в formError внутри updateNote/updatePricing
+    }
+  }
+
+  async function updateAttendance(overrideStatus?: AttendanceStatus) {
+    if (!selectedAppointment) return;
+    const nextStatus = overrideStatus ?? attendanceStatus;
+    setIsSaving(true);
+    setFormError(null);
+    setNotice(null);
+    try {
+      const response = await apiRequest<{ appointment: Appointment }>(
+        `/v1/admin/appointments/${selectedAppointment.id}/attendance`,
+        {
+          method: "PATCH",
+          body: JSON.stringify({ status: nextStatus })
+        }
+      );
+      setSelectedAppointment(response.appointment);
+      setAttendanceStatus(nextStatus);
+      setNotice("Подтверждение визита обновлено.");
+      await refresh();
+    } catch (error) {
+      setFormError(appointmentErrorMessage(error));
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  async function updateNote() {
     if (!selectedAppointment) return;
     setIsSaving(true);
     setFormError(null);
     setNotice(null);
     try {
-      await apiRequest(
-        `/v1/admin/appointments/${selectedAppointment.id}/attendance`,
+      const response = await apiRequest<{ appointment: Appointment }>(
+        `/v1/admin/appointments/${selectedAppointment.id}/note`,
         {
           method: "PATCH",
-          body: JSON.stringify({ status: attendanceStatus })
+          body: JSON.stringify({ internalNote: internalNote.trim() || null })
         }
       );
-      setSelectedAppointment(null);
-      setNotice("Подтверждение визита обновлено.");
+      setSelectedAppointment(response.appointment);
       await refresh();
     } catch (error) {
       setFormError(appointmentErrorMessage(error));
+      throw error;
     } finally {
       setIsSaving(false);
     }
@@ -1412,6 +1515,28 @@ export default function AppointmentsPage() {
   const selectedService = options?.services.find(
     (service) => service.id === form.serviceId
   );
+
+  const basePriceMinor = selectedAppointment
+    ? selectedAppointment.priceMinor + selectedAppointment.discountAmountMinor
+    : 0;
+  const currentStartsAtValue = selectedAppointment
+    ? moscowDateTimeInput(new Date(selectedAppointment.startsAt))
+    : "";
+  const currentDateValue = selectedAppointment
+    ? moscowDateKey(new Date(selectedAppointment.startsAt))
+    : "";
+  const hasRescheduleChanges = Boolean(
+    selectedAppointment &&
+      rescheduleStartsAt &&
+      (rescheduleStaffId !== selectedAppointment.staff.id ||
+        rescheduleDate !== currentDateValue ||
+        rescheduleStartsAt !== currentStartsAtValue)
+  );
+  const previewDiscountMinor = Math.min(
+    Math.max(0, minorAmount(discountAmount || "0") || 0),
+    basePriceMinor
+  );
+  const previewTotalMinor = Math.max(0, basePriceMinor - previewDiscountMinor);
 
   return (
     <div className="page-stack">
@@ -1910,59 +2035,21 @@ export default function AppointmentsPage() {
                 </span>
               </button>
 
-              <div className="workspace-record-facts">
-                <div>
-                  <small>Услуга</small>
-                  <strong>{selectedAppointment.service.titleRu}</strong>
-                </div>
-                <div>
-                  <small>Дата и время</small>
-                  <strong>
-                    {dateTimeFormatter.format(
-                      new Date(selectedAppointment.startsAt)
-                    )}
-                  </strong>
-                </div>
-                <div>
-                  <small>Мастер</small>
-                  <strong>{selectedAppointment.staff.displayName}</strong>
-                </div>
-                <div>
-                  <small>Итого</small>
-                  <strong>
-                    {formatMoney(
-                      selectedAppointment.priceMinor,
-                      selectedAppointment.currency
-                    )}
-                  </strong>
-                </div>
-              </div>
-
               <div className="workspace-record-actions">
                 <span
                   className={`status status-${statusMeta[selectedAppointment.status].tone}`}
                 >
                   {statusMeta[selectedAppointment.status].label}
                 </span>
-                {closableStatuses.includes(
-                  selectedAppointment.status as (typeof closableStatuses)[number]
-                ) ? (
+                {selectedAppointment.status === "draft" ||
+                selectedAppointment.status === "pending_admin_confirmation" ? (
                   <button
                     className="workspace-payment-button"
-                    onClick={focusPayment}
+                    disabled={isSaving}
+                    onClick={() => void updateStatus("confirmed")}
                     type="button"
                   >
-                    <CreditCard aria-hidden="true" size={16} />
-                    Оформить оплату
-                  </button>
-                ) : selectedAppointment.status === "completed" ? (
-                  <button
-                    className="workspace-payment-button is-complete"
-                    onClick={focusPayment}
-                    type="button"
-                  >
-                    <CreditCard aria-hidden="true" size={16} />
-                    Оплата проведена
+                    Подтвердить запись
                   </button>
                 ) : null}
               </div>
@@ -1998,198 +2085,342 @@ export default function AppointmentsPage() {
             ) : null}
             {workspaceTab === "appointment" ? (
               <>
-            <div className="workspace-appointment-layout">
-            <dl className="appointment-details">
-              <div>
-                <dt>Мастер</dt>
-                <dd>{selectedAppointment.staff.displayName}</dd>
-              </div>
-              <div>
-                <dt>Телефон</dt>
-                <dd>{selectedAppointment.client.phone}</dd>
-              </div>
-              <div>
-                <dt>Статус</dt>
-                <dd>{statusMeta[selectedAppointment.status].label}</dd>
-              </div>
-              <div>
-                <dt>Источник записи</dt>
-                <dd>{appointmentSourceLabel(selectedAppointment)}</dd>
-              </div>
-              <div>
-                <dt>Стоимость</dt>
-                <dd>
-                  {formatMoney(
-                    selectedAppointment.priceMinor,
-                    selectedAppointment.currency
-                  )}
-                  {selectedAppointment.discountAmountMinor > 0 ? (
-                    <small>
-                      {" "}
-                      (скидка{" "}
-                      {formatMoney(
-                        selectedAppointment.discountAmountMinor,
-                        selectedAppointment.currency
-                      )}
-                      {selectedAppointment.promoCode
-                        ? `, промокод ${selectedAppointment.promoCode}`
-                        : ""}
-                      )
-                    </small>
-                  ) : null}
-                </dd>
-              </div>
-              <div>
-                <dt>Подтверждение визита</dt>
-                <dd>
-                  {attendanceMeta[
-                    selectedAppointment.attendanceConfirmationStatus
-                  ]}
-                </dd>
-              </div>
-            </dl>
-
-            <section className="editor-section">
-              <div className="editor-section-heading">
-                <div>
-                  <p className="section-kicker">Цена</p>
-                  <h2>Скидка и промокод</h2>
-                </div>
-              </div>
-              <div className="form-grid form-grid-two">
-                <label className="form-field">
-                  <span>Скидка, {selectedAppointment.currency}</span>
-                  <input
-                    inputMode="decimal"
-                    onChange={(event) => setDiscountAmount(event.target.value)}
-                    placeholder="0"
-                    value={discountAmount}
-                  />
-                </label>
-                <label className="form-field">
-                  <span>Промокод</span>
-                  <input
-                    maxLength={60}
-                    onChange={(event) => setPromoCode(event.target.value)}
-                    value={promoCode}
-                  />
-                </label>
-              </div>
-              <button
-                className="secondary-button editor-action"
-                disabled={isSaving}
-                onClick={() => void updatePricing()}
-                type="button"
-              >
-                Применить скидку
-              </button>
-            </section>
-
-            <section className="editor-section">
-              <div className="editor-section-heading">
-                <div>
-                  <p className="section-kicker">Модерация</p>
-                  <h2>Статус записи</h2>
-                </div>
-                <button
-                  className="secondary-button"
-                  onClick={() => duplicateAppointment()}
-                  type="button"
-                >
-                  Повторить запись
-                </button>
-              </div>
-              <div className="form-grid form-grid-two">
-                <label className="form-field">
-                  <span>Новый статус</span>
+            <div className="dikidi-record">
+              <div className="dikidi-row dikidi-row-top">
+                <label className="dikidi-field dikidi-field-wide">
+                  <span>Мастер</span>
                   <select
-                    onChange={(event) =>
-                      setStatus(
-                        event.target.value as (typeof manageableStatuses)[number]
-                      )
-                    }
-                    value={status}
+                    onChange={(event) => {
+                      setRescheduleStaffId(event.target.value);
+                      setRescheduleStartsAt("");
+                    }}
+                    value={rescheduleStaffId}
                   >
-                    {manageableStatuses.map((value) => (
-                      <option key={value} value={value}>
-                        {statusMeta[value].label}
+                    {options?.staff.map((staff) => (
+                      <option key={staff.id} value={staff.id}>
+                        {staff.displayName}
                       </option>
                     ))}
                   </select>
                 </label>
-                {status === "canceled" ? (
-                  <label className="form-field">
-                    <span>Инициатор отмены</span>
-                    <select
-                      onChange={(event) =>
-                        setCanceledBy(event.target.value as "client" | "studio")
-                      }
-                      value={canceledBy}
-                    >
-                      <option value="studio">Студия</option>
-                      <option value="client">Клиент</option>
-                    </select>
-                  </label>
-                ) : null}
-              </div>
-              {status === "canceled" ? (
-                <label className="form-field">
-                  <span>Причина отмены</span>
+                <label className="dikidi-field">
+                  <span>Дата</span>
                   <input
-                    maxLength={1000}
-                    onChange={(event) => setCancellationReason(event.target.value)}
-                    value={cancellationReason}
+                    max={moveDate(
+                      moscowDateKey(),
+                      bookingRules.bookingHorizonDays
+                    )}
+                    min={moscowDateKey()}
+                    onChange={(event) => {
+                      setRescheduleDate(event.target.value);
+                      setRescheduleStartsAt("");
+                    }}
+                    type="date"
+                    value={rescheduleDate}
                   />
                 </label>
+                <label className="dikidi-field">
+                  <span>Время</span>
+                  <select
+                    disabled={isRescheduleAvailabilityLoading}
+                    onChange={(event) => setRescheduleStartsAt(event.target.value)}
+                    value={rescheduleStartsAt}
+                  >
+                    {!rescheduleStartsAt ? (
+                      <option value="">
+                        {isRescheduleAvailabilityLoading
+                          ? "Загрузка…"
+                          : "Выберите время"}
+                      </option>
+                    ) : null}
+                    {rescheduleStartsAt &&
+                    !rescheduleSlots.some(
+                      (slot) =>
+                        moscowDateTimeInput(new Date(slot.startsAt)) ===
+                        rescheduleStartsAt
+                    ) ? (
+                      <option value={rescheduleStartsAt}>
+                        {timeFormatter.format(new Date(toMoscowIso(rescheduleStartsAt)))}
+                      </option>
+                    ) : null}
+                    {rescheduleSlots.map((slot) => {
+                      const value = moscowDateTimeInput(new Date(slot.startsAt));
+                      return (
+                        <option key={value} value={value}>
+                          {timeFormatter.format(new Date(slot.startsAt))}
+                        </option>
+                      );
+                    })}
+                  </select>
+                </label>
+              </div>
+              {rescheduleAvailabilityError ? (
+                <p className="feedback feedback-error" role="alert">
+                  {rescheduleAvailabilityError}
+                </p>
               ) : null}
-              <button
-                className="secondary-button editor-action"
-                disabled={isSaving}
-                onClick={() => void updateStatus()}
-                type="button"
-              >
-                Обновить статус
-              </button>
-            </section>
+              {!rescheduleSlots.length && !isRescheduleAvailabilityLoading ? (
+                <p className="dikidi-notice">Доступное время для записи закончилось</p>
+              ) : null}
+              {hasRescheduleChanges ? (
+                <div className="dikidi-inline-apply">
+                  <button
+                    className="primary-button"
+                    disabled={isSaving}
+                    onClick={() => void rescheduleAppointment()}
+                    type="button"
+                  >
+                    Сохранить перенос
+                  </button>
+                </div>
+              ) : null}
 
-            <section className="editor-section">
-              <div className="editor-section-heading">
-                <div>
-                  <p className="section-kicker">Личная метка</p>
-                  <h2>Цвет записи</h2>
+              <div className="dikidi-divider" />
+
+              <div className="dikidi-service-row">
+                <div className="dikidi-service-row-head">
+                  <span>Услуга</span>
+                  <span>Длит.</span>
+                  <span>Цена</span>
+                  <span>Скидка - %</span>
+                  <span>Скидка - Σ</span>
+                  <span>Итого</span>
+                </div>
+                <div className="dikidi-service-row-body">
+                  <div className="dikidi-service-name">
+                    {selectedAppointment.service.titleRu}
+                  </div>
+                  <div className="dikidi-service-static">
+                    {durationLabel(selectedAppointment.service.durationMinutes)}
+                  </div>
+                  <div className="dikidi-service-static">
+                    {formatMoney(basePriceMinor, selectedAppointment.currency)}
+                  </div>
+                  <input
+                    className="dikidi-service-input"
+                    inputMode="decimal"
+                    onChange={(event) =>
+                      handleDiscountPercentInput(event.target.value)
+                    }
+                    placeholder="0"
+                    value={discountPercent}
+                  />
+                  <input
+                    className="dikidi-service-input"
+                    inputMode="decimal"
+                    onChange={(event) =>
+                      handleDiscountAmountInput(event.target.value)
+                    }
+                    placeholder="0"
+                    value={discountAmount}
+                  />
+                  <div className="dikidi-service-static dikidi-service-total">
+                    {formatMoney(previewTotalMinor, selectedAppointment.currency)}
+                  </div>
+                  <button
+                    aria-label="Добавить услугу"
+                    className="dikidi-add-service"
+                    disabled
+                    title="Несколько услуг в записи будут добавлены позже"
+                    type="button"
+                  >
+                    <Plus aria-hidden="true" size={16} />
+                  </button>
                 </div>
               </div>
-              <div className="color-swatch-row">
-                <button
-                  aria-label="Цвет по умолчанию (по статусу)"
-                  aria-pressed={selectedAppointment.colorTag === null}
-                  className={`color-swatch color-swatch-auto${
-                    selectedAppointment.colorTag === null
-                      ? " color-swatch-selected"
-                      : ""
-                  }`}
-                  disabled={isSaving}
-                  onClick={() => void updateColor(null)}
-                  title="По статусу"
-                  type="button"
+
+              <label className="dikidi-field dikidi-field-block">
+                <input
+                  maxLength={60}
+                  onChange={(event) => setPromoCode(event.target.value)}
+                  placeholder="Промокод"
+                  value={promoCode}
                 />
-                {appointmentColorTags.map((tag) => (
+              </label>
+
+              <div className="dikidi-divider" />
+
+              <label
+                className="dikidi-checkbox-row"
+                title="Задаётся в настройках услуги. Будет редактируемо здесь позже."
+              >
+                <input
+                  checked={selectedAppointment.service.bufferAfterMinutes > 0}
+                  disabled
+                  readOnly
+                  type="checkbox"
+                />
+                <span>Перерыв после записи</span>
+                <select disabled value="current">
+                  <option value="current">
+                    {selectedAppointment.service.bufferAfterMinutes > 0
+                      ? durationLabel(selectedAppointment.service.bufferAfterMinutes)
+                      : "Нет"}
+                  </option>
+                </select>
+              </label>
+
+              <div className="dikidi-divider" />
+
+              <div className="dikidi-client-block">
+                <span className="dikidi-field-label">Клиент</span>
+                <div className="dikidi-client-row">
                   <button
-                    aria-label={tag}
-                    aria-pressed={selectedAppointment.colorTag === tag}
-                    className={`color-swatch color-swatch-${tag}${
-                      selectedAppointment.colorTag === tag
-                        ? " color-swatch-selected"
-                        : ""
-                    }`}
-                    disabled={isSaving}
-                    key={tag}
-                    onClick={() => void updateColor(tag)}
+                    className="dikidi-client-name"
+                    onClick={() => setWorkspaceTab("client")}
                     type="button"
-                  />
-                ))}
+                  >
+                    <span>
+                      {selectedAppointment.client.fullName ?? "Без имени"}
+                    </span>
+                    <Info aria-hidden="true" size={14} />
+                  </button>
+                  <label className="dikidi-inline-checkbox">
+                    <input
+                      checked={attendanceStatus === "confirmed"}
+                      disabled={isSaving}
+                      onChange={(event) =>
+                        void updateAttendance(
+                          event.target.checked ? "confirmed" : "not_requested"
+                        )
+                      }
+                      type="checkbox"
+                    />
+                    <span>Подтвердил</span>
+                  </label>
+                  <div className="dikidi-attendance-buttons">
+                    <button
+                      className={
+                        selectedAppointment.status === "completed" ? "is-active" : ""
+                      }
+                      onClick={focusPayment}
+                      type="button"
+                    >
+                      Пришёл
+                    </button>
+                    <button
+                      className={
+                        selectedAppointment.status === "no_show" ? "is-active" : ""
+                      }
+                      disabled={isSaving}
+                      onClick={() => void updateStatus("no_show")}
+                      type="button"
+                    >
+                      Не пришёл
+                    </button>
+                  </div>
+                </div>
+                <div className="dikidi-client-sub">
+                  <span>{selectedAppointment.client.phone}</span>
+                  <button
+                    className="dikidi-link"
+                    onClick={() => setWorkspaceTab("history")}
+                    type="button"
+                  >
+                    История записей
+                  </button>
+                </div>
+                <label
+                  className="dikidi-checkbox-row"
+                  title="Будет добавлено позже"
+                >
+                  <input disabled type="checkbox" />
+                  <span>Аноним</span>
+                </label>
               </div>
-            </section>
+
+              <div className="dikidi-divider" />
+
+              <div className="dikidi-row dikidi-row-notify">
+                <label className="dikidi-field" title="Будет добавлено позже">
+                  <span>Напоминания</span>
+                  <select disabled value="auto">
+                    <option value="auto">Автоматически</option>
+                  </select>
+                </label>
+                <label
+                  className="dikidi-inline-checkbox"
+                  title="Будет добавлено позже"
+                >
+                  <input disabled type="checkbox" />
+                  <span>С подтверждением</span>
+                </label>
+                <label className="dikidi-field" title="Будет добавлено позже">
+                  <span>
+                    Запрос отзыва и чаевых
+                  </span>
+                  <select disabled value="none">
+                    <option value="none">Не настроено</option>
+                  </select>
+                </label>
+              </div>
+              <button
+                className="dikidi-link"
+                onClick={() => setWorkspaceTab("notifications")}
+                type="button"
+              >
+                История уведомлений
+              </button>
+
+              <div className="dikidi-divider" />
+
+              <div className="dikidi-row dikidi-row-comment">
+                <label className="dikidi-field dikidi-field-grow">
+                  <span>Комментарий</span>
+                  <textarea
+                    maxLength={4000}
+                    onChange={(event) => setInternalNote(event.target.value)}
+                    rows={3}
+                    value={internalNote}
+                  />
+                </label>
+                <div className="dikidi-color-block">
+                  <span>Цвет записи</span>
+                  <div className="color-swatch-row">
+                    <button
+                      aria-label="Цвет по умолчанию (по статусу)"
+                      aria-pressed={selectedAppointment.colorTag === null}
+                      className={`color-swatch color-swatch-auto${
+                        selectedAppointment.colorTag === null
+                          ? " color-swatch-selected"
+                          : ""
+                      }`}
+                      disabled={isSaving}
+                      onClick={() => void updateColor(null)}
+                      title="По статусу"
+                      type="button"
+                    />
+                    {appointmentColorTags.map((tag) => (
+                      <button
+                        aria-label={tag}
+                        aria-pressed={selectedAppointment.colorTag === tag}
+                        className={`color-swatch color-swatch-${tag}${
+                          selectedAppointment.colorTag === tag
+                            ? " color-swatch-selected"
+                            : ""
+                        }`}
+                        disabled={isSaving}
+                        key={tag}
+                        onClick={() => void updateColor(tag)}
+                        type="button"
+                      />
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <div className="dikidi-attachment" title="Будет добавлено позже">
+                <Paperclip aria-hidden="true" size={16} />
+                <span>Прикрепить файл (PDF, XLS, PNG, JPG)</span>
+              </div>
+
+              <button
+                className="dikidi-link"
+                onClick={() => setWorkspaceTab("activity")}
+                type="button"
+              >
+                История изменений
+              </button>
 
             {closableStatuses.includes(
               selectedAppointment.status as (typeof closableStatuses)[number]
@@ -2395,143 +2626,85 @@ export default function AppointmentsPage() {
               </section>
             ) : null}
 
-            <section className="editor-section">
-              <div className="editor-section-heading">
-                <div>
-                  <p className="section-kicker">Перед визитом</p>
-                  <h2>Подтверждение клиента</h2>
-                </div>
-              </div>
-              <div className="editor-inline-action">
-                <label className="form-field">
-                  <span>Состояние</span>
-                  <select
-                    onChange={(event) =>
-                      setAttendanceStatus(event.target.value as AttendanceStatus)
-                    }
-                    value={attendanceStatus}
-                  >
-                    {Object.entries(attendanceMeta).map(([value, label]) => (
-                      <option key={value} value={value}>
-                        {label}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <button
-                  className="secondary-button"
-                  disabled={isSaving}
-                  onClick={() => void updateAttendance()}
-                  type="button"
-                >
-                  Сохранить
-                </button>
-              </div>
-            </section>
+            </div>
 
-            <section className="editor-section">
-              <div className="editor-section-heading">
-                <div>
-                  <p className="section-kicker">Изменение времени</p>
-                  <h2>Перенос записи</h2>
-                </div>
-                <button
-                  className="secondary-button"
-                  onClick={() => setIsRescheduling((value) => !value)}
-                  type="button"
-                >
-                  {isRescheduling ? "Скрыть" : "Перенести"}
-                </button>
-              </div>
-              {isRescheduling ? (
-                <div className="reschedule-fields">
-                  <div className="form-grid form-grid-two">
-                    <label className="form-field">
-                      <span>Мастер</span>
-                      <select
-                        onChange={(event) => {
-                          setRescheduleStaffId(event.target.value);
-                          setRescheduleStartsAt("");
-                        }}
-                        required
-                        value={rescheduleStaffId}
-                      >
-                        {options?.staff.map((staff) => (
-                          <option key={staff.id} value={staff.id}>
-                            {staff.displayName}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                    <label className="form-field">
-                      <span>Услуга</span>
-                      <select
-                        onChange={(event) => {
-                          setRescheduleServiceId(event.target.value);
-                          setRescheduleStartsAt("");
-                        }}
-                        required
-                        value={rescheduleServiceId}
-                      >
-                        {options?.services.map((service) => (
-                          <option key={service.id} value={service.id}>
-                            {service.titleRu} · {service.durationMinutes} мин
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                    <label className="form-field">
-                      <span>Новая дата</span>
-                      <input
-                        max={moveDate(
-                          moscowDateKey(),
-                          bookingRules.bookingHorizonDays
-                        )}
-                        min={moscowDateKey()}
-                        onChange={(event) => {
-                          setRescheduleDate(event.target.value);
-                          setRescheduleStartsAt("");
-                        }}
-                        required
-                        type="date"
-                        value={rescheduleDate}
-                      />
-                    </label>
-                    <label className="form-field">
-                      <span>Инициатор переноса</span>
-                      <select
-                        onChange={(event) =>
-                          setRescheduleRequestedBy(
-                            event.target.value as "client" | "studio"
-                          )
-                        }
-                        value={rescheduleRequestedBy}
-                      >
-                        <option value="studio">Студия</option>
-                        <option value="client">Клиент</option>
-                      </select>
-                    </label>
+            {formError ? (
+              <p className="feedback feedback-error" role="alert">
+                {formError}
+              </p>
+            ) : null}
+
+            <footer className="dikidi-footer">
+              <div className="dikidi-footer-cancel">
+                {isCancelPromptOpen ? (
+                  <div className="dikidi-cancel-prompt">
+                    <select
+                      onChange={(event) =>
+                        setCanceledBy(event.target.value as "client" | "studio")
+                      }
+                      value={canceledBy}
+                    >
+                      <option value="studio">Инициатор: студия</option>
+                      <option value="client">Инициатор: клиент</option>
+                    </select>
+                    <input
+                      maxLength={1000}
+                      onChange={(event) => setCancellationReason(event.target.value)}
+                      placeholder="Причина отмены"
+                      value={cancellationReason}
+                    />
+                    <button
+                      className="secondary-button"
+                      onClick={() => setIsCancelPromptOpen(false)}
+                      type="button"
+                    >
+                      Передумал
+                    </button>
+                    <button
+                      className="danger-button"
+                      disabled={isSaving}
+                      onClick={() => void updateStatus("canceled")}
+                      type="button"
+                    >
+                      Подтвердить отмену
+                    </button>
                   </div>
-                  <AvailabilityPicker
-                    error={rescheduleAvailabilityError}
-                    isLoading={isRescheduleAvailabilityLoading}
-                    onSelect={setRescheduleStartsAt}
-                    selectedStartsAt={rescheduleStartsAt}
-                    slots={rescheduleSlots}
-                  />
+                ) : (
                   <button
-                    className="primary-button editor-action"
-                    disabled={isSaving || !rescheduleStartsAt}
-                    onClick={() => void rescheduleAppointment()}
+                    className="danger-button"
+                    onClick={() => setIsCancelPromptOpen(true)}
                     type="button"
                   >
-                    Подтвердить перенос
+                    Отменить запись
                   </button>
-                </div>
-              ) : null}
-            </section>
-
-            </div>
+                )}
+              </div>
+              <div className="dikidi-footer-actions">
+                <button
+                  className="secondary-button"
+                  onClick={() => duplicateAppointment()}
+                  type="button"
+                >
+                  Повторить запись
+                </button>
+                <button
+                  className="secondary-button"
+                  onClick={focusPayment}
+                  type="button"
+                >
+                  <CreditCard aria-hidden="true" size={16} />
+                  Оформить продажу
+                </button>
+                <button
+                  className="primary-button"
+                  disabled={isSaving}
+                  onClick={() => void saveAppointmentDetails()}
+                  type="button"
+                >
+                  {isSaving ? "Сохраняем…" : "Сохранить"}
+                </button>
+              </div>
+            </footer>
               </>
             ) : null}
 
