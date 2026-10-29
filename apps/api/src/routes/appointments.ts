@@ -807,14 +807,17 @@ export function registerAppointmentRoutes(
 
       const status = AppointmentStatus[input.data.status];
       const now = new Date();
-      const penalize = requiresPrepaymentPenalty({
-        action: input.data.status === "no_show" ? "no_show" : "canceled",
-        appointmentStartsAt: current.startsAt,
-        ...(input.data.canceledBy
-          ? { initiatedBy: input.data.canceledBy }
-          : {}),
-        now
-      });
+      const penalize =
+        status === AppointmentStatus.no_show || status === AppointmentStatus.canceled
+          ? requiresPrepaymentPenalty({
+              action: status === AppointmentStatus.no_show ? "no_show" : "canceled",
+              appointmentStartsAt: current.startsAt,
+              ...(input.data.canceledBy
+                ? { initiatedBy: input.data.canceledBy }
+                : {}),
+              now
+            })
+          : false;
 
       const appointment = await database!.$transaction(async (transaction) => {
         const updated = await transaction.appointment.update({
@@ -1004,60 +1007,84 @@ export function registerAppointmentRoutes(
         initiatedBy: input.data.requestedBy
       });
 
-      const appointment = await database!.$transaction(async (transaction) => {
-        await transaction.appointment.update({
-          where: { id: current.id },
-          data: { status: AppointmentStatus.rescheduled }
-        });
-        await transaction.appointmentEvent.create({
-          data: {
-            appointmentId: current.id,
-            fromStatus: current.status,
-            toStatus: AppointmentStatus.rescheduled,
-            actorUserId: request.crmUser!.id,
-            ...(input.data.note !== undefined ? { note: input.data.note } : {})
-          }
-        });
-        const created = await transaction.appointment.create({
-          data: {
-            clientId: current.clientId,
-            staffId,
-            serviceId,
-            source: current.source,
-            createdByUserId: current.createdByUserId,
-            priceMinor:
-              serviceId === current.serviceId
-                ? current.priceMinor
-                : service.prices[0]?.amountMinor ?? 0,
-            currency: current.currency,
-            startsAt,
-            endsAt,
-            clientComment: current.clientComment,
-            internalNote: current.internalNote
-          }
-        });
-        await transaction.appointmentEvent.create({
-          data: {
-            appointmentId: created.id,
-            toStatus: created.status,
-            actorUserId: request.crmUser!.id,
-            note: `Перенос записи ${current.id}`
-          }
-        });
-        if (penalize) {
-          await transaction.client.update({
-            where: { id: current.clientId },
+      let appointment;
+      try {
+        appointment = await database!.$transaction(async (transaction) => {
+          await transaction.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${staff.id}))`;
+          const conflict = await transaction.appointment.findFirst({
+            where: {
+              staffId: staff.id,
+              status: { in: activeAppointmentStatuses },
+              startsAt: { lt: endsAt },
+              endsAt: { gt: startsAt },
+              id: { not: current.id }
+            },
+            select: { id: true }
+          });
+          if (conflict) throw new AppointmentTimeConflictError();
+
+          await transaction.appointment.update({
+            where: { id: current.id },
+            data: { status: AppointmentStatus.rescheduled }
+          });
+          await transaction.appointmentEvent.create({
             data: {
-              requiresPrepayment: true,
-              prepaymentReason: "Поздний перенос клиентом"
+              appointmentId: current.id,
+              fromStatus: current.status,
+              toStatus: AppointmentStatus.rescheduled,
+              actorUserId: request.crmUser!.id,
+              ...(input.data.note !== undefined ? { note: input.data.note } : {})
             }
           });
-        }
-        return transaction.appointment.findUniqueOrThrow({
-          where: { id: created.id },
-          include: appointmentInclude
+          const created = await transaction.appointment.create({
+            data: {
+              clientId: current.clientId,
+              staffId,
+              serviceId,
+              source: current.source,
+              createdByUserId: current.createdByUserId,
+              priceMinor:
+                serviceId === current.serviceId
+                  ? current.priceMinor
+                  : service.prices[0]?.amountMinor ?? 0,
+              currency: current.currency,
+              startsAt,
+              endsAt,
+              clientComment: current.clientComment,
+              internalNote: current.internalNote
+            }
+          });
+          await transaction.appointmentEvent.create({
+            data: {
+              appointmentId: created.id,
+              toStatus: created.status,
+              actorUserId: request.crmUser!.id,
+              note: `Перенос записи ${current.id}`
+            }
+          });
+          if (penalize) {
+            await transaction.client.update({
+              where: { id: current.clientId },
+              data: {
+                requiresPrepayment: true,
+                prepaymentReason: "Поздний перенос клиентом"
+              }
+            });
+          }
+          return transaction.appointment.findUniqueOrThrow({
+            where: { id: created.id },
+            include: appointmentInclude
+          });
         });
-      });
+      } catch (error) {
+        if (
+          error instanceof AppointmentTimeConflictError ||
+          isUniqueConstraintError(error)
+        ) {
+          return reply.code(409).send({ error: "appointment_time_conflict" });
+        }
+        throw error;
+      }
 
       return reply.code(201).send({ appointment });
     }

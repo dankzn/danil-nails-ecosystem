@@ -1,4 +1,5 @@
 import {
+  AppointmentStatus,
   Currency,
   EmployeeDocumentType,
   EmployeeEventType,
@@ -704,6 +705,42 @@ export function registerEmployeeRoutes(
             isBookable: false
           }
         });
+
+        const now = new Date();
+        const futureAppointments = await transaction.appointment.findMany({
+          where: {
+            staffId: current.id,
+            status: {
+              in: [
+                AppointmentStatus.draft,
+                AppointmentStatus.pending_admin_confirmation,
+                AppointmentStatus.confirmed
+              ]
+            },
+            startsAt: { gt: now }
+          },
+          select: { id: true, status: true }
+        });
+        if (futureAppointments.length) {
+          await transaction.appointment.updateMany({
+            where: { id: { in: futureAppointments.map((appointment) => appointment.id) } },
+            data: {
+              status: AppointmentStatus.canceled,
+              canceledAt: now,
+              cancellationReason: "Мастер уволен"
+            }
+          });
+          await transaction.appointmentEvent.createMany({
+            data: futureAppointments.map((appointment) => ({
+              appointmentId: appointment.id,
+              fromStatus: appointment.status,
+              toStatus: AppointmentStatus.canceled,
+              actorUserId: request.crmUser!.id,
+              note: "Запись отменена автоматически: мастер уволен"
+            }))
+          });
+        }
+
         await transaction.employeeEvent.create({
           data: {
             staffId: current.id,

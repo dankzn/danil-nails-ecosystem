@@ -322,8 +322,20 @@ const dateFormatter = new Intl.DateTimeFormat("ru-RU", {
   year: "numeric",
   timeZone: "UTC"
 });
-const today = new Date().toISOString().slice(0, 10);
-const currentMonth = today.slice(0, 7);
+function today() {
+  const parts = new Intl.DateTimeFormat("en", {
+    timeZone: "Europe/Moscow",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit"
+  }).formatToParts(new Date());
+  const part = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((item) => item.type === type)?.value ?? "";
+  return `${part("year")}-${part("month")}-${part("day")}`;
+}
+function currentMonth() {
+  return today().slice(0, 7);
+}
 
 function formatMoney(amountMinor: number, currency: Currency) {
   return new Intl.NumberFormat("ru-RU", {
@@ -352,7 +364,7 @@ function emptyEmployeeForm(): EmployeeForm {
     countryId: "",
     employmentStatus: "active",
     employmentType: "full_time",
-    hiredAt: today,
+    hiredAt: today(),
     probationEndsAt: "",
     dateOfBirth: "",
     workPhone: "",
@@ -487,19 +499,19 @@ export default function EmployeesPage() {
     employee: Employee;
     kind: "dismiss" | "rehire";
   } | null>(null);
-  const [actionDate, setActionDate] = useState(today);
+  const [actionDate, setActionDate] = useState(today());
   const [actionReason, setActionReason] = useState("");
   const [noteForm, setNoteForm] = useState({
     category: "general" as EmployeeNote["category"],
     title: "",
     body: "",
-    eventDate: today
+    eventDate: today()
   });
   const [trainingForm, setTrainingForm] = useState({
     title: "",
     provider: "",
     status: "planned" as TrainingStatus,
-    startsAt: today,
+    startsAt: today(),
     endsAt: "",
     cost: "",
     currency: "RUB" as "RUB" | "EUR" | "USD",
@@ -509,11 +521,11 @@ export default function EmployeesPage() {
   const [documentForm, setDocumentForm] = useState({
     type: "employment_contract" as EmployeeDocument["type"],
     title: "",
-    issuedAt: today,
+    issuedAt: today(),
     expiresAt: "",
     notes: ""
   });
-  const [payrollMonth, setPayrollMonth] = useState(currentMonth);
+  const [payrollMonth, setPayrollMonth] = useState(currentMonth());
   const [payrollData, setPayrollData] = useState<PayrollData | null>(null);
   const [isPayrollLoading, setIsPayrollLoading] = useState(false);
   const [compensationForm, setCompensationForm] = useState({
@@ -529,11 +541,11 @@ export default function EmployeesPage() {
     >,
     description: "",
     amount: "",
-    occurredAt: today
+    occurredAt: today()
   });
   const [paymentForm, setPaymentForm] = useState({
     amount: "",
-    paidAt: today,
+    paidAt: today(),
     method: "Банковский перевод",
     note: ""
   });
@@ -747,7 +759,7 @@ export default function EmployeesPage() {
           eventDate: optionalValue(noteForm.eventDate)
         })
       });
-      setNoteForm({ category: "general", title: "", body: "", eventDate: today });
+      setNoteForm({ category: "general", title: "", body: "", eventDate: today() });
       await refreshDetail();
     } catch (error) {
       setFormError(employeeErrorMessage(error));
@@ -778,7 +790,7 @@ export default function EmployeesPage() {
           status: trainingForm.status,
           startsAt: optionalValue(trainingForm.startsAt),
           endsAt: optionalValue(trainingForm.endsAt),
-          completedAt: trainingForm.status === "completed" ? today : null,
+          completedAt: trainingForm.status === "completed" ? today() : null,
           costMinor: parsedCost,
           currency: parsedCost === null ? null : trainingForm.currency,
           certificateUrl: optionalValue(trainingForm.certificateUrl),
@@ -789,7 +801,7 @@ export default function EmployeesPage() {
         title: "",
         provider: "",
         status: "planned",
-        startsAt: today,
+        startsAt: today(),
         endsAt: "",
         cost: "",
         currency: "RUB",
@@ -812,7 +824,7 @@ export default function EmployeesPage() {
         `/v1/owner/employees/${selectedEmployee.id}/trainings/${training.id}`,
         {
           method: "PATCH",
-          body: JSON.stringify({ status: "completed", completedAt: today })
+          body: JSON.stringify({ status: "completed", completedAt: today() })
         }
       );
       await refreshDetail();
@@ -842,7 +854,7 @@ export default function EmployeesPage() {
       setDocumentForm({
         type: "employment_contract",
         title: "",
-        issuedAt: today,
+        issuedAt: today(),
         expiresAt: "",
         notes: ""
       });
@@ -874,7 +886,7 @@ export default function EmployeesPage() {
   function openEmployeeAction(employee: Employee, kind: "dismiss" | "rehire") {
     setSelectedEmployee(null);
     setActionTarget({ employee, kind });
-    setActionDate(today);
+    setActionDate(today());
     setActionReason("");
     setFormError(null);
   }
@@ -1013,7 +1025,7 @@ export default function EmployeesPage() {
         type: "bonus",
         description: "",
         amount: "",
-        occurredAt: today
+        occurredAt: today()
       });
       await refreshPayroll();
     } catch (error) {

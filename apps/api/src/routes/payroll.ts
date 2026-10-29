@@ -19,7 +19,7 @@ import {
 const monthSchema = z.string().regex(/^\d{4}-(0[1-9]|1[0-2])$/);
 const idSchema = z.object({ id: z.string().cuid() });
 const entryIdSchema = z.object({ id: z.string().cuid(), entryId: z.string().cuid() });
-const payrollQuerySchema = z.object({ month: monthSchema.default(currentMonthKey()) });
+const payrollQuerySchema = z.object({ month: monthSchema.default(currentMonthKey) });
 const compensationSchema = z.object({
   month: monthSchema,
   masterCommissionBps: z.number().int().min(0).max(10_000),
