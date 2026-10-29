@@ -45,7 +45,7 @@ function mergeRanges(ranges: TimeRange[]) {
   return merged;
 }
 
-function weekdayForDate(date: string) {
+export function weekdayForDate(date: string) {
   const weekday = new Date(`${date}T12:00:00.000Z`).getUTCDay();
   return weekday === 0 ? 7 : weekday;
 }
@@ -71,6 +71,29 @@ export function isDateWithinBookingHorizon(date: string, now = new Date()) {
   return requestedDate >= today && requestedDate <= horizonEnd;
 }
 
+export function resolveWorkingRanges(options: {
+  date: string;
+  workingHours: Array<{ startsAt: string; endsAt: string }>;
+  exceptions: ScheduleExceptionRange[];
+}) {
+  const dayStart = timeToDate(options.date, "00:00");
+  const dayEnd = new Date(dayStart.getTime() + 86400000);
+
+  return mergeRanges([
+    ...options.workingHours.map((range) => ({
+      startsAt: timeToDate(options.date, range.startsAt),
+      endsAt: timeToDate(options.date, range.endsAt)
+    })),
+    ...options.exceptions
+      .filter((exception) => exception.isBookable)
+      .map(({ startsAt, endsAt }) => ({
+        startsAt: startsAt < dayStart ? dayStart : startsAt,
+        endsAt: endsAt > dayEnd ? dayEnd : endsAt
+      }))
+      .filter((range) => range.startsAt < range.endsAt)
+  ]);
+}
+
 export function buildAvailableSlots(options: {
   date: string;
   workingHours: Array<{ startsAt: string; endsAt: string }>;
@@ -87,23 +110,10 @@ export function buildAvailableSlots(options: {
   const minimumLeadTimeMinutes =
     options.minimumLeadTimeMinutes ?? bookingRules.minimumLeadTimeMinutes;
   const dayStart = timeToDate(options.date, "00:00");
-  const dayEnd = new Date(dayStart.getTime() + 86400000);
   const earliestStart = new Date(
     (options.now ?? new Date()).getTime() + minimumLeadTimeMinutes * 60000
   );
-  const availableRanges = mergeRanges([
-    ...options.workingHours.map((range) => ({
-      startsAt: timeToDate(options.date, range.startsAt),
-      endsAt: timeToDate(options.date, range.endsAt)
-    })),
-    ...options.exceptions
-      .filter((exception) => exception.isBookable)
-      .map(({ startsAt, endsAt }) => ({
-        startsAt: startsAt < dayStart ? dayStart : startsAt,
-        endsAt: endsAt > dayEnd ? dayEnd : endsAt
-      }))
-      .filter((range) => range.startsAt < range.endsAt)
-  ]);
+  const availableRanges = resolveWorkingRanges(options);
   const blockedRanges: TimeRange[] = [
     ...options.exceptions
       .filter((exception) => !exception.isBookable)

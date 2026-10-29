@@ -29,6 +29,7 @@ import {
   type FormEvent
 } from "react";
 import { ApiError, apiRequest } from "../lib/api";
+import { apiUrl } from "../lib/api-url";
 import { Modal } from "../ui/modal";
 
 type EmploymentStatus = "active" | "probation" | "leave" | "dismissed";
@@ -1196,7 +1197,7 @@ export default function EmployeesPage() {
                         <div className="employee-name-cell">
                           <span className="employee-avatar">
                             {employee.photoUrl ? (
-                              <img alt="" src={employee.photoUrl} />
+                              <img alt="" src={`${apiUrl}${employee.photoUrl}`} />
                             ) : (
                               initials(employee.displayName)
                             )}
@@ -1667,7 +1668,10 @@ export default function EmployeesPage() {
               <div className="employee-profile-summary">
                 <label className="employee-profile-avatar employee-profile-avatar-upload">
                   {selectedEmployee.photoUrl ? (
-                    <img alt={selectedEmployee.displayName} src={selectedEmployee.photoUrl} />
+                    <img
+                      alt={selectedEmployee.displayName}
+                      src={`${apiUrl}${selectedEmployee.photoUrl}`}
+                    />
                   ) : (
                     <span>{initials(selectedEmployee.displayName)}</span>
                   )}

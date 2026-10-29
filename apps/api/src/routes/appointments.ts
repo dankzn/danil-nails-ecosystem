@@ -526,12 +526,25 @@ export function registerAppointmentRoutes(
         }),
         database!.staffProfile.findMany({
           where: { isBookable: true },
-          select: { id: true, displayName: true },
+          select: {
+            id: true,
+            displayName: true,
+            photo: { select: { updatedAt: true } }
+          },
           orderBy: { displayName: "asc" }
         })
       ]);
 
-      return { clients, services, staff };
+      return {
+        clients,
+        services,
+        staff: staff.map(({ photo, ...member }) => ({
+          ...member,
+          photoUrl: photo
+            ? `/v1/staff/${member.id}/photo?v=${photo.updatedAt.getTime()}`
+            : null
+        }))
+      };
     }
   );
 

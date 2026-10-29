@@ -27,6 +27,7 @@ import {
   type FormEvent
 } from "react";
 import { ApiError, apiRequest } from "../lib/api";
+import { apiUrl } from "../lib/api-url";
 import { Modal } from "../ui/modal";
 
 type AppointmentStatus =
@@ -135,7 +136,7 @@ type BookingOptions = {
     durationMinutes: number;
     bufferAfterMinutes: number;
   }>;
-  staff: Array<{ id: string; displayName: string }>;
+  staff: Array<{ id: string; displayName: string; photoUrl: string | null }>;
 };
 
 type AvailableSlot = {
@@ -305,6 +306,54 @@ function isCanceledAppointmentExpired(appointment: Appointment, now: number) {
   if (appointment.status !== "canceled") return false;
   if (!appointment.canceledAt) return false;
   return now - new Date(appointment.canceledAt).getTime() >= cancelVisibilityMs;
+}
+
+function initials(name: string) {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("");
+}
+
+function closedGridSegments(ranges: Array<{ startsAt: string; endsAt: string }>) {
+  const open = ranges
+    .map((range) => ({
+      start: Math.max(
+        gridStartMinutes,
+        moscowMinutesOfDay(new Date(range.startsAt))
+      ),
+      end: Math.min(gridEndMinutes, moscowMinutesOfDay(new Date(range.endsAt)))
+    }))
+    .filter((range) => range.end > range.start)
+    .sort((left, right) => left.start - right.start);
+
+  const segments: Array<{ top: number; height: number }> = [];
+  let cursor = gridStartMinutes;
+  for (const range of open) {
+    if (range.start > cursor) {
+      segments.push({
+        top: (cursor - gridStartMinutes) * gridPixelsPerMinute,
+        height: (range.start - cursor) * gridPixelsPerMinute
+      });
+    }
+    cursor = Math.max(cursor, range.end);
+  }
+  if (cursor < gridEndMinutes) {
+    segments.push({
+      top: (cursor - gridStartMinutes) * gridPixelsPerMinute,
+      height: (gridEndMinutes - cursor) * gridPixelsPerMinute
+    });
+  }
+  return segments;
+}
+
+function snapToGrid(minutes: number) {
+  return Math.min(
+    gridEndMinutes - 5,
+    Math.max(gridStartMinutes, Math.round(minutes / 5) * 5)
+  );
 }
 
 const attendanceMeta: Record<AttendanceStatus, string> = {
@@ -582,6 +631,16 @@ export default function AppointmentsPage() {
   }, []);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [now, setNow] = useState(() => Date.now());
+  const [dayOverview, setDayOverview] = useState<
+    Record<string, Array<{ startsAt: string; endsAt: string }>>
+  >({});
+  const [quickAddPopover, setQuickAddPopover] = useState<{
+    staffId: string;
+    clientX: number;
+    clientY: number;
+    candidates: Date[];
+  } | null>(null);
+  const [quickAddCandidateIndex, setQuickAddCandidateIndex] = useState(0);
   const [options, setOptions] = useState<BookingOptions | null>(null);
   const [bookingDate, setBookingDate] = useState(moscowDateKey);
   const [availableSlots, setAvailableSlots] = useState<AvailableSlot[]>([]);
@@ -704,6 +763,30 @@ export default function AppointmentsPage() {
   useEffect(() => {
     void loadOptions();
   }, [loadOptions]);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    apiRequest<{
+      staff: Array<{
+        staffId: string;
+        ranges: Array<{ startsAt: string; endsAt: string }>;
+      }>;
+    }>(`/v1/admin/schedule/day-overview?date=${selectedDate}`, {
+      signal: controller.signal
+    })
+      .then((data) => {
+        const byStaffId: Record<
+          string,
+          Array<{ startsAt: string; endsAt: string }>
+        > = {};
+        for (const entry of data.staff) byStaffId[entry.staffId] = entry.ranges;
+        setDayOverview(byStaffId);
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setDayOverview({});
+      });
+    return () => controller.abort();
+  }, [selectedDate]);
 
   useEffect(() => {
     const interval = setInterval(() => setNow(Date.now()), 15_000);
@@ -896,9 +979,13 @@ export default function AppointmentsPage() {
     setIsCreateOpen(true);
   }
 
-  function openCreateFormAt(staffId: string) {
+  function openCreateFormAt(staffId: string, startsAt?: Date) {
     openCreateForm();
-    setForm((current) => ({ ...current, staffId }));
+    setForm((current) => ({
+      ...current,
+      staffId,
+      ...(startsAt ? { startsAt: moscowDateTimeInput(startsAt) } : {})
+    }));
   }
 
   function openAppointment(appointment: Appointment) {
@@ -1374,6 +1461,13 @@ export default function AppointmentsPage() {
                 <div className="calendar-grid-time-spacer" aria-hidden="true" />
                 {staffColumns.map((staff) => (
                   <div className="calendar-grid-header" key={staff.id}>
+                    <span className="calendar-grid-avatar">
+                      {staff.photoUrl ? (
+                        <img alt="" src={`${apiUrl}${staff.photoUrl}`} />
+                      ) : (
+                        initials(staff.displayName)
+                      )}
+                    </span>
                     {staff.displayName}
                   </div>
                 ))}
@@ -1398,13 +1492,43 @@ export default function AppointmentsPage() {
                 {staffColumns.map((staff) => {
                   const staffAppointments =
                     appointmentsByStaffId.get(staff.id) ?? [];
+                  const staffRanges = dayOverview[staff.id];
                   return (
                     <div
                       className="calendar-grid-column"
                       key={staff.id}
-                      onClick={() => openCreateFormAt(staff.id)}
+                      onClick={(event) => {
+                        const rect = event.currentTarget.getBoundingClientRect();
+                        const offsetMinutes =
+                          (event.clientY - rect.top) / gridPixelsPerMinute;
+                        const snapped = snapToGrid(
+                          gridStartMinutes + offsetMinutes
+                        );
+                        const dayStart = new Date(`${selectedDate}T00:00:00+03:00`);
+                        const candidates = [snapped, snapped + 5, snapped + 10].map(
+                          (minutes) =>
+                            new Date(dayStart.getTime() + minutes * 60000)
+                        );
+                        setQuickAddCandidateIndex(0);
+                        setQuickAddPopover({
+                          staffId: staff.id,
+                          clientX: event.clientX,
+                          clientY: event.clientY,
+                          candidates
+                        });
+                      }}
                       style={{ height: gridTotalHeight }}
                     >
+                      {staffRanges
+                        ? closedGridSegments(staffRanges).map((segment, index) => (
+                            <div
+                              aria-hidden="true"
+                              className="calendar-grid-closed"
+                              key={index}
+                              style={{ top: segment.top, height: segment.height }}
+                            />
+                          ))
+                        : null}
                       {gridHourMarks.map((hour) => (
                         <div
                           aria-hidden="true"
@@ -1476,6 +1600,50 @@ export default function AppointmentsPage() {
           </div>
         )}
       </section>
+
+      {quickAddPopover ? (
+        <>
+          <div
+            className="quick-add-overlay"
+            onClick={() => setQuickAddPopover(null)}
+          />
+          <div
+            className="quick-add-popover"
+            style={{ left: quickAddPopover.clientX, top: quickAddPopover.clientY }}
+          >
+            <p className="quick-add-popover-title">Время начала</p>
+            <div className="quick-add-popover-times">
+              {quickAddPopover.candidates.map((candidate, index) => (
+                <button
+                  className={`quick-add-time${
+                    index === quickAddCandidateIndex
+                      ? " quick-add-time-selected"
+                      : ""
+                  }`}
+                  key={index}
+                  onClick={() => setQuickAddCandidateIndex(index)}
+                  type="button"
+                >
+                  {timeFormatter.format(candidate)}
+                </button>
+              ))}
+            </div>
+            <button
+              className="primary-button"
+              onClick={() => {
+                openCreateFormAt(
+                  quickAddPopover.staffId,
+                  quickAddPopover.candidates[quickAddCandidateIndex]
+                );
+                setQuickAddPopover(null);
+              }}
+              type="button"
+            >
+              Добавить запись
+            </button>
+          </div>
+        </>
+      ) : null}
 
       {isCreateOpen ? (
         <Modal

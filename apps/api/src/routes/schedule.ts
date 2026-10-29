@@ -3,6 +3,7 @@ import { businessConfig } from "@danil-nails/shared";
 import type { FastifyInstance, FastifyReply } from "fastify";
 import { z } from "zod";
 import { authorize } from "../auth/session.js";
+import { resolveWorkingRanges, weekdayForDate } from "../availability.js";
 
 const datePattern = /^\d{4}-\d{2}-\d{2}$/;
 const timePattern = /^([01]\d|2[0-3]):[0-5]\d$/;
@@ -10,6 +11,9 @@ const scheduleQuerySchema = z.object({
   staffId: z.string().cuid().optional(),
   from: z.string().regex(datePattern).optional(),
   to: z.string().regex(datePattern).optional()
+});
+const dayOverviewQuerySchema = z.object({
+  date: z.string().regex(datePattern)
 });
 const workingHoursSchema = z.object({
   staffId: z.string().cuid().optional(),
@@ -180,6 +184,57 @@ export function registerScheduleRoutes(
         workingHours,
         exceptions
       };
+    }
+  );
+
+  server.get(
+    "/v1/admin/schedule/day-overview",
+    { preHandler: staffGuard },
+    async (request, reply) => {
+      const query = dayOverviewQuerySchema.safeParse(request.query);
+      if (!query.success) return sendInvalidPayload(reply);
+
+      const date = query.data.date;
+      const dayStart = dateAtMoscowMidnight(date);
+      const dayEnd = new Date(dayStart.getTime() + 86400000);
+      const weekday = weekdayForDate(date);
+
+      const staffList =
+        request.crmUser!.role === UserRole.master
+          ? await database!.staffProfile.findMany({
+              where: { userId: request.crmUser!.id, isBookable: true },
+              select: { id: true }
+            })
+          : await database!.staffProfile.findMany({
+              where: { isBookable: true },
+              select: { id: true }
+            });
+
+      const staff = await Promise.all(
+        staffList.map(async ({ id: staffId }) => {
+          const [workingHours, exceptions] = await Promise.all([
+            database!.workingHour.findMany({
+              where: { staffId, weekday, isActive: true },
+              select: { startsAt: true, endsAt: true }
+            }),
+            database!.scheduleException.findMany({
+              where: {
+                staffId,
+                startsAt: { lt: dayEnd },
+                endsAt: { gt: dayStart }
+              },
+              select: { startsAt: true, endsAt: true, isBookable: true }
+            })
+          ]);
+
+          return {
+            staffId,
+            ranges: resolveWorkingRanges({ date, workingHours, exceptions })
+          };
+        })
+      );
+
+      return { date, timezone: businessConfig.timezone, staff };
     }
   );
 
