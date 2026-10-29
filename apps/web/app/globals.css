@@ -2089,7 +2089,7 @@ td strong {
 
 .modal-workspace {
   width: min(1040px, calc(100vw - 48px));
-  height: min(860px, calc(100vh - 48px));
+  height: min(1040px, calc(100vh - 48px));
   max-height: calc(100vh - 48px);
 }
 
@@ -2974,7 +2974,7 @@ td strong {
 }
 
 .workspace-record-summary {
-  min-height: 72px;
+  min-height: 58px;
   display: grid;
   grid-template-columns: minmax(220px, 1fr) auto;
   align-items: stretch;
@@ -2989,7 +2989,7 @@ td strong {
   gap: 13px;
   border: 0;
   border-right: 1px solid var(--border);
-  padding: 20px 22px;
+  padding: 13px 22px;
   background: transparent;
   color: var(--text);
   font: inherit;
@@ -3002,15 +3002,15 @@ td strong {
 }
 
 .workspace-record-avatar {
-  width: 48px;
-  height: 48px;
-  flex: 0 0 48px;
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
   display: grid;
   place-items: center;
   border: 1px solid var(--border-strong);
   border-radius: 50%;
   background: var(--surface-soft);
-  font-size: 17px;
+  font-size: 14px;
   font-weight: 750;
 }
 
@@ -3048,8 +3048,8 @@ td strong {
   display: grid;
   align-content: center;
   justify-items: end;
-  gap: 10px;
-  padding: 18px 20px;
+  gap: 8px;
+  padding: 10px 20px;
 }
 
 .workspace-payment-button {
@@ -3084,7 +3084,7 @@ td strong {
 
 .workspace-tabs button {
   min-width: max-content;
-  height: 48px;
+  height: 38px;
   display: inline-flex;
   align-items: center;
   gap: 7px;
@@ -3116,8 +3116,8 @@ td strong {
 
 .dikidi-record {
   display: grid;
-  gap: 16px;
-  padding: 20px 22px 8px;
+  gap: 12px;
+  padding: 16px 22px 6px;
 }
 
 .dikidi-row {
@@ -3817,6 +3817,7 @@ td strong {
 }
 
 .color-swatch {
+  position: relative;
   width: 28px;
   height: 28px;
   border-radius: 50%;
@@ -3831,7 +3832,20 @@ td strong {
 }
 
 .color-swatch-selected {
-  border-color: var(--text);
+  border-color: #5d90d9;
+  box-shadow: 0 0 0 1px #5d90d9;
+}
+
+.color-swatch-selected::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 9px;
+  height: 5px;
+  border-left: 2px solid #fff;
+  border-bottom: 2px solid #fff;
+  transform: translate(-50%, -65%) rotate(-45deg);
 }
 
 .color-swatch-auto {
@@ -3843,31 +3857,31 @@ td strong {
 }
 
 .color-swatch-green {
-  background: var(--green);
+  background: #84cf8d;
 }
 
 .color-swatch-teal {
-  background: var(--teal);
+  background: #9ee3dd;
 }
 
 .color-swatch-yellow {
-  background: var(--yellow);
+  background: #f1d478;
 }
 
 .color-swatch-red {
-  background: var(--red);
+  background: #ef8c81;
 }
 
 .color-swatch-purple {
-  background: var(--purple);
+  background: #b897ea;
 }
 
 .color-swatch-lime {
-  background: var(--lime);
+  background: #c9df5f;
 }
 
 .color-swatch-blue {
-  background: var(--blue);
+  background: #8aafed;
 }
 
 .editor-section-heading {
