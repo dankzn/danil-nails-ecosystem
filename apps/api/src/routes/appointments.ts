@@ -84,6 +84,18 @@ const statusUpdateSchema = z.object({
 const attendanceUpdateSchema = z.object({
   status: z.enum(attendanceStatuses)
 });
+const appointmentColorTags = [
+  "green",
+  "yellow",
+  "teal",
+  "purple",
+  "red",
+  "lime",
+  "blue"
+] as const;
+const colorUpdateSchema = z.object({
+  colorTag: z.enum(appointmentColorTags).nullable()
+});
 const rescheduleSchema = z.object({
   startsAt: z.iso.datetime(),
   staffId: z.string().cuid().optional(),
@@ -898,6 +910,33 @@ export function registerAppointmentRoutes(
             ? { clientConfirmedAt: now }
             : {})
         },
+        include: appointmentInclude
+      });
+
+      return { appointment };
+    }
+  );
+
+  server.patch(
+    "/v1/admin/appointments/:id/color",
+    { preHandler: staffGuard },
+    async (request, reply) => {
+      const parameters = idSchema.safeParse(request.params);
+      const input = colorUpdateSchema.safeParse(request.body);
+      if (!parameters.success || !input.success) return sendInvalidPayload(reply);
+
+      const current = await database!.appointment.findUnique({
+        where: { id: parameters.data.id },
+        include: { staff: { select: { userId: true } } }
+      });
+      if (!current) return reply.code(404).send({ error: "appointment_not_found" });
+      if (!canManageAppointment(request.crmUser!, current.staff.userId)) {
+        return reply.code(403).send({ error: "insufficient_permissions" });
+      }
+
+      const appointment = await database!.appointment.update({
+        where: { id: current.id },
+        data: { colorTag: input.data.colorTag },
         include: appointmentInclude
       });
 

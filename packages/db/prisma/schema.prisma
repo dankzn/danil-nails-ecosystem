@@ -738,6 +738,7 @@ model Appointment {
   canceledAt                        DateTime?
   cancellationReason                String?
   source                            BookingSource                @default(online)
+  colorTag                          String?
   createdByUserId                   String?
   priceMinor                        Int                          @default(0)
   currency                          Currency                     @default(RUB)

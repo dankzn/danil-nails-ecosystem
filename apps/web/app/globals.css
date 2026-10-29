@@ -20,6 +20,14 @@
   --blue-soft: #e5f1f8;
   --red: #9c2f38;
   --red-soft: #f9e7e9;
+  --teal: #157a72;
+  --teal-soft: #e2f3f1;
+  --purple: #5b3a8a;
+  --purple-soft: #ece4f6;
+  --lime: #5c7a1e;
+  --lime-soft: #eef3dd;
+  --yellow: #8a6d16;
+  --yellow-soft: #fbf0cf;
   --shadow: 0 1px 2px rgba(20, 24, 28, 0.04);
 }
 
@@ -1007,6 +1015,54 @@ table td:nth-child(2) small {
 
 .agenda-line-neutral {
   background: #8a9299;
+}
+
+.agenda-line-online {
+  background: var(--red);
+}
+
+.agenda-fill-green {
+  background: var(--green-soft);
+}
+
+.agenda-fill-teal {
+  background: var(--teal-soft);
+}
+
+.agenda-fill-yellow {
+  background: var(--yellow-soft);
+}
+
+.agenda-fill-red {
+  background: var(--red-soft);
+}
+
+.agenda-fill-purple {
+  background: var(--purple-soft);
+}
+
+.agenda-fill-lime {
+  background: var(--lime-soft);
+}
+
+.agenda-fill-blue {
+  background: var(--blue-soft);
+}
+
+.agenda-fill-neutral {
+  background: transparent;
+}
+
+.agenda-item.agenda-fill-green,
+.agenda-item.agenda-fill-teal,
+.agenda-item.agenda-fill-yellow,
+.agenda-item.agenda-fill-red,
+.agenda-item.agenda-fill-purple,
+.agenda-item.agenda-fill-lime,
+.agenda-item.agenda-fill-blue {
+  border-radius: 8px;
+  padding-left: 12px;
+  padding-right: 12px;
 }
 
 .agenda-content {
@@ -3350,6 +3406,66 @@ td strong {
 
 .editor-section:last-of-type {
   border-bottom: 0;
+}
+
+.color-swatch-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.color-swatch {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  padding: 0;
+}
+
+.color-swatch:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+.color-swatch-selected {
+  border-color: var(--text);
+}
+
+.color-swatch-auto {
+  background: repeating-conic-gradient(
+    var(--border-strong) 0% 25%,
+    var(--surface) 0% 50%
+  );
+  background-size: 10px 10px;
+}
+
+.color-swatch-green {
+  background: var(--green);
+}
+
+.color-swatch-teal {
+  background: var(--teal);
+}
+
+.color-swatch-yellow {
+  background: var(--yellow);
+}
+
+.color-swatch-red {
+  background: var(--red);
+}
+
+.color-swatch-purple {
+  background: var(--purple);
+}
+
+.color-swatch-lime {
+  background: var(--lime);
+}
+
+.color-swatch-blue {
+  background: var(--blue);
 }
 
 .editor-section-heading {

@@ -22,6 +22,7 @@ import Link from "next/link";
 import {
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
   type FormEvent
@@ -74,6 +75,15 @@ type AppointmentPayment = {
   } | null;
 };
 
+type AppointmentColorTag =
+  | "green"
+  | "yellow"
+  | "teal"
+  | "purple"
+  | "red"
+  | "lime"
+  | "blue";
+
 type Appointment = {
   id: string;
   source: "online" | "admin_manual";
@@ -84,6 +94,8 @@ type Appointment = {
   clientComment: string | null;
   internalNote: string | null;
   cancellationReason: string | null;
+  canceledAt: string | null;
+  colorTag: AppointmentColorTag | null;
   priceMinor: number;
   currency: string;
   client: {
@@ -257,6 +269,44 @@ const statusMeta: Record<
   rescheduled: { label: "Перенесена", tone: "info" },
   no_show: { label: "Неявка", tone: "danger" }
 };
+
+const appointmentColorTags: AppointmentColorTag[] = [
+  "green",
+  "yellow",
+  "teal",
+  "purple",
+  "red",
+  "lime",
+  "blue"
+];
+
+const cancelVisibilityMs = 5 * 60 * 1000;
+
+function statusFillTone(status: AppointmentStatus): AppointmentColorTag | "neutral" {
+  switch (status) {
+    case "draft":
+    case "pending_admin_confirmation":
+      return "green";
+    case "confirmed":
+      return "teal";
+    case "completed":
+      return "yellow";
+    case "canceled":
+      return "red";
+    default:
+      return "neutral";
+  }
+}
+
+function appointmentFillTone(appointment: Appointment) {
+  return appointment.colorTag ?? statusFillTone(appointment.status);
+}
+
+function isCanceledAppointmentExpired(appointment: Appointment, now: number) {
+  if (appointment.status !== "canceled") return false;
+  if (!appointment.canceledAt) return false;
+  return now - new Date(appointment.canceledAt).getTime() >= cancelVisibilityMs;
+}
 
 const attendanceMeta: Record<AttendanceStatus, string> = {
   not_requested: "Не запрашивалось",
@@ -509,6 +559,7 @@ export default function AppointmentsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [now, setNow] = useState(() => Date.now());
   const [options, setOptions] = useState<BookingOptions | null>(null);
   const [bookingDate, setBookingDate] = useState(moscowDateKey);
   const [availableSlots, setAvailableSlots] = useState<AvailableSlot[]>([]);
@@ -631,6 +682,19 @@ export default function AppointmentsPage() {
   useEffect(() => {
     void loadOptions();
   }, [loadOptions]);
+
+  useEffect(() => {
+    const interval = setInterval(() => setNow(Date.now()), 15_000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const calendarAppointments = useMemo(
+    () =>
+      appointments.filter(
+        (appointment) => !isCanceledAppointmentExpired(appointment, now)
+      ),
+    [appointments, now]
+  );
 
   useEffect(() => {
     if (!selectedAppointment) {
@@ -940,6 +1004,29 @@ export default function AppointmentsPage() {
     }
   }
 
+  async function updateColor(colorTag: AppointmentColorTag | null) {
+    if (!selectedAppointment) return;
+    setIsSaving(true);
+    setFormError(null);
+    try {
+      await apiRequest(
+        `/v1/admin/appointments/${selectedAppointment.id}/color`,
+        {
+          method: "PATCH",
+          body: JSON.stringify({ colorTag })
+        }
+      );
+      setSelectedAppointment((previous) =>
+        previous ? { ...previous, colorTag } : previous
+      );
+      await refresh();
+    } catch (error) {
+      setFormError(appointmentErrorMessage(error));
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
   async function updateAttendance() {
     if (!selectedAppointment) return;
     setIsSaving(true);
@@ -1228,7 +1315,7 @@ export default function AppointmentsPage() {
           <div className="schedule-loading" role="status">
             Загружаем расписание…
           </div>
-        ) : appointments.length === 0 ? (
+        ) : calendarAppointments.length === 0 ? (
           <div className="empty-table-state schedule-empty">
             <Clock3 aria-hidden="true" size={24} />
             <div>
@@ -1238,10 +1325,16 @@ export default function AppointmentsPage() {
           </div>
         ) : (
           <div className="day-agenda">
-            {appointments.map((appointment) => {
+            {calendarAppointments.map((appointment) => {
               const meta = statusMeta[appointment.status];
+              const fillTone = appointmentFillTone(appointment);
               return (
-                <article className="agenda-item" key={appointment.id}>
+                <article
+                  className={`agenda-item agenda-fill-${fillTone}${
+                    appointment.source === "online" ? " agenda-item-online" : ""
+                  }`}
+                  key={appointment.id}
+                >
                   <div className="agenda-time">
                     <strong>
                       {timeFormatter.format(new Date(appointment.startsAt))}
@@ -1249,7 +1342,9 @@ export default function AppointmentsPage() {
                     <span>{durationMinutes(appointment)} мин</span>
                   </div>
                   <div
-                    className={`agenda-line agenda-line-${meta.tone}`}
+                    className={`agenda-line agenda-line-${
+                      appointment.source === "online" ? "online" : meta.tone
+                    }`}
                     aria-hidden="true"
                   />
                   <div className="agenda-content">
@@ -1683,6 +1778,45 @@ export default function AppointmentsPage() {
               >
                 Обновить статус
               </button>
+            </section>
+
+            <section className="editor-section">
+              <div className="editor-section-heading">
+                <div>
+                  <p className="section-kicker">Личная метка</p>
+                  <h2>Цвет записи</h2>
+                </div>
+              </div>
+              <div className="color-swatch-row">
+                <button
+                  aria-label="Цвет по умолчанию (по статусу)"
+                  aria-pressed={selectedAppointment.colorTag === null}
+                  className={`color-swatch color-swatch-auto${
+                    selectedAppointment.colorTag === null
+                      ? " color-swatch-selected"
+                      : ""
+                  }`}
+                  disabled={isSaving}
+                  onClick={() => void updateColor(null)}
+                  title="По статусу"
+                  type="button"
+                />
+                {appointmentColorTags.map((tag) => (
+                  <button
+                    aria-label={tag}
+                    aria-pressed={selectedAppointment.colorTag === tag}
+                    className={`color-swatch color-swatch-${tag}${
+                      selectedAppointment.colorTag === tag
+                        ? " color-swatch-selected"
+                        : ""
+                    }`}
+                    disabled={isSaving}
+                    key={tag}
+                    onClick={() => void updateColor(tag)}
+                    type="button"
+                  />
+                ))}
+              </div>
             </section>
 
             {closableStatuses.includes(
@@ -2259,7 +2393,8 @@ export default function AppointmentsPage() {
                 </div>
                 <p className="workspace-note">
                   Начисление и списание для текущего визита выполняются при его
-                  финансовом закрытии на вкладке «Запись».
+                  финансовом закрытии на вкладке «Запись». Ручную корректировку
+                  баланса вне визита можно сделать в карточке клиента.
                 </p>
                 {workspace.appointment.client.loyaltyTransactions.length ? (
                   <div className="workspace-ledger">
