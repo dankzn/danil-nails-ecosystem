@@ -416,7 +416,7 @@ export function registerAppointmentRoutes(
 
       try {
         const appointment = await database.$transaction(async (transaction) => {
-          await transaction.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${staff.id}))`;
+          await transaction.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${staff.id}))`;
           const conflict = await transaction.appointment.findFirst({
             where: {
               staffId: staff.id,
@@ -759,7 +759,7 @@ export function registerAppointmentRoutes(
       const endsAt = appointmentEnd(startsAt, service.durationMinutes);
       try {
         const appointment = await database!.$transaction(async (transaction) => {
-          await transaction.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${staff.id}))`;
+          await transaction.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${staff.id}))`;
           const conflict = await transaction.appointment.findFirst({
             where: {
               staffId: staff.id,
@@ -1112,7 +1112,7 @@ export function registerAppointmentRoutes(
       let appointment;
       try {
         appointment = await database!.$transaction(async (transaction) => {
-          await transaction.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${staff.id}))`;
+          await transaction.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${staff.id}))`;
           const conflict = await transaction.appointment.findFirst({
             where: {
               staffId: staff.id,
