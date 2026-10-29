@@ -2774,7 +2774,127 @@ td strong {
 .appointment-workspace-shell {
   min-height: 0;
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-rows: auto auto minmax(0, 1fr);
+}
+
+.workspace-record-summary {
+  min-height: 118px;
+  display: grid;
+  grid-template-columns: minmax(220px, 0.8fr) minmax(480px, 2fr) auto;
+  align-items: stretch;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.workspace-record-client {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  border: 0;
+  border-right: 1px solid var(--border);
+  padding: 20px 22px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.workspace-record-client:hover {
+  background: var(--surface-soft);
+}
+
+.workspace-record-avatar {
+  width: 48px;
+  height: 48px;
+  flex: 0 0 48px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--border-strong);
+  border-radius: 50%;
+  background: var(--surface-soft);
+  font-size: 17px;
+  font-weight: 750;
+}
+
+.workspace-record-client > span:last-child,
+.workspace-record-facts > div {
+  min-width: 0;
+  display: grid;
+  gap: 5px;
+}
+
+.workspace-record-client small,
+.workspace-record-facts small {
+  color: var(--text-muted);
+  font-size: 9px;
+  font-weight: 750;
+  text-transform: uppercase;
+}
+
+.workspace-record-client strong,
+.workspace-record-facts strong {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.workspace-record-client > span:last-child > span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--text-muted);
+  font-size: 10px;
+}
+
+.workspace-record-facts {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 1.4fr 1fr 1fr 0.8fr;
+}
+
+.workspace-record-facts > div {
+  align-content: center;
+  border-right: 1px solid var(--border);
+  padding: 18px;
+}
+
+.workspace-record-actions {
+  min-width: 186px;
+  display: grid;
+  align-content: center;
+  justify-items: end;
+  gap: 10px;
+  padding: 18px 20px;
+}
+
+.workspace-payment-button {
+  height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 1px solid var(--accent);
+  border-radius: 5px;
+  padding: 0 14px;
+  background: var(--accent);
+  color: #fff;
+  font: inherit;
+  font-size: 10px;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.workspace-payment-button:hover {
+  filter: brightness(0.94);
+}
+
+.workspace-payment-button.is-complete {
+  border-color: var(--green);
+  background: var(--green);
 }
 
 .workspace-tabs {
@@ -2816,6 +2936,30 @@ td strong {
 
 .appointment-workspace-body {
   align-content: start;
+}
+
+.workspace-appointment-layout {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+}
+
+.workspace-appointment-layout > .appointment-details,
+.workspace-appointment-layout > .workspace-payment-section {
+  grid-column: 1 / -1;
+}
+
+.workspace-appointment-layout > .editor-section:not(.workspace-payment-section) {
+  min-height: 100%;
+}
+
+.workspace-appointment-layout > .editor-section:nth-of-type(even) {
+  border-left: 1px solid var(--border);
+}
+
+.workspace-payment-section {
+  scroll-margin-top: 12px;
+  background: color-mix(in srgb, var(--surface-soft) 62%, var(--surface));
 }
 
 .workspace-loading {
@@ -3216,6 +3360,21 @@ td strong {
 }
 
 @media (max-width: 1040px) {
+  .workspace-record-summary {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .workspace-record-facts {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    border-top: 1px solid var(--border);
+  }
+
+  .workspace-record-actions {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
   .metric-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -3453,6 +3612,50 @@ td strong {
   .modal-workspace {
     width: 100%;
     height: calc(100vh - 24px);
+  }
+
+  .workspace-record-summary {
+    display: block;
+  }
+
+  .workspace-record-client {
+    border-right: 0;
+    padding: 15px 16px;
+  }
+
+  .workspace-record-facts {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    border-top: 1px solid var(--border);
+  }
+
+  .workspace-record-facts > div {
+    min-height: 66px;
+    padding: 12px 15px;
+  }
+
+  .workspace-record-facts > div:nth-child(2n) {
+    border-right: 0;
+  }
+
+  .workspace-record-actions {
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 13px 15px;
+    border-top: 1px solid var(--border);
+  }
+
+  .workspace-payment-button {
+    height: 36px;
+  }
+
+  .workspace-appointment-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .workspace-appointment-layout > .editor-section:nth-of-type(even) {
+    border-left: 0;
   }
 
   .form-grid-two,

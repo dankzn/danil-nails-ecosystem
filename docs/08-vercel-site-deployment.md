@@ -1,9 +1,8 @@
 # Vercel Site Deployment
 
 Публичный маркетинговый сайт (`apps/site`) разворачивается на Vercel отдельно от
-CRM. CRM (`apps/api` + `apps/web`) остаётся на Render — см.
-`docs/07-render-deployment.md`. Это два независимых deployment с разными
-адресами: `render.yaml` описывает только CRM и никак не влияет на сайт.
+CRM и API. Все три приложения являются отдельными Vercel-проектами из одного
+репозитория; база данных размещена в Supabase.
 
 ## Настройки Vercel Project
 
@@ -24,19 +23,18 @@ Directory конфликтует с его внутренней логикой.
 
 | Key | Value |
 | --- | --- |
-| `NEXT_PUBLIC_API_URL` | фактический HTTPS URL API на Render (см. `docs/07-render-deployment.md`), без завершающего `/` |
+| `NEXT_PUBLIC_API_URL` | фактический HTTPS URL Vercel-проекта API, без завершающего `/` |
 
 Обязательна для формы регистрации (`/[lang]/register`), входа
-(`/[lang]/login`) и личного кабинета (`/[lang]/account`) — без неё `apiUrl`
-(`app/lib/api-url.ts`) падает на дефолт `https://danil-nails-crm.onrender.com`,
-который может не совпадать с реальным адресом сервиса. `NEXT_PUBLIC_*`
-переменные вшиваются в статическую сборку во время `build`, а не читаются в
-рантайме — после смены значения нужен redeploy на Vercel, простого сохранения
-переменной недостаточно.
+(`/[lang]/login`) и личного кабинета (`/[lang]/account`). Production-сборка
+намеренно завершается ошибкой, если переменная отсутствует: сайт не должен
+молча отправлять запросы на неверный API. `NEXT_PUBLIC_*` переменные вшиваются
+в статическую сборку во время `build`, а не читаются в рантайме, поэтому после
+смены значения нужен redeploy на Vercel.
 
-На стороне API (Render) также нужно выставить `SITE_PUBLIC_URL` = адрес этого
-Vercel-деплоя — иначе CORS отклонит запрос с сайта. См.
-`docs/07-render-deployment.md`.
+В Vercel-проекте API нужно выставить `SITE_PUBLIC_URL` равным production-адресу
+сайта, иначе CORS отклонит запрос. Полная схема переменных описана в
+`docs/10-vercel-api-crm-deployment.md`.
 
 ## Структура сайта
 

@@ -1,2 +1,7 @@
-export const apiUrl =
-  process.env.NEXT_PUBLIC_API_URL || "https://danil-nails-crm.onrender.com";
+const configuredApiUrl = process.env.NEXT_PUBLIC_API_URL?.trim();
+
+if (process.env.NODE_ENV === "production" && !configuredApiUrl) {
+  throw new Error("NEXT_PUBLIC_API_URL is required for the production site build");
+}
+
+export const apiUrl = (configuredApiUrl || "http://localhost:4000").replace(/\/+$/, "");

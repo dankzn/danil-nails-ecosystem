@@ -18,10 +18,8 @@ const environmentSchema = z.object({
   // feature, not the app's own required config, so a typo in it should
   // disable that feature, not take down the CRM and the API with it.
   SITE_PUBLIC_URL: z.string().trim().min(1).optional(),
-  // Set when the CRM is deployed separately from the API (e.g. both on
-  // Vercel as two projects) so the CRM's origin is CORS-allowed even
-  // though it no longer shares APP_PUBLIC_URL. Unused when the API still
-  // serves the CRM's static build itself (same-origin, e.g. on Render).
+  // The CRM and API are separate Vercel projects, so the CRM origin must be
+  // explicitly allowed by CORS.
   CRM_PUBLIC_URL: z.string().trim().min(1).optional(),
   CRM_STATIC_DIR: z.string().min(1).optional(),
   DATABASE_URL: z.string().min(1).optional(),

@@ -9,10 +9,12 @@ import {
   ChevronLeft,
   ChevronRight,
   Clock3,
+  CreditCard,
   Gift,
   History,
   LoaderCircle,
   Pencil,
+  Phone,
   TriangleAlert,
   UserRound
 } from "lucide-react";
@@ -847,6 +849,15 @@ export default function AppointmentsPage() {
     setFormError(null);
   }
 
+  function focusPayment() {
+    setWorkspaceTab("appointment");
+    window.requestAnimationFrame(() => {
+      document
+        .getElementById("appointment-payment")
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }
+
   function updateForm<Key extends keyof BookingForm>(
     key: Key,
     value: BookingForm[Key]
@@ -1466,6 +1477,86 @@ export default function AppointmentsPage() {
           }
         >
           <div className="appointment-workspace-shell">
+            <section className="workspace-record-summary">
+              <button
+                className="workspace-record-client"
+                onClick={() => setWorkspaceTab("client")}
+                type="button"
+              >
+                <span className="workspace-record-avatar" aria-hidden="true">
+                  {(selectedAppointment.client.fullName ?? "К")
+                    .slice(0, 1)
+                    .toUpperCase()}
+                </span>
+                <span>
+                  <small>Клиент</small>
+                  <strong>
+                    {selectedAppointment.client.fullName ?? "Без имени"}
+                  </strong>
+                  <span>
+                    <Phone aria-hidden="true" size={12} />
+                    {selectedAppointment.client.phone}
+                  </span>
+                </span>
+              </button>
+
+              <div className="workspace-record-facts">
+                <div>
+                  <small>Услуга</small>
+                  <strong>{selectedAppointment.service.titleRu}</strong>
+                </div>
+                <div>
+                  <small>Дата и время</small>
+                  <strong>
+                    {dateTimeFormatter.format(
+                      new Date(selectedAppointment.startsAt)
+                    )}
+                  </strong>
+                </div>
+                <div>
+                  <small>Мастер</small>
+                  <strong>{selectedAppointment.staff.displayName}</strong>
+                </div>
+                <div>
+                  <small>Итого</small>
+                  <strong>
+                    {formatMoney(
+                      selectedAppointment.priceMinor,
+                      selectedAppointment.currency
+                    )}
+                  </strong>
+                </div>
+              </div>
+
+              <div className="workspace-record-actions">
+                <span
+                  className={`status status-${statusMeta[selectedAppointment.status].tone}`}
+                >
+                  {statusMeta[selectedAppointment.status].label}
+                </span>
+                {closableStatuses.includes(
+                  selectedAppointment.status as (typeof closableStatuses)[number]
+                ) ? (
+                  <button
+                    className="workspace-payment-button"
+                    onClick={focusPayment}
+                    type="button"
+                  >
+                    <CreditCard aria-hidden="true" size={16} />
+                    Оформить оплату
+                  </button>
+                ) : selectedAppointment.status === "completed" ? (
+                  <button
+                    className="workspace-payment-button is-complete"
+                    onClick={focusPayment}
+                    type="button"
+                  >
+                    <CreditCard aria-hidden="true" size={16} />
+                    Оплата проведена
+                  </button>
+                ) : null}
+              </div>
+            </section>
             <nav aria-label="Разделы карточки записи" className="workspace-tabs">
               {workspaceTabs.map((tab) => {
                 const Icon = tab.icon;
@@ -1497,6 +1588,7 @@ export default function AppointmentsPage() {
             ) : null}
             {workspaceTab === "appointment" ? (
               <>
+            <div className="workspace-appointment-layout">
             <dl className="appointment-details">
               <div>
                 <dt>Мастер</dt>
@@ -1596,7 +1688,7 @@ export default function AppointmentsPage() {
             {closableStatuses.includes(
               selectedAppointment.status as (typeof closableStatuses)[number]
             ) ? (
-              <section className="editor-section">
+              <section className="editor-section workspace-payment-section" id="appointment-payment">
                 <div className="editor-section-heading">
                   <div>
                     <p className="section-kicker">Визит состоялся</p>
@@ -1747,7 +1839,7 @@ export default function AppointmentsPage() {
             ) : null}
 
             {selectedAppointment.status === "completed" ? (
-              <section className="editor-section">
+              <section className="editor-section workspace-payment-section" id="appointment-payment">
                 <div className="editor-section-heading">
                   <div>
                     <p className="section-kicker">Оплата</p>
@@ -1933,6 +2025,7 @@ export default function AppointmentsPage() {
               ) : null}
             </section>
 
+            </div>
               </>
             ) : null}
 
