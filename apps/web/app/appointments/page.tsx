@@ -352,9 +352,10 @@ function closedGridSegments(ranges: Array<{ startsAt: string; endsAt: string }>)
 }
 
 function snapToGrid(minutes: number) {
+  const step = bookingRules.slotIntervalMinutes;
   return Math.min(
-    gridEndMinutes - 5,
-    Math.max(gridStartMinutes, Math.round(minutes / 5) * 5)
+    gridEndMinutes - step,
+    Math.max(gridStartMinutes, Math.round(minutes / step) * step)
   );
 }
 
@@ -1561,7 +1562,12 @@ export default function AppointmentsPage() {
                           gridStartMinutes + offsetMinutes
                         );
                         const dayStart = new Date(`${selectedDate}T00:00:00+03:00`);
-                        const candidates = [snapped, snapped + 5, snapped + 10].map(
+                        const step = bookingRules.slotIntervalMinutes;
+                        const candidates = [
+                          snapped,
+                          snapped + step,
+                          snapped + step * 2
+                        ].map(
                           (minutes) =>
                             new Date(dayStart.getTime() + minutes * 60000)
                         );
