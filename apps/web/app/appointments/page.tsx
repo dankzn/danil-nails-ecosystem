@@ -13,7 +13,6 @@ import {
   Gift,
   History,
   LoaderCircle,
-  Pencil,
   Phone,
   TriangleAlert,
   UserRound
@@ -397,6 +396,29 @@ function moscowDateTimeInput(date: Date) {
 
 const datePattern = /^\d{4}-\d{2}-\d{2}$/;
 
+function moscowMinutesOfDay(date: Date) {
+  const parts = new Intl.DateTimeFormat("en", {
+    timeZone: "Europe/Moscow",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23"
+  }).formatToParts(date);
+  const part = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((item) => item.type === type)?.value ?? "0";
+  return Number(part("hour")) * 60 + Number(part("minute"));
+}
+
+const gridStartMinutes = 8 * 60;
+const gridEndMinutes = 22 * 60;
+const gridPixelsPerHour = 64;
+const gridPixelsPerMinute = gridPixelsPerHour / 60;
+const gridTotalHeight =
+  ((gridEndMinutes - gridStartMinutes) / 60) * gridPixelsPerHour;
+const gridHourMarks = Array.from(
+  { length: (gridEndMinutes - gridStartMinutes) / 60 + 1 },
+  (_, index) => gridStartMinutes / 60 + index
+);
+
 function moveDate(date: string, days: number) {
   const value = new Date(`${date}T12:00:00.000Z`);
   value.setUTCDate(value.getUTCDate() + days);
@@ -696,6 +718,18 @@ export default function AppointmentsPage() {
     [appointments, now]
   );
 
+  const appointmentsByStaffId = useMemo(() => {
+    const groups = new Map<string, Appointment[]>();
+    for (const appointment of calendarAppointments) {
+      const list = groups.get(appointment.staff.id) ?? [];
+      list.push(appointment);
+      groups.set(appointment.staff.id, list);
+    }
+    return groups;
+  }, [calendarAppointments]);
+
+  const staffColumns = options?.staff ?? [];
+
   useEffect(() => {
     if (!selectedAppointment) {
       setWorkspace(null);
@@ -860,6 +894,11 @@ export default function AppointmentsPage() {
     setForm(nextForm);
     setFormError(null);
     setIsCreateOpen(true);
+  }
+
+  function openCreateFormAt(staffId: string) {
+    openCreateForm();
+    setForm((current) => ({ ...current, staffId }));
   }
 
   function openAppointment(appointment: Appointment) {
@@ -1315,80 +1354,125 @@ export default function AppointmentsPage() {
           <div className="schedule-loading" role="status">
             Загружаем расписание…
           </div>
-        ) : calendarAppointments.length === 0 ? (
+        ) : staffColumns.length === 0 ? (
           <div className="empty-table-state schedule-empty">
             <Clock3 aria-hidden="true" size={24} />
             <div>
-              <strong>На этот день записей нет</strong>
-              <span>Свободный день или расписание ещё не заполнено.</span>
+              <strong>Нет доступных мастеров</strong>
+              <span>Добавьте бронируемых сотрудников, чтобы видеть календарь.</span>
             </div>
           </div>
         ) : (
-          <div className="day-agenda">
-            {calendarAppointments.map((appointment) => {
-              const meta = statusMeta[appointment.status];
-              const fillTone = appointmentFillTone(appointment);
-              return (
-                <article
-                  className={`agenda-item agenda-fill-${fillTone}${
-                    appointment.source === "online" ? " agenda-item-online" : ""
-                  }`}
-                  key={appointment.id}
+          <div className="calendar-grid-scroll">
+            <div
+              className="calendar-grid-inner"
+              style={{
+                minWidth: 56 + staffColumns.length * 180
+              }}
+            >
+              <div className="calendar-grid-header-row">
+                <div className="calendar-grid-time-spacer" aria-hidden="true" />
+                {staffColumns.map((staff) => (
+                  <div className="calendar-grid-header" key={staff.id}>
+                    {staff.displayName}
+                  </div>
+                ))}
+              </div>
+              <div className="calendar-grid-body-row">
+                <div
+                  className="calendar-grid-times"
+                  style={{ height: gridTotalHeight }}
                 >
-                  <div className="agenda-time">
-                    <strong>
-                      {timeFormatter.format(new Date(appointment.startsAt))}
-                    </strong>
-                    <span>{durationMinutes(appointment)} мин</span>
-                  </div>
-                  <div
-                    className={`agenda-line agenda-line-${
-                      appointment.source === "online" ? "online" : meta.tone
-                    }`}
-                    aria-hidden="true"
-                  />
-                  <div className="agenda-content">
-                    <div>
-                      <strong>
-                        {appointment.client.fullName ?? appointment.client.phone}
-                      </strong>
-                      <span>{appointment.service.titleRu}</span>
-                      <small>
-                        {appointment.staff.displayName} · {appointment.client.phone}
-                      </small>
-                      <small>Источник: {appointmentSourceLabel(appointment)}</small>
+                  {gridHourMarks.map((hour) => (
+                    <span
+                      className="calendar-grid-hour-mark"
+                      key={hour}
+                      style={{
+                        top: (hour * 60 - gridStartMinutes) * gridPixelsPerMinute
+                      }}
+                    >
+                      {String(hour).padStart(2, "0")}:00
+                    </span>
+                  ))}
+                </div>
+                {staffColumns.map((staff) => {
+                  const staffAppointments =
+                    appointmentsByStaffId.get(staff.id) ?? [];
+                  return (
+                    <div
+                      className="calendar-grid-column"
+                      key={staff.id}
+                      onClick={() => openCreateFormAt(staff.id)}
+                      style={{ height: gridTotalHeight }}
+                    >
+                      {gridHourMarks.map((hour) => (
+                        <div
+                          aria-hidden="true"
+                          className="calendar-grid-gridline"
+                          key={hour}
+                          style={{
+                            top:
+                              (hour * 60 - gridStartMinutes) *
+                              gridPixelsPerMinute
+                          }}
+                        />
+                      ))}
+                      {staffAppointments.map((appointment) => {
+                        const fillTone = appointmentFillTone(appointment);
+                        const startMinutes = moscowMinutesOfDay(
+                          new Date(appointment.startsAt)
+                        );
+                        const top = Math.max(
+                          0,
+                          (startMinutes - gridStartMinutes) *
+                            gridPixelsPerMinute
+                        );
+                        const height = Math.max(
+                          30,
+                          durationMinutes(appointment) * gridPixelsPerMinute
+                        );
+                        return (
+                          <button
+                            className={`calendar-block agenda-fill-${fillTone}${
+                              appointment.source === "online"
+                                ? " calendar-block-online"
+                                : ""
+                            }`}
+                            key={appointment.id}
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              openAppointment(appointment);
+                            }}
+                            onFocus={() => prefetchWorkspace(appointment.id)}
+                            onMouseEnter={() => prefetchWorkspace(appointment.id)}
+                            onTouchStart={() => prefetchWorkspace(appointment.id)}
+                            style={{ top, height }}
+                            title={`${timeFormatter.format(
+                              new Date(appointment.startsAt)
+                            )} · ${
+                              appointment.client.fullName ??
+                              appointment.client.phone
+                            }`}
+                            type="button"
+                          >
+                            <strong>
+                              {timeFormatter.format(
+                                new Date(appointment.startsAt)
+                              )}
+                            </strong>
+                            <span>
+                              {appointment.client.fullName ??
+                                appointment.client.phone}
+                            </span>
+                            <small>{appointment.service.titleRu}</small>
+                          </button>
+                        );
+                      })}
                     </div>
-                    <div className="agenda-actions">
-                      <span className={`status status-${meta.tone}`}>
-                        {meta.label}
-                      </span>
-                      {appointment.attendanceConfirmationStatus !==
-                      "not_requested" ? (
-                        <small className="attendance-label">
-                          {attendanceMeta[
-                            appointment.attendanceConfirmationStatus
-                          ]}
-                        </small>
-                      ) : null}
-                      <button
-                        aria-label={`Открыть запись ${
-                          appointment.client.fullName ?? appointment.client.phone
-                        }`}
-                        className="icon-button"
-                        onFocus={() => prefetchWorkspace(appointment.id)}
-                        onMouseEnter={() => prefetchWorkspace(appointment.id)}
-                        onTouchStart={() => prefetchWorkspace(appointment.id)}
-                        onClick={() => openAppointment(appointment)}
-                        title="Открыть запись"
-                        type="button"
-                      >
-                        <Pencil aria-hidden="true" size={15} />
-                      </button>
-                    </div>
-                  </div>
-                </article>
-              );
-            })}
+                  );
+                })}
+              </div>
+            </div>
           </div>
         )}
       </section>

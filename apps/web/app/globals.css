@@ -973,52 +973,118 @@ table td:nth-child(2) small {
   font-size: 14px;
 }
 
-.day-agenda {
-  padding: 4px 20px 12px;
+.calendar-grid-scroll {
+  overflow-x: auto;
+  padding: 4px 20px 20px;
 }
 
-.agenda-item {
-  min-height: 112px;
-  display: grid;
-  grid-template-columns: 72px 2px minmax(0, 1fr);
-  gap: 16px;
-  padding: 18px 0;
+.calendar-grid-inner {
+  display: flex;
+  flex-direction: column;
+}
+
+.calendar-grid-header-row {
+  display: flex;
+  position: sticky;
+  top: 0;
+  background: var(--surface);
+  z-index: 2;
+}
+
+.calendar-grid-time-spacer {
+  width: 56px;
+  flex-shrink: 0;
+  position: sticky;
+  left: 0;
+  background: var(--surface);
+  z-index: 3;
+}
+
+.calendar-grid-header {
+  flex: 1;
+  min-width: 180px;
+  padding: 8px 10px;
+  font-size: 13px;
+  font-weight: 600;
   border-bottom: 1px solid var(--border);
+  border-left: 1px solid var(--border);
 }
 
-.agenda-item:last-child {
-  border-bottom: 0;
+.calendar-grid-body-row {
+  display: flex;
 }
 
-.agenda-line {
-  width: 2px;
-  height: 100%;
-  border-radius: 2px;
-  background: var(--accent);
+.calendar-grid-times {
+  width: 56px;
+  flex-shrink: 0;
+  position: sticky;
+  left: 0;
+  background: var(--surface);
+  z-index: 1;
 }
 
-.agenda-line-warning {
-  background: var(--amber);
+.calendar-grid-hour-mark {
+  position: absolute;
+  transform: translateY(-7px);
+  font-size: 11px;
+  color: var(--text-muted);
+  padding-right: 8px;
 }
 
-.agenda-line-success {
-  background: var(--green);
+.calendar-grid-column {
+  position: relative;
+  flex: 1;
+  min-width: 180px;
+  border-left: 1px solid var(--border);
+  cursor: pointer;
 }
 
-.agenda-line-info {
-  background: var(--blue);
+.calendar-grid-gridline {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: var(--border);
 }
 
-.agenda-line-danger {
-  background: var(--red);
+.calendar-block {
+  position: absolute;
+  left: 4px;
+  right: 4px;
+  display: grid;
+  gap: 2px;
+  align-content: start;
+  padding: 6px 8px;
+  border-radius: 6px;
+  border: 0;
+  overflow: hidden;
+  text-align: left;
+  cursor: pointer;
+  font: inherit;
 }
 
-.agenda-line-neutral {
-  background: #8a9299;
+.calendar-block-online {
+  border-left: 3px solid var(--red);
 }
 
-.agenda-line-online {
-  background: var(--red);
+.calendar-block strong {
+  font-size: 12px;
+}
+
+.calendar-block span {
+  font-size: 12px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.calendar-block small {
+  font-size: 11px;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .agenda-fill-green {
@@ -1051,39 +1117,6 @@ table td:nth-child(2) small {
 
 .agenda-fill-neutral {
   background: transparent;
-}
-
-.agenda-item.agenda-fill-green,
-.agenda-item.agenda-fill-teal,
-.agenda-item.agenda-fill-yellow,
-.agenda-item.agenda-fill-red,
-.agenda-item.agenda-fill-purple,
-.agenda-item.agenda-fill-lime,
-.agenda-item.agenda-fill-blue {
-  border-radius: 8px;
-  padding-left: 12px;
-  padding-right: 12px;
-}
-
-.agenda-content {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
-}
-
-.agenda-actions {
-  min-width: 182px;
-  display: grid;
-  justify-items: end;
-  gap: 7px;
-}
-
-.attendance-label {
-  max-width: 220px;
-  color: var(--text-muted);
-  font-size: 10px;
-  text-align: right;
 }
 
 .appointments-heading {
@@ -3632,25 +3665,6 @@ td strong {
     border-bottom: 0;
   }
 
-  .agenda-content {
-    align-items: flex-start;
-    flex-direction: column;
-  }
-
-  .agenda-actions {
-    width: 100%;
-    min-width: 0;
-    grid-template-columns: minmax(0, 1fr) auto;
-    align-items: center;
-    justify-items: start;
-  }
-
-  .agenda-actions .attendance-label {
-    grid-column: 1 / -1;
-    grid-row: 2;
-    text-align: left;
-  }
-
   .appointments-heading {
     align-items: stretch;
     flex-direction: column;
@@ -3983,7 +3997,6 @@ td strong {
   .panel-heading,
   .appointment-list,
   .attention-list,
-  .day-agenda,
   .rules-list,
   .week-schedule {
     padding-left: 14px;
@@ -3997,10 +4010,5 @@ td strong {
 
   .segmented-control {
     grid-template-columns: 1fr;
-  }
-
-  .agenda-item {
-    grid-template-columns: 60px 2px minmax(0, 1fr);
-    gap: 10px;
   }
 }
