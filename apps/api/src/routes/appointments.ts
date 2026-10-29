@@ -135,6 +135,17 @@ const reopenAppointmentSchema = z.object({
   reason: z.string().trim().min(1).max(1000)
 });
 const idSchema = z.object({ id: z.string().cuid() });
+const serviceLineIdSchema = z.object({
+  id: z.string().cuid(),
+  lineId: z.string().cuid()
+});
+const addServiceLineSchema = z.object({
+  serviceId: z.string().cuid(),
+  discountAmountMinor: z.number().int().min(0).max(10_000_000).optional()
+});
+const serviceLineDiscountSchema = z.object({
+  discountAmountMinor: z.number().int().min(0).max(10_000_000)
+});
 
 const appointmentInclude = {
   client: {
@@ -152,6 +163,18 @@ const appointmentInclude = {
       titleRu: true,
       durationMinutes: true,
       bufferAfterMinutes: true
+    }
+  },
+  extraServices: {
+    orderBy: { position: "asc" as const },
+    select: {
+      id: true,
+      serviceId: true,
+      position: true,
+      durationMinutes: true,
+      priceMinor: true,
+      discountAmountMinor: true,
+      service: { select: { id: true, titleRu: true } }
     }
   },
   staff: { select: { id: true, displayName: true, userId: true } },
@@ -1000,7 +1023,12 @@ export function registerAppointmentRoutes(
       if (!parameters.success || !input.success) return sendInvalidPayload(reply);
 
       const current = await database!.appointment.findUnique({
-        where: { id: parameters.data.id }
+        where: { id: parameters.data.id },
+        include: {
+          extraServices: {
+            select: { priceMinor: true, discountAmountMinor: true }
+          }
+        }
       });
       if (!current) return reply.code(404).send({ error: "appointment_not_found" });
       if (!activeAppointmentStatuses.includes(current.status)) {
@@ -1017,11 +1045,20 @@ export function registerAppointmentRoutes(
           }
         }
       });
-      const basePriceMinor = service?.prices[0]?.amountMinor ?? current.priceMinor;
-      const priceMinor = Math.max(
-        0,
-        basePriceMinor - input.data.discountAmountMinor
+      const basePriceMinor =
+        service?.prices[0]?.amountMinor ??
+        current.priceMinor -
+          current.extraServices.reduce(
+            (total, line) => total + line.priceMinor - line.discountAmountMinor,
+            0
+          );
+      const extraServicesTotal = current.extraServices.reduce(
+        (total, line) => total + Math.max(0, line.priceMinor - line.discountAmountMinor),
+        0
       );
+      const priceMinor =
+        Math.max(0, basePriceMinor - input.data.discountAmountMinor) +
+        extraServicesTotal;
 
       const appointment = await database!.appointment.update({
         where: { id: current.id },
@@ -1031,6 +1068,215 @@ export function registerAppointmentRoutes(
           priceMinor
         },
         include: appointmentInclude
+      });
+
+      return { appointment };
+    }
+  );
+
+  server.post(
+    "/v1/admin/appointments/:id/services",
+    { preHandler: adminGuard },
+    async (request, reply) => {
+      const parameters = idSchema.safeParse(request.params);
+      const input = addServiceLineSchema.safeParse(request.body);
+      if (!parameters.success || !input.success) return sendInvalidPayload(reply);
+
+      const current = await database!.appointment.findUnique({
+        where: { id: parameters.data.id },
+        include: {
+          service: { select: { durationMinutes: true } },
+          extraServices: {
+            select: { durationMinutes: true, priceMinor: true, discountAmountMinor: true }
+          }
+        }
+      });
+      if (!current) return reply.code(404).send({ error: "appointment_not_found" });
+      if (!activeAppointmentStatuses.includes(current.status)) {
+        return reply.code(409).send({ error: "appointment_not_editable" });
+      }
+
+      const extraService = await database!.service.findFirst({
+        where: { id: input.data.serviceId, isActive: true },
+        select: {
+          durationMinutes: true,
+          prices: {
+            where: { currency: current.currency },
+            take: 1,
+            select: { amountMinor: true }
+          }
+        }
+      });
+      if (!extraService) return reply.code(404).send({ error: "service_not_found" });
+
+      const extraPriceMinor = extraService.prices[0]?.amountMinor ?? 0;
+      const discountAmountMinor = input.data.discountAmountMinor ?? 0;
+      const currentDurationMinutes =
+        current.service.durationMinutes +
+        current.extraServices.reduce((total, line) => total + line.durationMinutes, 0);
+      const endsAt = appointmentEnd(
+        current.startsAt,
+        currentDurationMinutes + extraService.durationMinutes
+      );
+
+      if (
+        await conflictingAppointment(
+          database!,
+          current.staffId,
+          current.startsAt,
+          endsAt,
+          current.id
+        )
+      ) {
+        return reply.code(409).send({ error: "appointment_time_conflict" });
+      }
+
+      let appointment;
+      try {
+        appointment = await database!.$transaction(async (transaction) => {
+          await transaction.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${current.staffId}))`;
+          const conflict = await transaction.appointment.findFirst({
+            where: {
+              staffId: current.staffId,
+              status: { in: activeAppointmentStatuses },
+              startsAt: { lt: endsAt },
+              endsAt: { gt: current.startsAt },
+              id: { not: current.id }
+            },
+            select: { id: true }
+          });
+          if (conflict) throw new AppointmentTimeConflictError();
+
+          const position = await transaction.appointmentService.count({
+            where: { appointmentId: current.id }
+          });
+          await transaction.appointmentService.create({
+            data: {
+              appointmentId: current.id,
+              serviceId: input.data.serviceId,
+              position,
+              durationMinutes: extraService.durationMinutes,
+              priceMinor: extraPriceMinor,
+              discountAmountMinor
+            }
+          });
+          await transaction.appointment.update({
+            where: { id: current.id },
+            data: {
+              endsAt,
+              priceMinor: {
+                increment: Math.max(0, extraPriceMinor - discountAmountMinor)
+              }
+            }
+          });
+
+          return transaction.appointment.findUniqueOrThrow({
+            where: { id: current.id },
+            include: appointmentInclude
+          });
+        });
+      } catch (error) {
+        if (error instanceof AppointmentTimeConflictError) {
+          return reply.code(409).send({ error: "appointment_time_conflict" });
+        }
+        throw error;
+      }
+
+      return reply.code(201).send({ appointment });
+    }
+  );
+
+  server.patch(
+    "/v1/admin/appointments/:id/services/:lineId",
+    { preHandler: adminGuard },
+    async (request, reply) => {
+      const parameters = serviceLineIdSchema.safeParse(request.params);
+      const input = serviceLineDiscountSchema.safeParse(request.body);
+      if (!parameters.success || !input.success) return sendInvalidPayload(reply);
+
+      const line = await database!.appointmentService.findFirst({
+        where: { id: parameters.data.lineId, appointmentId: parameters.data.id }
+      });
+      if (!line) return reply.code(404).send({ error: "service_line_not_found" });
+
+      const current = await database!.appointment.findUniqueOrThrow({
+        where: { id: parameters.data.id }
+      });
+      if (!activeAppointmentStatuses.includes(current.status)) {
+        return reply.code(409).send({ error: "appointment_not_editable" });
+      }
+
+      const priceDelta =
+        Math.max(0, line.priceMinor - input.data.discountAmountMinor) -
+        Math.max(0, line.priceMinor - line.discountAmountMinor);
+
+      const appointment = await database!.$transaction(async (transaction) => {
+        await transaction.appointmentService.update({
+          where: { id: line.id },
+          data: { discountAmountMinor: input.data.discountAmountMinor }
+        });
+        await transaction.appointment.update({
+          where: { id: current.id },
+          data: { priceMinor: { increment: priceDelta } }
+        });
+        return transaction.appointment.findUniqueOrThrow({
+          where: { id: current.id },
+          include: appointmentInclude
+        });
+      });
+
+      return { appointment };
+    }
+  );
+
+  server.delete(
+    "/v1/admin/appointments/:id/services/:lineId",
+    { preHandler: adminGuard },
+    async (request, reply) => {
+      const parameters = serviceLineIdSchema.safeParse(request.params);
+      if (!parameters.success) return sendInvalidPayload(reply);
+
+      const line = await database!.appointmentService.findFirst({
+        where: { id: parameters.data.lineId, appointmentId: parameters.data.id }
+      });
+      if (!line) return reply.code(404).send({ error: "service_line_not_found" });
+
+      const current = await database!.appointment.findUniqueOrThrow({
+        where: { id: parameters.data.id },
+        include: {
+          service: { select: { durationMinutes: true } },
+          extraServices: { select: { durationMinutes: true } }
+        }
+      });
+      if (!activeAppointmentStatuses.includes(current.status)) {
+        return reply.code(409).send({ error: "appointment_not_editable" });
+      }
+
+      const newEndsAt = appointmentEnd(
+        current.startsAt,
+        current.service.durationMinutes +
+          current.extraServices.reduce(
+            (total, entry) => total + entry.durationMinutes,
+            0
+          ) -
+          line.durationMinutes
+      );
+
+      const appointment = await database!.$transaction(async (transaction) => {
+        await transaction.appointmentService.delete({ where: { id: line.id } });
+        await transaction.appointment.update({
+          where: { id: current.id },
+          data: {
+            endsAt: newEndsAt,
+            priceMinor: {
+              decrement: Math.max(0, line.priceMinor - line.discountAmountMinor)
+            }
+          }
+        });
+        return transaction.appointment.findUniqueOrThrow({
+          where: { id: current.id },
+          include: appointmentInclude
+        });
       });
 
       return { appointment };

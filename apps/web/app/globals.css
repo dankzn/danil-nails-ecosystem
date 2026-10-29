@@ -3266,7 +3266,79 @@ td strong {
   border-radius: 50%;
   background: var(--surface-soft);
   color: var(--text-muted);
+  cursor: pointer;
+}
+
+.dikidi-add-service:hover:not(:disabled) {
+  background: var(--surface);
+  color: var(--text);
+}
+
+.dikidi-add-service:disabled {
   cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.dikidi-service-row-spacer {
+  width: 28px;
+  height: 28px;
+}
+
+.dikidi-service-row-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dikidi-remove-service {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: var(--surface-soft);
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.dikidi-remove-service:hover:not(:disabled) {
+  background: var(--surface);
+  color: var(--text);
+}
+
+.dikidi-remove-service:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+.dikidi-service-row-add select {
+  grid-column: 1 / 6;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 8px 9px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 12px;
+}
+
+.dikidi-service-row-add .dikidi-service-row-actions {
+  grid-column: 7;
+}
+
+.dikidi-service-row-totals {
+  margin-top: 2px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+  font-weight: 650;
+}
+
+.dikidi-service-row-totals > div:first-child {
+  color: var(--text-muted);
+  font-size: 9px;
+  font-weight: 750;
+  text-transform: uppercase;
 }
 
 .dikidi-checkbox-row {

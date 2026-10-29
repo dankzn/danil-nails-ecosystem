@@ -11,14 +11,17 @@ import {
   Clock3,
   CreditCard,
   Gift,
+  Check,
   History,
   Info,
   LoaderCircle,
+  Minus,
   Paperclip,
   Phone,
   Plus,
   TriangleAlert,
-  UserRound
+  UserRound,
+  X
 } from "lucide-react";
 import Link from "next/link";
 import {
@@ -116,6 +119,15 @@ type Appointment = {
     durationMinutes: number;
     bufferAfterMinutes: number;
   };
+  extraServices: Array<{
+    id: string;
+    serviceId: string;
+    position: number;
+    durationMinutes: number;
+    priceMinor: number;
+    discountAmountMinor: number;
+    service: { id: string; titleRu: string };
+  }>;
   staff: { id: string; displayName: string; userId: string };
   createdBy: {
     email: string | null;
@@ -260,6 +272,28 @@ function durationLabel(totalMinutes: number) {
   if (hours && minutes) return `${hours} ч ${minutes} м`;
   if (hours) return `${hours} ч`;
   return `${minutes} м`;
+}
+
+function extraServicesNetMinor(appointment: Appointment) {
+  return appointment.extraServices.reduce(
+    (total, line) => total + Math.max(0, line.priceMinor - line.discountAmountMinor),
+    0
+  );
+}
+
+function primaryBasePriceMinor(appointment: Appointment) {
+  return (
+    appointment.priceMinor -
+    extraServicesNetMinor(appointment) +
+    appointment.discountAmountMinor
+  );
+}
+
+function totalDurationMinutes(appointment: Appointment) {
+  return (
+    appointment.service.durationMinutes +
+    appointment.extraServices.reduce((total, line) => total + line.durationMinutes, 0)
+  );
 }
 
 function minorAmount(value: string) {
@@ -689,6 +723,12 @@ export default function AppointmentsPage() {
   const [cancellationReason, setCancellationReason] = useState("");
   const [discountAmount, setDiscountAmount] = useState("");
   const [discountPercent, setDiscountPercent] = useState("");
+  const [extraDiscounts, setExtraDiscounts] = useState<
+    Record<string, { percent: string; amount: string }>
+  >({});
+  const [isAddingService, setIsAddingService] = useState(false);
+  const [addServiceId, setAddServiceId] = useState("");
+  const [isSavingServiceLine, setIsSavingServiceLine] = useState(false);
   const [promoCode, setPromoCode] = useState("");
   const [internalNote, setInternalNote] = useState("");
   const [isCancelPromptOpen, setIsCancelPromptOpen] = useState(false);
@@ -1070,7 +1110,27 @@ export default function AppointmentsPage() {
     setRescheduleSlots([]);
     setRescheduleAvailabilityError(null);
     setRescheduleRequestedBy("studio");
-    const basePriceMinor = appointment.priceMinor + appointment.discountAmountMinor;
+    const basePriceMinor = primaryBasePriceMinor(appointment);
+    setExtraDiscounts(
+      Object.fromEntries(
+        appointment.extraServices.map((line) => [
+          line.id,
+          {
+            amount: line.discountAmountMinor
+              ? String(line.discountAmountMinor / 100)
+              : "",
+            percent:
+              line.discountAmountMinor && line.priceMinor > 0
+                ? String(
+                    Math.round((line.discountAmountMinor / line.priceMinor) * 100)
+                  )
+                : ""
+          }
+        ])
+      )
+    );
+    setIsAddingService(false);
+    setAddServiceId("");
     setDiscountAmount(
       appointment.discountAmountMinor
         ? String(appointment.discountAmountMinor / 100)
@@ -1240,8 +1300,7 @@ export default function AppointmentsPage() {
   function handleDiscountAmountInput(value: string) {
     setDiscountAmount(value);
     if (!selectedAppointment) return;
-    const basePriceMinor =
-      selectedAppointment.priceMinor + selectedAppointment.discountAmountMinor;
+    const basePriceMinor = primaryBasePriceMinor(selectedAppointment);
     const amount = Number(value.replace(",", "."));
     if (!value.trim() || !Number.isFinite(amount) || basePriceMinor <= 0) {
       setDiscountPercent("");
@@ -1255,8 +1314,7 @@ export default function AppointmentsPage() {
   function handleDiscountPercentInput(value: string) {
     setDiscountPercent(value);
     if (!selectedAppointment) return;
-    const basePriceMinor =
-      selectedAppointment.priceMinor + selectedAppointment.discountAmountMinor;
+    const basePriceMinor = primaryBasePriceMinor(selectedAppointment);
     const percent = Number(value.replace(",", "."));
     if (!value.trim() || !Number.isFinite(percent)) {
       setDiscountAmount("");
@@ -1264,6 +1322,106 @@ export default function AppointmentsPage() {
     }
     const amountMinor = Math.round((basePriceMinor * percent) / 100);
     setDiscountAmount(amountMinor > 0 ? String(amountMinor / 100) : "");
+  }
+
+  function handleExtraDiscountAmountInput(
+    lineId: string,
+    lineBasePriceMinor: number,
+    value: string
+  ) {
+    const amount = Number(value.replace(",", "."));
+    let percent = "";
+    if (value.trim() && Number.isFinite(amount) && lineBasePriceMinor > 0) {
+      const amountMinor = Math.round(amount * 100);
+      const computedPercent = Math.round((amountMinor / lineBasePriceMinor) * 100);
+      percent = computedPercent > 0 ? String(computedPercent) : "";
+    }
+    setExtraDiscounts((current) => ({
+      ...current,
+      [lineId]: { amount: value, percent }
+    }));
+  }
+
+  function handleExtraDiscountPercentInput(
+    lineId: string,
+    lineBasePriceMinor: number,
+    value: string
+  ) {
+    const percent = Number(value.replace(",", "."));
+    let amount = "";
+    if (value.trim() && Number.isFinite(percent)) {
+      const amountMinor = Math.round((lineBasePriceMinor * percent) / 100);
+      amount = amountMinor > 0 ? String(amountMinor / 100) : "";
+    }
+    setExtraDiscounts((current) => ({
+      ...current,
+      [lineId]: { percent: value, amount }
+    }));
+  }
+
+  async function updateServiceLineDiscount(lineId: string) {
+    if (!selectedAppointment) return;
+    const raw = extraDiscounts[lineId]?.amount ?? "";
+    const parsed = raw.trim() ? Number(raw.replace(",", ".")) : 0;
+    if (!Number.isFinite(parsed) || parsed < 0) {
+      setFormError("Скидка должна быть неотрицательным числом.");
+      throw new Error("invalid_extra_discount");
+    }
+    try {
+      const response = await apiRequest<{ appointment: Appointment }>(
+        `/v1/admin/appointments/${selectedAppointment.id}/services/${lineId}`,
+        {
+          method: "PATCH",
+          body: JSON.stringify({ discountAmountMinor: Math.round(parsed * 100) })
+        }
+      );
+      setSelectedAppointment(response.appointment);
+      await refresh();
+    } catch (error) {
+      setFormError(appointmentErrorMessage(error));
+      throw error;
+    }
+  }
+
+  async function addServiceLine() {
+    if (!selectedAppointment || !addServiceId) return;
+    setIsSavingServiceLine(true);
+    setFormError(null);
+    try {
+      const response = await apiRequest<{ appointment: Appointment }>(
+        `/v1/admin/appointments/${selectedAppointment.id}/services`,
+        {
+          method: "POST",
+          body: JSON.stringify({ serviceId: addServiceId })
+        }
+      );
+      setSelectedAppointment(response.appointment);
+      setIsAddingService(false);
+      setAddServiceId("");
+      await refresh();
+    } catch (error) {
+      setFormError(appointmentErrorMessage(error));
+    } finally {
+      setIsSavingServiceLine(false);
+    }
+  }
+
+  async function removeServiceLine(lineId: string) {
+    if (!selectedAppointment) return;
+    setIsSavingServiceLine(true);
+    setFormError(null);
+    try {
+      const response = await apiRequest<{ appointment: Appointment }>(
+        `/v1/admin/appointments/${selectedAppointment.id}/services/${lineId}`,
+        { method: "DELETE" }
+      );
+      setSelectedAppointment(response.appointment);
+      await refresh();
+    } catch (error) {
+      setFormError(appointmentErrorMessage(error));
+    } finally {
+      setIsSavingServiceLine(false);
+    }
   }
 
   async function saveAppointmentDetails() {
@@ -1283,9 +1441,21 @@ export default function AppointmentsPage() {
       if (discountChanged || promoChanged) {
         await updatePricing();
       }
+      for (const line of selectedAppointment.extraServices) {
+        const typedAmount = extraDiscounts[line.id]?.amount ?? "";
+        const parsedExtra = typedAmount.trim()
+          ? Number(typedAmount.replace(",", "."))
+          : 0;
+        if (
+          Number.isFinite(parsedExtra) &&
+          Math.round(parsedExtra * 100) !== line.discountAmountMinor
+        ) {
+          await updateServiceLineDiscount(line.id);
+        }
+      }
       setNotice("Изменения сохранены.");
     } catch {
-      // ошибка уже отражена в formError внутри updateNote/updatePricing
+      // ошибка уже отражена в formError внутри updateNote/updatePricing/updateServiceLineDiscount
     }
   }
 
@@ -1517,7 +1687,10 @@ export default function AppointmentsPage() {
   );
 
   const basePriceMinor = selectedAppointment
-    ? selectedAppointment.priceMinor + selectedAppointment.discountAmountMinor
+    ? primaryBasePriceMinor(selectedAppointment)
+    : 0;
+  const appointmentTotalDurationMinutes = selectedAppointment
+    ? totalDurationMinutes(selectedAppointment)
     : 0;
   const currentStartsAtValue = selectedAppointment
     ? moscowDateTimeInput(new Date(selectedAppointment.startsAt))
@@ -1537,6 +1710,29 @@ export default function AppointmentsPage() {
     basePriceMinor
   );
   const previewTotalMinor = Math.max(0, basePriceMinor - previewDiscountMinor);
+  const extraServicesBaseTotal = selectedAppointment
+    ? selectedAppointment.extraServices.reduce(
+        (total, line) => total + line.priceMinor,
+        0
+      )
+    : 0;
+  const extraServicesPreviewTotal = selectedAppointment
+    ? selectedAppointment.extraServices.reduce((total, line) => {
+        const typed = extraDiscounts[line.id]?.amount ?? "";
+        const discountMinor = Math.min(
+          Math.max(0, minorAmount(typed || "0") || 0),
+          line.priceMinor
+        );
+        return total + Math.max(0, line.priceMinor - discountMinor);
+      }, 0)
+    : 0;
+  const grandBasePriceMinor = basePriceMinor + extraServicesBaseTotal;
+  const grandTotalMinor = previewTotalMinor + extraServicesPreviewTotal;
+  const grandDiscountMinor = Math.max(0, grandBasePriceMinor - grandTotalMinor);
+  const grandDiscountPercent =
+    grandBasePriceMinor > 0
+      ? Math.round((grandDiscountMinor / grandBasePriceMinor) * 100)
+      : 0;
 
   return (
     <div className="page-stack">
@@ -1776,7 +1972,12 @@ export default function AppointmentsPage() {
                               {appointment.client.fullName ??
                                 appointment.client.phone}
                             </span>
-                            <small>{appointment.service.titleRu}</small>
+                            <small>
+                              {appointment.service.titleRu}
+                              {appointment.extraServices.map((line) => (
+                                <span key={line.id}>, {line.service.titleRu}</span>
+                              ))}
+                            </small>
                           </button>
                         );
                       })}
@@ -2217,16 +2418,167 @@ export default function AppointmentsPage() {
                   <div className="dikidi-service-static dikidi-service-total">
                     {formatMoney(previewTotalMinor, selectedAppointment.currency)}
                   </div>
-                  <button
-                    aria-label="Добавить услугу"
-                    className="dikidi-add-service"
-                    disabled
-                    title="Несколько услуг в записи будут добавлены позже"
-                    type="button"
-                  >
-                    <Plus aria-hidden="true" size={16} />
-                  </button>
+                  {selectedAppointment.extraServices.length === 0 ? (
+                    <button
+                      aria-label="Добавить услугу"
+                      className="dikidi-add-service"
+                      disabled={isSavingServiceLine}
+                      onClick={() => setIsAddingService(true)}
+                      type="button"
+                    >
+                      <Plus aria-hidden="true" size={16} />
+                    </button>
+                  ) : (
+                    <span aria-hidden="true" className="dikidi-service-row-spacer" />
+                  )}
                 </div>
+
+                {selectedAppointment.extraServices.map((line, index) => {
+                  const isLastLine =
+                    index === selectedAppointment.extraServices.length - 1;
+                  const lineDiscount = extraDiscounts[line.id] ?? {
+                    percent: "",
+                    amount: ""
+                  };
+                  const lineDiscountMinor = Math.min(
+                    Math.max(0, minorAmount(lineDiscount.amount || "0") || 0),
+                    line.priceMinor
+                  );
+                  const lineTotalMinor = Math.max(
+                    0,
+                    line.priceMinor - lineDiscountMinor
+                  );
+                  return (
+                    <div className="dikidi-service-row-body" key={line.id}>
+                      <div className="dikidi-service-name">
+                        {line.service.titleRu}
+                      </div>
+                      <div className="dikidi-service-static">
+                        {durationLabel(line.durationMinutes)}
+                      </div>
+                      <div className="dikidi-service-static">
+                        {formatMoney(line.priceMinor, selectedAppointment.currency)}
+                      </div>
+                      <input
+                        className="dikidi-service-input"
+                        inputMode="decimal"
+                        onChange={(event) =>
+                          handleExtraDiscountPercentInput(
+                            line.id,
+                            line.priceMinor,
+                            event.target.value
+                          )
+                        }
+                        placeholder="0"
+                        value={lineDiscount.percent}
+                      />
+                      <input
+                        className="dikidi-service-input"
+                        inputMode="decimal"
+                        onChange={(event) =>
+                          handleExtraDiscountAmountInput(
+                            line.id,
+                            line.priceMinor,
+                            event.target.value
+                          )
+                        }
+                        placeholder="0"
+                        value={lineDiscount.amount}
+                      />
+                      <div className="dikidi-service-static dikidi-service-total">
+                        {formatMoney(lineTotalMinor, selectedAppointment.currency)}
+                      </div>
+                      <div className="dikidi-service-row-actions">
+                        <button
+                          aria-label="Удалить услугу"
+                          className="dikidi-remove-service"
+                          disabled={isSavingServiceLine}
+                          onClick={() => void removeServiceLine(line.id)}
+                          type="button"
+                        >
+                          <Minus aria-hidden="true" size={16} />
+                        </button>
+                        {isLastLine ? (
+                          <button
+                            aria-label="Добавить услугу"
+                            className="dikidi-add-service"
+                            disabled={isSavingServiceLine}
+                            onClick={() => setIsAddingService(true)}
+                            type="button"
+                          >
+                            <Plus aria-hidden="true" size={16} />
+                          </button>
+                        ) : null}
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {isAddingService ? (
+                  <div className="dikidi-service-row-body dikidi-service-row-add">
+                    <select
+                      autoFocus
+                      onChange={(event) => setAddServiceId(event.target.value)}
+                      value={addServiceId}
+                    >
+                      <option value="">Выберите услугу</option>
+                      {options?.services.map((service) => (
+                        <option key={service.id} value={service.id}>
+                          {service.titleRu} · {service.durationMinutes} мин
+                        </option>
+                      ))}
+                    </select>
+                    <div className="dikidi-service-row-actions">
+                      <button
+                        aria-label="Отмена"
+                        className="dikidi-remove-service"
+                        onClick={() => {
+                          setIsAddingService(false);
+                          setAddServiceId("");
+                        }}
+                        type="button"
+                      >
+                        <X aria-hidden="true" size={16} />
+                      </button>
+                      <button
+                        aria-label="Подтвердить добавление услуги"
+                        className="dikidi-add-service"
+                        disabled={!addServiceId || isSavingServiceLine}
+                        onClick={() => void addServiceLine()}
+                        type="button"
+                      >
+                        <Check aria-hidden="true" size={16} />
+                      </button>
+                    </div>
+                  </div>
+                ) : null}
+
+                {selectedAppointment.extraServices.length > 0 ? (
+                  <div className="dikidi-service-row-body dikidi-service-row-totals">
+                    <div>Итого</div>
+                    <div className="dikidi-service-static">
+                      {durationLabel(appointmentTotalDurationMinutes)}
+                    </div>
+                    <div className="dikidi-service-static">
+                      {formatMoney(
+                        grandBasePriceMinor,
+                        selectedAppointment.currency
+                      )}
+                    </div>
+                    <div className="dikidi-service-static">
+                      {grandDiscountPercent} %
+                    </div>
+                    <div className="dikidi-service-static">
+                      {formatMoney(
+                        grandDiscountMinor,
+                        selectedAppointment.currency
+                      )}
+                    </div>
+                    <div className="dikidi-service-static dikidi-service-total">
+                      {formatMoney(grandTotalMinor, selectedAppointment.currency)}
+                    </div>
+                  </div>
+                ) : null}
               </div>
 
               <label className="dikidi-field dikidi-field-block">
