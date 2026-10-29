@@ -739,6 +739,8 @@ model Appointment {
   cancellationReason                String?
   source                            BookingSource                @default(online)
   colorTag                          String?
+  discountAmountMinor               Int                          @default(0)
+  promoCode                         String?
   createdByUserId                   String?
   priceMinor                        Int                          @default(0)
   currency                          Currency                     @default(RUB)

@@ -96,6 +96,10 @@ const appointmentColorTags = [
 const colorUpdateSchema = z.object({
   colorTag: z.enum(appointmentColorTags).nullable()
 });
+const pricingUpdateSchema = z.object({
+  discountAmountMinor: z.number().int().min(0).max(10_000_000),
+  promoCode: z.string().trim().max(60).nullable().optional()
+});
 const rescheduleSchema = z.object({
   startsAt: z.iso.datetime(),
   staffId: z.string().cuid().optional(),
@@ -950,6 +954,52 @@ export function registerAppointmentRoutes(
       const appointment = await database!.appointment.update({
         where: { id: current.id },
         data: { colorTag: input.data.colorTag },
+        include: appointmentInclude
+      });
+
+      return { appointment };
+    }
+  );
+
+  server.patch(
+    "/v1/admin/appointments/:id/pricing",
+    { preHandler: adminGuard },
+    async (request, reply) => {
+      const parameters = idSchema.safeParse(request.params);
+      const input = pricingUpdateSchema.safeParse(request.body);
+      if (!parameters.success || !input.success) return sendInvalidPayload(reply);
+
+      const current = await database!.appointment.findUnique({
+        where: { id: parameters.data.id }
+      });
+      if (!current) return reply.code(404).send({ error: "appointment_not_found" });
+      if (!activeAppointmentStatuses.includes(current.status)) {
+        return reply.code(409).send({ error: "appointment_not_editable" });
+      }
+
+      const service = await database!.service.findUnique({
+        where: { id: current.serviceId },
+        select: {
+          prices: {
+            where: { currency: current.currency },
+            take: 1,
+            select: { amountMinor: true }
+          }
+        }
+      });
+      const basePriceMinor = service?.prices[0]?.amountMinor ?? current.priceMinor;
+      const priceMinor = Math.max(
+        0,
+        basePriceMinor - input.data.discountAmountMinor
+      );
+
+      const appointment = await database!.appointment.update({
+        where: { id: current.id },
+        data: {
+          discountAmountMinor: input.data.discountAmountMinor,
+          promoCode: input.data.promoCode?.trim() || null,
+          priceMinor
+        },
         include: appointmentInclude
       });
 

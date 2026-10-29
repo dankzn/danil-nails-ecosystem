@@ -96,6 +96,8 @@ type Appointment = {
   cancellationReason: string | null;
   canceledAt: string | null;
   colorTag: AppointmentColorTag | null;
+  discountAmountMinor: number;
+  promoCode: string | null;
   priceMinor: number;
   currency: string;
   client: {
@@ -672,6 +674,8 @@ export default function AppointmentsPage() {
   const [attendanceStatus, setAttendanceStatus] =
     useState<AttendanceStatus>("not_requested");
   const [cancellationReason, setCancellationReason] = useState("");
+  const [discountAmount, setDiscountAmount] = useState("");
+  const [promoCode, setPromoCode] = useState("");
   const [canceledBy, setCanceledBy] = useState<"client" | "studio">("studio");
   const [isRescheduling, setIsRescheduling] = useState(false);
   const [rescheduleDate, setRescheduleDate] = useState(moscowDateKey);
@@ -988,6 +992,19 @@ export default function AppointmentsPage() {
     }));
   }
 
+  function duplicateAppointment() {
+    if (!selectedAppointment) return;
+    const source = selectedAppointment;
+    setSelectedAppointment(null);
+    openCreateForm();
+    setForm((current) => ({
+      ...current,
+      clientId: source.client.id,
+      serviceId: source.service.id,
+      staffId: source.staff.id
+    }));
+  }
+
   function openAppointment(appointment: Appointment) {
     const today = moscowDateKey();
     const latestDate = moveDate(today, bookingRules.bookingHorizonDays);
@@ -1036,6 +1053,12 @@ export default function AppointmentsPage() {
     setRescheduleSlots([]);
     setRescheduleAvailabilityError(null);
     setRescheduleRequestedBy("studio");
+    setDiscountAmount(
+      appointment.discountAmountMinor
+        ? String(appointment.discountAmountMinor / 100)
+        : ""
+    );
+    setPromoCode(appointment.promoCode ?? "");
     setFormError(null);
   }
 
@@ -1145,6 +1168,39 @@ export default function AppointmentsPage() {
       setSelectedAppointment((previous) =>
         previous ? { ...previous, colorTag } : previous
       );
+      await refresh();
+    } catch (error) {
+      setFormError(appointmentErrorMessage(error));
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  async function updatePricing() {
+    if (!selectedAppointment) return;
+    const parsedDiscount = discountAmount.trim()
+      ? Number(discountAmount.replace(",", "."))
+      : 0;
+    if (!Number.isFinite(parsedDiscount) || parsedDiscount < 0) {
+      setFormError("Скидка должна быть неотрицательным числом.");
+      return;
+    }
+    setIsSaving(true);
+    setFormError(null);
+    setNotice(null);
+    try {
+      const response = await apiRequest<{ appointment: Appointment }>(
+        `/v1/admin/appointments/${selectedAppointment.id}/pricing`,
+        {
+          method: "PATCH",
+          body: JSON.stringify({
+            discountAmountMinor: Math.round(parsedDiscount * 100),
+            promoCode: promoCode.trim() || null
+          })
+        }
+      );
+      setSelectedAppointment(response.appointment);
+      setNotice("Скидка и промокод обновлены.");
       await refresh();
     } catch (error) {
       setFormError(appointmentErrorMessage(error));
@@ -1960,6 +2016,20 @@ export default function AppointmentsPage() {
                     selectedAppointment.priceMinor,
                     selectedAppointment.currency
                   )}
+                  {selectedAppointment.discountAmountMinor > 0 ? (
+                    <small>
+                      {" "}
+                      (скидка{" "}
+                      {formatMoney(
+                        selectedAppointment.discountAmountMinor,
+                        selectedAppointment.currency
+                      )}
+                      {selectedAppointment.promoCode
+                        ? `, промокод ${selectedAppointment.promoCode}`
+                        : ""}
+                      )
+                    </small>
+                  ) : null}
                 </dd>
               </div>
               <div>
@@ -1975,9 +2045,52 @@ export default function AppointmentsPage() {
             <section className="editor-section">
               <div className="editor-section-heading">
                 <div>
+                  <p className="section-kicker">Цена</p>
+                  <h2>Скидка и промокод</h2>
+                </div>
+              </div>
+              <div className="form-grid form-grid-two">
+                <label className="form-field">
+                  <span>Скидка, {selectedAppointment.currency}</span>
+                  <input
+                    inputMode="decimal"
+                    onChange={(event) => setDiscountAmount(event.target.value)}
+                    placeholder="0"
+                    value={discountAmount}
+                  />
+                </label>
+                <label className="form-field">
+                  <span>Промокод</span>
+                  <input
+                    maxLength={60}
+                    onChange={(event) => setPromoCode(event.target.value)}
+                    value={promoCode}
+                  />
+                </label>
+              </div>
+              <button
+                className="secondary-button editor-action"
+                disabled={isSaving}
+                onClick={() => void updatePricing()}
+                type="button"
+              >
+                Применить скидку
+              </button>
+            </section>
+
+            <section className="editor-section">
+              <div className="editor-section-heading">
+                <div>
                   <p className="section-kicker">Модерация</p>
                   <h2>Статус записи</h2>
                 </div>
+                <button
+                  className="secondary-button"
+                  onClick={() => duplicateAppointment()}
+                  type="button"
+                >
+                  Повторить запись
+                </button>
               </div>
               <div className="form-grid form-grid-two">
                 <label className="form-field">
