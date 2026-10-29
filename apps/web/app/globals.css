@@ -743,6 +743,26 @@ table td:nth-child(2) small {
   line-height: 1.45;
 }
 
+.loyalty-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  font-size: 13px;
+}
+
+.loyalty-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.loyalty-adjustment-form {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
 .tag-option {
   min-height: 32px;
   border: 1px solid var(--border-strong);

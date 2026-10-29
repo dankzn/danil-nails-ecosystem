@@ -1,4 +1,9 @@
-import { Prisma, UserRole, type DatabaseClient } from "@danil-nails/db";
+import {
+  LoyaltyTransactionType,
+  Prisma,
+  UserRole,
+  type DatabaseClient
+} from "@danil-nails/db";
 import type { FastifyInstance, FastifyReply } from "fastify";
 import { z } from "zod";
 import { authorize } from "../auth/session.js";
@@ -19,6 +24,11 @@ const clientInputSchema = z.object({
 
 const clientUpdateSchema = clientInputSchema.partial();
 const idSchema = z.object({ id: z.string().cuid() });
+const loyaltyAdjustmentSchema = z.object({
+  direction: z.enum(["accrual", "redemption"]),
+  points: z.number().int().positive().max(1_000_000),
+  reason: z.string().trim().min(1).max(500)
+});
 const listQuerySchema = z.object({
   search: z.string().trim().max(120).optional(),
   limit: z.coerce.number().int().min(1).max(100).default(50)
@@ -355,6 +365,88 @@ export function registerClientRoutes(
         }
         throw error;
       }
+    }
+  );
+
+  server.get(
+    "/v1/admin/clients/:id/loyalty-transactions",
+    { preHandler: adminGuard },
+    async (request, reply) => {
+      const parameters = idSchema.safeParse(request.params);
+      if (!parameters.success) return sendInvalidPayload(reply);
+
+      const client = await database!.client.findUnique({
+        where: { id: parameters.data.id },
+        select: { id: true }
+      });
+      if (!client) return reply.code(404).send({ error: "client_not_found" });
+
+      const [transactions, balance] = await Promise.all([
+        database!.clientLoyaltyTransaction.findMany({
+          where: { clientId: parameters.data.id },
+          orderBy: { createdAt: "desc" },
+          take: 200,
+          select: {
+            id: true,
+            type: true,
+            pointsDelta: true,
+            reason: true,
+            createdAt: true,
+            appointmentId: true,
+            createdBy: {
+              select: { staffProfile: { select: { displayName: true } } }
+            }
+          }
+        }),
+        database!.clientLoyaltyTransaction.aggregate({
+          where: { clientId: parameters.data.id },
+          _sum: { pointsDelta: true }
+        })
+      ]);
+
+      return {
+        balancePoints: balance._sum.pointsDelta ?? 0,
+        transactions: transactions.map((transaction) => ({
+          id: transaction.id,
+          type: transaction.type,
+          pointsDelta: transaction.pointsDelta,
+          reason: transaction.reason,
+          createdAt: transaction.createdAt,
+          appointmentId: transaction.appointmentId,
+          createdByDisplayName: transaction.createdBy?.staffProfile?.displayName ?? null
+        }))
+      };
+    }
+  );
+
+  server.post(
+    "/v1/admin/clients/:id/loyalty-transactions",
+    { preHandler: adminGuard },
+    async (request, reply) => {
+      const parameters = idSchema.safeParse(request.params);
+      const input = loyaltyAdjustmentSchema.safeParse(request.body);
+      if (!parameters.success || !input.success) return sendInvalidPayload(reply);
+
+      const client = await database!.client.findUnique({
+        where: { id: parameters.data.id },
+        select: { id: true }
+      });
+      if (!client) return reply.code(404).send({ error: "client_not_found" });
+
+      const transaction = await database!.clientLoyaltyTransaction.create({
+        data: {
+          clientId: parameters.data.id,
+          createdByUserId: request.crmUser!.id,
+          type: LoyaltyTransactionType.adjustment,
+          pointsDelta:
+            input.data.direction === "accrual"
+              ? input.data.points
+              : -input.data.points,
+          reason: input.data.reason
+        }
+      });
+
+      return reply.code(201).send({ transaction });
     }
   );
 }

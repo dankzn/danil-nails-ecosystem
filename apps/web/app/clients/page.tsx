@@ -750,6 +750,10 @@ export default function ClientsPage() {
               </label>
             ) : null}
 
+            {editingClient ? (
+              <LoyaltyTransactionsSection clientId={editingClient.id} />
+            ) : null}
+
             {formError ? (
               <p className="feedback feedback-error" role="alert">
                 {formError}
@@ -772,5 +776,227 @@ export default function ClientsPage() {
         </Modal>
       ) : null}
     </div>
+  );
+}
+
+type LoyaltyTransaction = {
+  id: string;
+  type: "accrual" | "redemption" | "adjustment" | "reversal";
+  pointsDelta: number;
+  reason: string | null;
+  createdAt: string;
+  appointmentId: string | null;
+  createdByDisplayName: string | null;
+};
+
+const loyaltyTypeLabels: Record<LoyaltyTransaction["type"], string> = {
+  accrual: "Начисление",
+  redemption: "Списание",
+  adjustment: "Корректировка",
+  reversal: "Отмена операции"
+};
+
+const loyaltyDateFormatter = new Intl.DateTimeFormat("ru-RU", {
+  day: "numeric",
+  month: "short",
+  year: "numeric",
+  hour: "2-digit",
+  minute: "2-digit"
+});
+
+function LoyaltyTransactionsSection({ clientId }: { clientId: string }) {
+  const [balance, setBalance] = useState<number | null>(null);
+  const [transactions, setTransactions] = useState<LoyaltyTransaction[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [activeDirection, setActiveDirection] = useState<
+    "accrual" | "redemption" | null
+  >(null);
+  const [points, setPoints] = useState("");
+  const [reason, setReason] = useState("");
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    setIsLoading(true);
+    setLoadError(null);
+    try {
+      const data = await apiRequest<{
+        balancePoints: number;
+        transactions: LoyaltyTransaction[];
+      }>(`/v1/admin/clients/${clientId}/loyalty-transactions`);
+      setBalance(data.balancePoints);
+      setTransactions(data.transactions);
+    } catch {
+      setLoadError("Не удалось загрузить историю бонусов.");
+    } finally {
+      setIsLoading(false);
+    }
+  }, [clientId]);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  function openForm(direction: "accrual" | "redemption") {
+    setActiveDirection(direction);
+    setPoints("");
+    setReason("");
+    setSaveError(null);
+  }
+
+  function suppressEnterSubmit(event: { key: string; preventDefault: () => void }) {
+    if (event.key === "Enter") event.preventDefault();
+  }
+
+  async function submitAdjustment() {
+    if (!activeDirection) return;
+    const parsedPoints = Number(points);
+    if (!Number.isInteger(parsedPoints) || parsedPoints <= 0 || !reason.trim()) {
+      setSaveError("Укажите целое число баллов больше нуля и причину.");
+      return;
+    }
+    setIsSaving(true);
+    setSaveError(null);
+    try {
+      await apiRequest(`/v1/admin/clients/${clientId}/loyalty-transactions`, {
+        method: "POST",
+        body: JSON.stringify({
+          direction: activeDirection,
+          points: parsedPoints,
+          reason: reason.trim()
+        })
+      });
+      setActiveDirection(null);
+      await load();
+    } catch {
+      setSaveError("Не удалось сохранить операцию.");
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  const accrued = transactions
+    .filter((transaction) => transaction.pointsDelta > 0)
+    .reduce((sum, transaction) => sum + transaction.pointsDelta, 0);
+  const redeemed = transactions
+    .filter((transaction) => transaction.pointsDelta < 0)
+    .reduce((sum, transaction) => sum + Math.abs(transaction.pointsDelta), 0);
+
+  return (
+    <fieldset className="tag-fieldset">
+      <legend>Бонусы</legend>
+
+      <div className="loyalty-summary">
+        <span>
+          <strong>Баланс:</strong> {isLoading ? "…" : (balance ?? 0)}
+        </span>
+        <span>
+          <strong>Начислено:</strong> {isLoading ? "…" : accrued}
+        </span>
+        <span>
+          <strong>Списано:</strong> {isLoading ? "…" : redeemed}
+        </span>
+      </div>
+
+      <div className="loyalty-actions">
+        <button
+          className="secondary-button"
+          onClick={() => openForm("accrual")}
+          type="button"
+        >
+          Начислить
+        </button>
+        <button
+          className="secondary-button"
+          onClick={() => openForm("redemption")}
+          type="button"
+        >
+          Списать
+        </button>
+      </div>
+
+      {activeDirection ? (
+        <div className="loyalty-adjustment-form">
+          <label className="form-field">
+            <span>Баллы</span>
+            <input
+              inputMode="numeric"
+              onChange={(event) => setPoints(event.target.value)}
+              onKeyDown={suppressEnterSubmit}
+              value={points}
+            />
+          </label>
+          <label className="form-field">
+            <span>Причина</span>
+            <input
+              maxLength={500}
+              onChange={(event) => setReason(event.target.value)}
+              onKeyDown={suppressEnterSubmit}
+              value={reason}
+            />
+          </label>
+          {saveError ? (
+            <p className="feedback feedback-error" role="alert">
+              {saveError}
+            </p>
+          ) : null}
+          <div className="loyalty-actions">
+            <button
+              className="secondary-button"
+              onClick={() => setActiveDirection(null)}
+              type="button"
+            >
+              Отмена
+            </button>
+            <button
+              className="primary-button"
+              disabled={isSaving}
+              onClick={() => void submitAdjustment()}
+              type="button"
+            >
+              {isSaving ? "Сохраняем…" : "Подтвердить"}
+            </button>
+          </div>
+        </div>
+      ) : null}
+
+      {loadError ? (
+        <p className="feedback feedback-error" role="alert">
+          {loadError}
+        </p>
+      ) : !isLoading && transactions.length === 0 ? (
+        <small>Операций пока нет.</small>
+      ) : transactions.length > 0 ? (
+        <div className="table-scroll">
+          <table>
+            <thead>
+              <tr>
+                <th>Тип</th>
+                <th>Баллы</th>
+                <th>Причина</th>
+                <th>Автор</th>
+                <th>Дата</th>
+              </tr>
+            </thead>
+            <tbody>
+              {transactions.map((transaction) => (
+                <tr key={transaction.id}>
+                  <td>{loyaltyTypeLabels[transaction.type]}</td>
+                  <td>
+                    {transaction.pointsDelta > 0
+                      ? `+${transaction.pointsDelta}`
+                      : transaction.pointsDelta}
+                  </td>
+                  <td>{transaction.reason ?? "—"}</td>
+                  <td>{transaction.createdByDisplayName ?? "—"}</td>
+                  <td>{loyaltyDateFormatter.format(new Date(transaction.createdAt))}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : null}
+    </fieldset>
   );
 }
