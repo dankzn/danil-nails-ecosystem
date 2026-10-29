@@ -614,6 +614,7 @@ function appointmentErrorMessage(error: unknown) {
     if (error.status === 401 || error.status === 403) {
       return "Недостаточно прав или сессия завершилась.";
     }
+    return `Не удалось сохранить изменения (${error.code || error.status}). Попробуйте ещё раз.`;
   }
   return "Не удалось сохранить изменения. Попробуйте ещё раз.";
 }
