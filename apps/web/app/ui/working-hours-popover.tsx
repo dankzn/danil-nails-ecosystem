@@ -2,7 +2,7 @@
 
 import { X } from "lucide-react";
 import { useState } from "react";
-import { apiRequest } from "../lib/api";
+import { ApiError, apiRequest } from "../lib/api";
 
 export type DayRange = { startsAt: string; endsAt: string };
 
@@ -63,8 +63,16 @@ export function WorkingHoursPopover({
       );
       onSaved(response.ranges);
       onClose();
-    } catch {
-      setError("Не удалось сохранить. Попробуйте ещё раз.");
+    } catch (caughtError) {
+      setError(
+        caughtError instanceof ApiError &&
+          caughtError.code === "schedule_day_has_appointments"
+          ? "На этот день уже есть записи — сначала перенесите или отмените их."
+          : caughtError instanceof ApiError &&
+              caughtError.code === "schedule_exception_spans_multiple_days"
+            ? "Этот день входит в многодневное исключение — измените его в «Шаблон недели»."
+            : "Не удалось сохранить. Попробуйте ещё раз."
+      );
     } finally {
       setIsSaving(false);
     }

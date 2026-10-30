@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { hasInvalidWorkingHours } from "./schedule.js";
+import { findAppointmentOutsideRanges, hasInvalidWorkingHours } from "./schedule.js";
+
+const at = (time: string) => new Date(`2026-10-30T${time}:00+03:00`);
 
 test("accepts separate working intervals for the same day", () => {
   assert.equal(
@@ -29,4 +31,40 @@ test("rejects a working interval with an invalid time order", () => {
     ]),
     true
   );
+});
+
+test("findAppointmentOutsideRanges flags an appointment when the day is made off (no ranges)", () => {
+  const appointment = { startsAt: at("11:00"), endsAt: at("12:30") };
+  const found = findAppointmentOutsideRanges([appointment], []);
+  assert.equal(found, appointment);
+});
+
+test("findAppointmentOutsideRanges allows a day-override that still covers every appointment", () => {
+  const appointment = { startsAt: at("11:00"), endsAt: at("12:30") };
+  const found = findAppointmentOutsideRanges(
+    [appointment],
+    [{ startsAt: at("09:00"), endsAt: at("18:00") }]
+  );
+  assert.equal(found, undefined);
+});
+
+test("findAppointmentOutsideRanges flags an appointment narrowed out of the new hours", () => {
+  const appointment = { startsAt: at("17:00"), endsAt: at("18:30") };
+  const found = findAppointmentOutsideRanges(
+    [appointment],
+    [{ startsAt: at("09:00"), endsAt: at("17:00") }]
+  );
+  assert.equal(found, appointment);
+});
+
+test("findAppointmentOutsideRanges allows an appointment that fits inside a break-split range", () => {
+  const appointment = { startsAt: at("15:00"), endsAt: at("16:00") };
+  const found = findAppointmentOutsideRanges(
+    [appointment],
+    [
+      { startsAt: at("09:00"), endsAt: at("13:00") },
+      { startsAt: at("14:00"), endsAt: at("18:00") }
+    ]
+  );
+  assert.equal(found, undefined);
 });

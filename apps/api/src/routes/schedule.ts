@@ -4,6 +4,7 @@ import type { FastifyInstance, FastifyReply } from "fastify";
 import { z } from "zod";
 import { authorize } from "../auth/session.js";
 import { resolveDisplayRanges, weekdayForDate } from "../availability.js";
+import { activeAppointmentStatuses } from "./appointments.js";
 
 const datePattern = /^\d{4}-\d{2}-\d{2}$/;
 const timePattern = /^([01]\d|2[0-3]):[0-5]\d$/;
@@ -60,6 +61,23 @@ type ScheduleUser = {
 function timeToMinutes(value: string) {
   const [hours = 0, minutes = 0] = value.split(":").map(Number);
   return hours * 60 + minutes;
+}
+
+// An appointment is "covered" when it fits entirely inside one of the new
+// ranges. Used to refuse a day-override (including "make day off", which
+// passes an empty ranges array) that would silently strand an existing
+// appointment outside working hours instead of making the admin move it.
+export function findAppointmentOutsideRanges(
+  appointments: Array<{ startsAt: Date; endsAt: Date }>,
+  ranges: Array<{ startsAt: Date; endsAt: Date }>
+) {
+  return appointments.find(
+    (appointment) =>
+      !ranges.some(
+        (range) =>
+          appointment.startsAt >= range.startsAt && appointment.endsAt <= range.endsAt
+      )
+  );
 }
 
 export function hasInvalidWorkingHours(
@@ -537,6 +555,27 @@ export function registerScheduleRoutes(
       });
       if (spanningException) {
         return reply.code(409).send({ error: "schedule_exception_spans_multiple_days" });
+      }
+
+      const newRanges = sortedRanges.map((range) => ({
+        startsAt: timeToDate(date, range.startsAt),
+        endsAt: timeToDate(date, range.endsAt)
+      }));
+      const dayAppointments = await database!.appointment.findMany({
+        where: {
+          staffId: selection.selected.id,
+          startsAt: { lt: dayEnd },
+          endsAt: { gt: dayStart },
+          status: { in: activeAppointmentStatuses }
+        },
+        select: { id: true, startsAt: true, endsAt: true }
+      });
+      const uncoveredAppointment = findAppointmentOutsideRanges(
+        dayAppointments,
+        newRanges
+      );
+      if (uncoveredAppointment) {
+        return reply.code(409).send({ error: "schedule_day_has_appointments" });
       }
 
       const ranges = await database!.$transaction(async (transaction) => {

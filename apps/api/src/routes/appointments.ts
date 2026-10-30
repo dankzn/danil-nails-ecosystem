@@ -36,7 +36,7 @@ const attendanceStatuses = [
   "confirmed",
   "declined"
 ] as const;
-const activeAppointmentStatuses: AppointmentStatus[] = [
+export const activeAppointmentStatuses: AppointmentStatus[] = [
   AppointmentStatus.draft,
   AppointmentStatus.pending_admin_confirmation,
   AppointmentStatus.confirmed

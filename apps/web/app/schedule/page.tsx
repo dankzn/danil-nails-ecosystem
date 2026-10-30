@@ -329,9 +329,11 @@ export default function SchedulePage() {
       resetSelection();
     } catch (error) {
       setApplyError(
-        error instanceof ApiError && error.status === 409
-          ? "Один из выбранных дней уже входит в многодневное исключение — измените его в «Шаблон недели»."
-          : "Не удалось сохранить изменения. Попробуйте ещё раз."
+        error instanceof ApiError && error.code === "schedule_day_has_appointments"
+          ? "На один из выбранных дней уже есть записи — сначала перенесите или отмените их, потом можно будет изменить расписание."
+          : error instanceof ApiError && error.status === 409
+            ? "Один из выбранных дней уже входит в многодневное исключение — измените его в «Шаблон недели»."
+            : "Не удалось сохранить изменения. Попробуйте ещё раз."
       );
     } finally {
       setIsApplying(false);
