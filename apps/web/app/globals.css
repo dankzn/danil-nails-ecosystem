@@ -3216,7 +3216,7 @@ td strong {
 .dikidi-service-row-head,
 .dikidi-service-row-body {
   display: grid;
-  grid-template-columns: 2.6fr 1fr 1.4fr 1.1fr 1fr 1.5fr auto;
+  grid-template-columns: 2.6fr 1fr 1.4fr 1.1fr 1fr 1.5fr 68px;
   gap: 10px;
   align-items: center;
 }

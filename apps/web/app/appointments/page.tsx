@@ -1012,12 +1012,6 @@ export default function AppointmentsPage() {
     )
       .then((response) => {
         setRescheduleSlots(response.slots);
-        setRescheduleStartsAt((current) => {
-          const remainsAvailable = response.slots.some(
-            (slot) => moscowDateTimeInput(new Date(slot.startsAt)) === current
-          );
-          return remainsAvailable ? current : "";
-        });
       })
       .catch((error) => {
         if (!(error instanceof DOMException && error.name === "AbortError")) {
