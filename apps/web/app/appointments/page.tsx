@@ -19,7 +19,6 @@ import {
   LoaderCircle,
   Minus,
   MoreHorizontal,
-  Paperclip,
   Phone,
   Plus,
   QrCode,
@@ -2323,18 +2322,13 @@ export default function AppointmentsPage() {
 
       {selectedAppointment ? (
         <Modal
-          description={`${selectedAppointment.service.titleRu} · ${timeFormatter.format(
-            new Date(selectedAppointment.startsAt)
-          )}`}
           onClose={() => {
             setSelectedAppointment(null);
             setIsSaleModalOpen(false);
             setIsPaymentModalOpen(false);
           }}
           size="workspace"
-          title={
-            selectedAppointment.client.fullName ?? selectedAppointment.client.phone
-          }
+          title="Изменение записи"
         >
           <div className="appointment-workspace-shell">
             <section className="workspace-record-summary">
@@ -2557,9 +2551,7 @@ export default function AppointmentsPage() {
                   )}
                 </div>
 
-                {selectedAppointment.extraServices.map((line, index) => {
-                  const isLastLine =
-                    index === selectedAppointment.extraServices.length - 1;
+                {selectedAppointment.extraServices.map((line) => {
                   const lineDiscount = extraDiscounts[line.id] ?? {
                     percent: "",
                     amount: ""
@@ -2612,28 +2604,15 @@ export default function AppointmentsPage() {
                       <div className="dikidi-service-static dikidi-service-total">
                         {formatMoney(lineTotalMinor, selectedAppointment.currency)}
                       </div>
-                      <div className="dikidi-service-row-actions">
-                        <button
-                          aria-label="Удалить услугу"
-                          className="dikidi-remove-service"
-                          disabled={isSavingServiceLine}
-                          onClick={() => void removeServiceLine(line.id)}
-                          type="button"
-                        >
-                          <Minus aria-hidden="true" size={16} />
-                        </button>
-                        {isLastLine ? (
-                          <button
-                            aria-label="Добавить услугу"
-                            className="dikidi-add-service"
-                            disabled={isSavingServiceLine}
-                            onClick={() => setIsAddingService(true)}
-                            type="button"
-                          >
-                            <Plus aria-hidden="true" size={16} />
-                          </button>
-                        ) : null}
-                      </div>
+                      <button
+                        aria-label="Удалить услугу"
+                        className="dikidi-remove-service"
+                        disabled={isSavingServiceLine}
+                        onClick={() => void removeServiceLine(line.id)}
+                        type="button"
+                      >
+                        <Minus aria-hidden="true" size={16} />
+                      </button>
                     </div>
                   );
                 })}
@@ -2714,7 +2693,7 @@ export default function AppointmentsPage() {
 
                 {selectedAppointment.extraServices.length > 0 ? (
                   <div className="dikidi-service-row-body dikidi-service-row-totals">
-                    <div>Итого</div>
+                    <div aria-hidden="true" />
                     <div className="dikidi-service-static">
                       {durationLabel(appointmentTotalDurationMinutes)}
                     </div>
@@ -2736,6 +2715,15 @@ export default function AppointmentsPage() {
                     <div className="dikidi-service-static dikidi-service-total">
                       {formatMoney(grandTotalMinor, selectedAppointment.currency)}
                     </div>
+                    <button
+                      aria-label="Добавить услугу"
+                      className="dikidi-add-service"
+                      disabled={isSavingServiceLine}
+                      onClick={() => setIsAddingService(true)}
+                      type="button"
+                    >
+                      <Plus aria-hidden="true" size={16} />
+                    </button>
                   </div>
                 ) : null}
               </div>
@@ -2886,6 +2874,7 @@ export default function AppointmentsPage() {
                   <textarea
                     maxLength={4000}
                     onChange={(event) => setInternalNote(event.target.value)}
+                    placeholder="Пожелания клиента, пометки администратора"
                     rows={3}
                     value={internalNote}
                   />
@@ -2926,18 +2915,14 @@ export default function AppointmentsPage() {
               </div>
 
               <div className="dikidi-attachment" title="Будет добавлено позже">
-                <Paperclip aria-hidden="true" size={16} />
-                <span>Прикрепить файл (PDF, XLS, PNG, JPG)</span>
+                <span className="dikidi-attachment-icon" aria-hidden="true">
+                  <Plus size={16} />
+                </span>
+                <span className="dikidi-attachment-text">
+                  <span>Формат файлов для загрузки</span>
+                  <small>(PDF, XLS, PNG, JPG)</small>
+                </span>
               </div>
-
-              <button
-                className="dikidi-link"
-                onClick={() => setWorkspaceTab("activity")}
-                type="button"
-              >
-                История изменений
-              </button>
-
 
             {selectedAppointment.status === "completed" ? (
               <section className="editor-section workspace-payment-section" id="appointment-payment">
@@ -2999,7 +2984,14 @@ export default function AppointmentsPage() {
             ) : null}
 
             <footer className="dikidi-footer">
-              <div className="dikidi-footer-cancel">
+              <div className="dikidi-footer-left">
+                <button
+                  className="dikidi-link"
+                  onClick={() => setWorkspaceTab("activity")}
+                  type="button"
+                >
+                  История изменений
+                </button>
                 {isCancelPromptOpen ? (
                   <div className="dikidi-cancel-prompt">
                     <select
@@ -3035,7 +3027,7 @@ export default function AppointmentsPage() {
                   </div>
                 ) : (
                   <button
-                    className="danger-button"
+                    className="dikidi-cancel-link"
                     onClick={() => setIsCancelPromptOpen(true)}
                     type="button"
                   >
@@ -3052,7 +3044,7 @@ export default function AppointmentsPage() {
                   Повторить запись
                 </button>
                 <button
-                  className="secondary-button"
+                  className="dikidi-button-green"
                   disabled={
                     !closableStatuses.includes(
                       selectedAppointment.status as (typeof closableStatuses)[number]
@@ -3070,7 +3062,7 @@ export default function AppointmentsPage() {
                   Оформить продажу
                 </button>
                 <button
-                  className="primary-button"
+                  className="dikidi-button-blue"
                   disabled={isSaving}
                   onClick={() => void saveAppointmentDetails()}
                   type="button"
@@ -3559,8 +3551,13 @@ export default function AppointmentsPage() {
             </div>
 
             <div className="dikidi-attachment" title="Будет добавлено позже">
-              <Paperclip aria-hidden="true" size={16} />
-              <span>Прикрепить файл (PDF, XLS, PNG, JPG)</span>
+              <span className="dikidi-attachment-icon" aria-hidden="true">
+                <Plus size={16} />
+              </span>
+              <span className="dikidi-attachment-text">
+                <span>Формат файлов для загрузки</span>
+                <small>(PDF, XLS, PNG, JPG)</small>
+              </span>
             </div>
 
             <button

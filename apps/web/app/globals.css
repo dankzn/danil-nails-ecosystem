@@ -3495,8 +3495,8 @@ td strong {
 }
 
 .dikidi-attendance-buttons button.is-active {
-  background: var(--accent);
-  color: #fff;
+  background: #aef7c1;
+  color: #2e7d4f;
 }
 
 .dikidi-client-sub {
@@ -3511,7 +3511,7 @@ td strong {
   border: 0;
   padding: 0;
   background: transparent;
-  color: var(--accent);
+  color: #5b8fd2;
   font: inherit;
   font-size: 11px;
   text-decoration: underline;
@@ -3539,13 +3539,35 @@ td strong {
 .dikidi-attachment {
   display: flex;
   align-items: center;
-  gap: 8px;
-  border: 1px dashed var(--border);
-  border-radius: 6px;
-  padding: 12px 14px;
+  gap: 10px;
+  padding: 4px 0;
+  cursor: not-allowed;
+}
+
+.dikidi-attachment-icon {
+  width: 32px;
+  height: 32px;
+  flex: 0 0 32px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: #dbefff;
+  color: #2f7edb;
+}
+
+.dikidi-attachment-text {
+  display: grid;
+  gap: 2px;
+}
+
+.dikidi-attachment-text span {
   color: var(--text-muted);
   font-size: 12px;
-  cursor: not-allowed;
+}
+
+.dikidi-attachment-text small {
+  color: var(--text-muted);
+  font-size: 11px;
 }
 
 .dikidi-footer {
@@ -3571,9 +3593,63 @@ td strong {
   gap: 7px;
 }
 
-.dikidi-footer-cancel {
+.dikidi-footer-left {
   display: flex;
   align-items: center;
+  gap: 18px;
+}
+
+.dikidi-cancel-link {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: #e2772e;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  width: fit-content;
+}
+
+.dikidi-cancel-link:hover {
+  filter: brightness(0.9);
+}
+
+.dikidi-button-green,
+.dikidi-button-blue {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  border: 0;
+  border-radius: 8px;
+  padding: 10px 18px;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+  cursor: pointer;
+}
+
+.dikidi-button-green {
+  background: #35b374;
+}
+
+.dikidi-button-green:hover {
+  background: #2e9d64;
+}
+
+.dikidi-button-blue {
+  background: #4c92df;
+}
+
+.dikidi-button-blue:hover {
+  background: #3f81c9;
+}
+
+.dikidi-button-green:disabled,
+.dikidi-button-blue:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 .dikidi-cancel-prompt {
