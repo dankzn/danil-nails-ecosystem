@@ -3037,7 +3037,7 @@ export default function AppointmentsPage() {
               </div>
               <div className="dikidi-footer-actions">
                 <button
-                  className="secondary-button"
+                  className="dikidi-button-outline-blue"
                   onClick={() => duplicateAppointment()}
                   type="button"
                 >
@@ -3058,7 +3058,6 @@ export default function AppointmentsPage() {
                   }
                   type="button"
                 >
-                  <CreditCard aria-hidden="true" size={16} />
                   Оформить продажу
                 </button>
                 <button

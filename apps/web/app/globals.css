@@ -3603,7 +3603,7 @@ td strong {
   border: 0;
   padding: 0;
   background: transparent;
-  color: #e2772e;
+  color: #d8642c;
   font: inherit;
   font-size: 12px;
   font-weight: 600;
@@ -3616,26 +3616,41 @@ td strong {
 }
 
 .dikidi-button-green,
-.dikidi-button-blue {
+.dikidi-button-blue,
+.dikidi-button-outline-blue {
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  border: 0;
   border-radius: 8px;
   padding: 10px 18px;
   font: inherit;
   font-size: 13px;
   font-weight: 600;
-  color: #fff;
   cursor: pointer;
 }
 
+.dikidi-button-green,
+.dikidi-button-blue {
+  border: 0;
+  color: #fff;
+}
+
+.dikidi-button-outline-blue {
+  border: 1px solid #4c92df;
+  background: #fff;
+  color: #4c92df;
+}
+
+.dikidi-button-outline-blue:hover {
+  background: #eef5fd;
+}
+
 .dikidi-button-green {
-  background: #35b374;
+  background: #33b474;
 }
 
 .dikidi-button-green:hover {
-  background: #2e9d64;
+  background: #2c9d64;
 }
 
 .dikidi-button-blue {
