@@ -4936,6 +4936,27 @@ td strong {
   background: #ddecfc;
 }
 
+.dikidi-schedule-day-head.is-selected-column {
+  background: #ebf5ff;
+}
+
+.dikidi-schedule-cell.is-selected-column {
+  background: #ebf5ff;
+}
+
+.dikidi-schedule-cell.is-selected-column:hover {
+  background: #ddecfc;
+}
+
+.dikidi-schedule-cell.is-selected {
+  background: #4c92df;
+  color: #fff;
+}
+
+.dikidi-schedule-cell.is-selected:hover {
+  background: #4c92df;
+}
+
 .dikidi-schedule-empty-row {
   grid-column: 1 / -1;
   padding: 32px;
@@ -4963,6 +4984,39 @@ td strong {
 
 .dikidi-schedule-side .checkbox-field {
   text-align: left;
+}
+
+.dikidi-schedule-selection {
+  display: grid;
+  gap: 14px;
+  text-align: left;
+}
+
+.dikidi-schedule-selection-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.dikidi-schedule-selection-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0;
+}
+
+.dikidi-schedule-selection-apply {
+  width: 100%;
+  justify-content: center;
+}
+
+.dikidi-schedule-selection-or {
+  justify-self: center;
+  color: var(--text-muted);
+  font-size: 12px;
 }
 
 @media (max-width: 860px) {

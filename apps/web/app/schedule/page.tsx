@@ -15,7 +15,7 @@ import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { apiUrl } from "../lib/api-url";
 import { ApiError, apiRequest } from "../lib/api";
 import { Modal } from "../ui/modal";
-import { WorkingHoursPopover, type DayRange } from "../ui/working-hours-popover";
+import { type DayRange } from "../ui/working-hours-popover";
 
 type Staff = { id: string; displayName: string };
 type WorkingHour = {
@@ -65,7 +65,20 @@ type MonthOverviewResponse = {
   staff: MonthOverviewStaff[];
   entries: Record<string, Record<string, DayRange[]>>;
 };
-type CellPopover = { staffId: string; date: string; clientX: number; clientY: number };
+function cellKey(staffId: string, date: string) {
+  return `${staffId}|${date}`;
+}
+
+function parseCellKey(key: string) {
+  const [staffId, date] = key.split("|");
+  return { staffId: staffId!, date: date! };
+}
+
+const timeOptions = Array.from({ length: 48 }, (_, index) => {
+  const hours = String(Math.floor(index / 2)).padStart(2, "0");
+  const minutes = index % 2 === 0 ? "00" : "30";
+  return `${hours}:${minutes}`;
+});
 
 const weekdays = [
   [1, "Понедельник", "Пн"],
@@ -237,7 +250,9 @@ export default function SchedulePage() {
   const [isOverviewLoading, setIsOverviewLoading] = useState(true);
   const [overviewError, setOverviewError] = useState<string | null>(null);
   const [staffFilter, setStaffFilter] = useState("all");
-  const [cellPopover, setCellPopover] = useState<CellPopover | null>(null);
+  const [selectedCells, setSelectedCells] = useState<Set<string>>(() => new Set());
+  const [isApplying, setIsApplying] = useState(false);
+  const [applyError, setApplyError] = useState<string | null>(null);
 
   const loadOverview = useCallback((year: number, month: number) => {
     const controller = new AbortController();
@@ -267,6 +282,60 @@ export default function SchedulePage() {
     const next = new Date(Date.UTC(viewYear, viewMonth + offset, 1));
     setViewYear(next.getUTCFullYear());
     setViewMonth(next.getUTCMonth());
+  }
+
+  function toggleCell(staffId: string, date: string) {
+    setApplyError(null);
+    setSelectedCells((current) => {
+      const next = new Set(current);
+      const key = cellKey(staffId, date);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
+  }
+
+  function resetSelection() {
+    setSelectedCells(new Set());
+    setApplyError(null);
+  }
+
+  async function applyToSelection(ranges: DayRange[]) {
+    setIsApplying(true);
+    setApplyError(null);
+    const keys = [...selectedCells];
+    try {
+      const results = await Promise.all(
+        keys.map(async (key) => {
+          const { staffId, date } = parseCellKey(key);
+          const response = await apiRequest<{ date: string; ranges: DayRange[] }>(
+            "/v1/admin/schedule/day",
+            { method: "PUT", body: JSON.stringify({ staffId, date, ranges }) }
+          );
+          return { staffId, date, ranges: response.ranges };
+        })
+      );
+      setOverview((current) => {
+        if (!current) return current;
+        const entries = { ...current.entries };
+        for (const result of results) {
+          entries[result.staffId] = {
+            ...entries[result.staffId],
+            [result.date]: result.ranges
+          };
+        }
+        return { ...current, entries };
+      });
+      resetSelection();
+    } catch (error) {
+      setApplyError(
+        error instanceof ApiError && error.status === 409
+          ? "Один из выбранных дней уже входит в многодневное исключение — измените его в «Шаблон недели»."
+          : "Не удалось сохранить изменения. Попробуйте ещё раз."
+      );
+    } finally {
+      setIsApplying(false);
+    }
   }
 
   const visibleStaff = (overview?.staff ?? []).filter(
@@ -305,12 +374,18 @@ export default function SchedulePage() {
 
       {activeTab === "month" ? (
         <MonthGrid
+          applyError={applyError}
           goToMonth={goToMonth}
+          isApplying={isApplying}
           isLoading={isOverviewLoading}
           loadError={overviewError}
+          onApply={(ranges) => void applyToSelection(ranges)}
+          onMakeDaysOff={() => void applyToSelection([])}
+          onResetSelection={resetSelection}
           onRetry={() => loadOverview(viewYear, viewMonth)}
+          onToggleCell={toggleCell}
           overview={overview}
-          setCellPopover={setCellPopover}
+          selectedCells={selectedCells}
           setStaffFilter={setStaffFilter}
           staffFilter={staffFilter}
           viewMonth={viewMonth}
@@ -320,35 +395,6 @@ export default function SchedulePage() {
       ) : (
         <WeekTemplateEditor />
       )}
-
-      {cellPopover ? (
-        <WorkingHoursPopover
-          anchor={{ x: cellPopover.clientX, y: cellPopover.clientY }}
-          date={cellPopover.date}
-          initialRanges={(
-            overview?.entries[cellPopover.staffId]?.[cellPopover.date] ?? []
-          ).map((range) => ({
-            startsAt: timeFormatter.format(new Date(range.startsAt)),
-            endsAt: timeFormatter.format(new Date(range.endsAt))
-          }))}
-          onClose={() => setCellPopover(null)}
-          onSaved={(ranges) => {
-            const { staffId, date } = cellPopover;
-            setOverview((current) =>
-              current
-                ? {
-                    ...current,
-                    entries: {
-                      ...current.entries,
-                      [staffId]: { ...current.entries[staffId], [date]: ranges }
-                    }
-                  }
-                : current
-            );
-          }}
-          staffId={cellPopover.staffId}
-        />
-      ) : null}
     </div>
   );
 }
@@ -364,7 +410,13 @@ function MonthGrid({
   staffFilter,
   setStaffFilter,
   visibleStaff,
-  setCellPopover
+  selectedCells,
+  onToggleCell,
+  onResetSelection,
+  onApply,
+  onMakeDaysOff,
+  isApplying,
+  applyError
 }: {
   viewYear: number;
   viewMonth: number;
@@ -376,10 +428,19 @@ function MonthGrid({
   staffFilter: string;
   setStaffFilter: (value: string) => void;
   visibleStaff: MonthOverviewStaff[];
-  setCellPopover: (popover: CellPopover) => void;
+  selectedCells: Set<string>;
+  onToggleCell: (staffId: string, date: string) => void;
+  onResetSelection: () => void;
+  onApply: (ranges: DayRange[]) => void;
+  onMakeDaysOff: () => void;
+  isApplying: boolean;
+  applyError: string | null;
 }) {
   const today = moscowDateKey();
   const days = overview?.days ?? [];
+  const selectedDates = new Set(
+    [...selectedCells].map((key) => parseCellKey(key).date)
+  );
 
   return (
     <section className="dikidi-schedule">
@@ -444,7 +505,9 @@ function MonthGrid({
                 <div
                   className={`dikidi-schedule-day-head${
                     isWeekendDate(date) ? " is-weekend" : ""
-                  }${date === today ? " is-today" : ""}`}
+                  }${date === today ? " is-today" : ""}${
+                    selectedDates.has(date) ? " is-selected-column" : ""
+                  }`}
                   key={date}
                 >
                   <span className="dikidi-schedule-day-number">
@@ -461,8 +524,10 @@ function MonthGrid({
                   days={days}
                   key={member.id}
                   member={member}
+                  onToggleCell={onToggleCell}
                   ranges={overview?.entries[member.id] ?? {}}
-                  setCellPopover={setCellPopover}
+                  selectedCells={selectedCells}
+                  selectedDates={selectedDates}
                   today={today}
                 />
               ))}
@@ -476,17 +541,27 @@ function MonthGrid({
           </div>
 
           <aside className="dikidi-schedule-side">
-            <p>
-              Выделите в графике один или несколько дней для настройки
-              расписания
-            </p>
-            <label
-              className="checkbox-field"
-              title="Будет добавлено позже"
-            >
-              <input disabled type="checkbox" />
-              <span>Отобразить пометки о записях в графике</span>
-            </label>
+            {selectedCells.size > 0 ? (
+              <ScheduleSelectionPanel
+                applyError={applyError}
+                isApplying={isApplying}
+                onApply={onApply}
+                onMakeDaysOff={onMakeDaysOff}
+                onReset={onResetSelection}
+                selectedCount={selectedCells.size}
+              />
+            ) : (
+              <>
+                <p>
+                  Выделите в графике один или несколько дней для настройки
+                  расписания
+                </p>
+                <label className="checkbox-field" title="Будет добавлено позже">
+                  <input disabled type="checkbox" />
+                  <span>Отобразить пометки о записях в графике</span>
+                </label>
+              </>
+            )}
           </aside>
         </div>
       )}
@@ -499,13 +574,17 @@ function MonthGridRow({
   days,
   ranges,
   today,
-  setCellPopover
+  selectedCells,
+  selectedDates,
+  onToggleCell
 }: {
   member: MonthOverviewStaff;
   days: string[];
   ranges: Record<string, DayRange[]>;
   today: string;
-  setCellPopover: (popover: CellPopover) => void;
+  selectedCells: Set<string>;
+  selectedDates: Set<string>;
+  onToggleCell: (staffId: string, date: string) => void;
 }) {
   return (
     <>
@@ -525,20 +604,16 @@ function MonthGridRow({
           (left, right) =>
             new Date(left.startsAt).getTime() - new Date(right.startsAt).getTime()
         );
+        const isSelected = selectedCells.has(cellKey(member.id, date));
         return (
           <button
             className={`dikidi-schedule-cell${
               isWeekendDate(date) ? " is-weekend" : ""
-            }${date === today ? " is-today" : ""}`}
+            }${date === today ? " is-today" : ""}${
+              selectedDates.has(date) ? " is-selected-column" : ""
+            }${isSelected ? " is-selected" : ""}`}
             key={date}
-            onClick={(event) =>
-              setCellPopover({
-                staffId: member.id,
-                date,
-                clientX: event.clientX,
-                clientY: event.clientY
-              })
-            }
+            onClick={() => onToggleCell(member.id, date)}
             type="button"
           >
             {sorted.length ? (
@@ -551,6 +626,131 @@ function MonthGridRow({
         );
       })}
     </>
+  );
+}
+
+function ScheduleSelectionPanel({
+  selectedCount,
+  onReset,
+  onApply,
+  onMakeDaysOff,
+  isApplying,
+  applyError
+}: {
+  selectedCount: number;
+  onReset: () => void;
+  onApply: (ranges: DayRange[]) => void;
+  onMakeDaysOff: () => void;
+  isApplying: boolean;
+  applyError: string | null;
+}) {
+  const [start, setStart] = useState("09:00");
+  const [end, setEnd] = useState("18:00");
+  const [hasBreak, setHasBreak] = useState(false);
+  const [breakStart, setBreakStart] = useState("13:00");
+  const [breakEnd, setBreakEnd] = useState("14:00");
+
+  return (
+    <div className="dikidi-schedule-selection">
+      <div className="dikidi-schedule-selection-head">
+        <span>Выбрано: {selectedCount}</span>
+        <button className="dikidi-link" onClick={onReset} type="button">
+          Сбросить выбор
+        </button>
+      </div>
+
+      <div className="dikidi-divider" />
+
+      <p className="dikidi-schedule-selection-title">Рабочее время</p>
+
+      <div className="working-hours-popover-row">
+        <select onChange={(event) => setStart(event.target.value)} value={start}>
+          {timeOptions.map((time) => (
+            <option key={time} value={time}>
+              {time}
+            </option>
+          ))}
+        </select>
+        <span>—</span>
+        <select onChange={(event) => setEnd(event.target.value)} value={end}>
+          {timeOptions.map((time) => (
+            <option key={time} value={time}>
+              {time}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <label className="checkbox-field">
+        <input
+          checked={hasBreak}
+          onChange={(event) => setHasBreak(event.target.checked)}
+          type="checkbox"
+        />
+        <span>С перерывом</span>
+      </label>
+
+      {hasBreak ? (
+        <div className="working-hours-popover-row">
+          <select
+            onChange={(event) => setBreakStart(event.target.value)}
+            value={breakStart}
+          >
+            {timeOptions.map((time) => (
+              <option key={time} value={time}>
+                {time}
+              </option>
+            ))}
+          </select>
+          <span>—</span>
+          <select
+            onChange={(event) => setBreakEnd(event.target.value)}
+            value={breakEnd}
+          >
+            {timeOptions.map((time) => (
+              <option key={time} value={time}>
+                {time}
+              </option>
+            ))}
+          </select>
+        </div>
+      ) : null}
+
+      {applyError ? (
+        <p className="feedback feedback-error" role="alert">
+          {applyError}
+        </p>
+      ) : null}
+
+      <button
+        className="dikidi-button-blue dikidi-schedule-selection-apply"
+        disabled={isApplying}
+        onClick={() =>
+          onApply(
+            hasBreak
+              ? [
+                  { startsAt: start, endsAt: end },
+                  { startsAt: breakStart, endsAt: breakEnd }
+                ]
+              : [{ startsAt: start, endsAt: end }]
+          )
+        }
+        type="button"
+      >
+        {isApplying ? "Сохраняем…" : "Применить изменения"}
+      </button>
+
+      <span className="dikidi-schedule-selection-or">или</span>
+
+      <button
+        className="dikidi-button-outline-blue dikidi-schedule-selection-apply"
+        disabled={isApplying}
+        onClick={onMakeDaysOff}
+        type="button"
+      >
+        Сделать дни нерабочими
+      </button>
+    </div>
   );
 }
 
