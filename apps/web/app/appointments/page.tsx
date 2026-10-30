@@ -1856,12 +1856,13 @@ export default function AppointmentsPage() {
                   className="calendar-grid-times"
                   style={{ height: gridTotalHeight }}
                 >
-                  {gridHourMarks.map((hour) => (
+                  {gridHourMarks.map((hour, index) => (
                     <span
                       className="calendar-grid-hour-mark"
                       key={hour}
                       style={{
-                        top: (hour * 60 - gridStartMinutes) * gridPixelsPerMinute
+                        top: (hour * 60 - gridStartMinutes) * gridPixelsPerMinute,
+                        ...(index === 0 ? { transform: "translateY(0)" } : {})
                       }}
                     >
                       {String(hour).padStart(2, "0")}:00
