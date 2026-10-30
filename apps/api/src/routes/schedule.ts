@@ -420,24 +420,26 @@ export function registerScheduleRoutes(
         return sendInvalidPayload(reply);
       }
 
+      const staffSelect = {
+        id: true,
+        displayName: true,
+        photo: { select: { updatedAt: true } },
+        positions: {
+          orderBy: { order: "asc" as const },
+          take: 1,
+          select: { position: { select: { titleRu: true } } }
+        }
+      };
       const staffList =
         request.crmUser!.role === UserRole.master
           ? await database!.staffProfile.findMany({
               where: { userId: request.crmUser!.id, isBookable: true },
-              select: {
-                id: true,
-                displayName: true,
-                photo: { select: { updatedAt: true } }
-              },
+              select: staffSelect,
               orderBy: { displayName: "asc" }
             })
           : await database!.staffProfile.findMany({
               where: { isBookable: true },
-              select: {
-                id: true,
-                displayName: true,
-                photo: { select: { updatedAt: true } }
-              },
+              select: staffSelect,
               orderBy: { displayName: "asc" }
             });
 
@@ -500,11 +502,12 @@ export function registerScheduleRoutes(
         from,
         to,
         days,
-        staff: staffList.map(({ photo, ...profile }) => ({
+        staff: staffList.map(({ photo, positions, ...profile }) => ({
           ...profile,
           photoUrl: photo
             ? `/v1/staff/${profile.id}/photo?v=${photo.updatedAt.getTime()}`
-            : null
+            : null,
+          positionTitle: positions[0]?.position.titleRu ?? null
         })),
         entries
       };

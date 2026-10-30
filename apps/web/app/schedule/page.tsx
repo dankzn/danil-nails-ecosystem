@@ -3,6 +3,7 @@
 import { bookingRules } from "@danil-nails/shared";
 import {
   CalendarClock,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   CircleAlert,
@@ -56,7 +57,12 @@ type ExceptionForm = {
   reason: string;
 };
 
-type MonthOverviewStaff = { id: string; displayName: string; photoUrl: string | null };
+type MonthOverviewStaff = {
+  id: string;
+  displayName: string;
+  photoUrl: string | null;
+  positionTitle: string | null;
+};
 type MonthOverviewResponse = {
   timezone: string;
   from: string;
@@ -249,7 +255,12 @@ export default function SchedulePage() {
   const [overview, setOverview] = useState<MonthOverviewResponse | null>(null);
   const [isOverviewLoading, setIsOverviewLoading] = useState(true);
   const [overviewError, setOverviewError] = useState<string | null>(null);
-  const [staffFilter, setStaffFilter] = useState("all");
+  // null = every staff member is checked (the dropdown's "Все сотрудники"
+  // state); otherwise the explicit set of checked staff ids.
+  const [checkedStaffIds, setCheckedStaffIds] = useState<Set<string> | null>(
+    null
+  );
+  const [isStaffFilterOpen, setIsStaffFilterOpen] = useState(false);
   const [selectedCells, setSelectedCells] = useState<Set<string>>(() => new Set());
   const [isApplying, setIsApplying] = useState(false);
   const [applyError, setApplyError] = useState<string | null>(null);
@@ -340,8 +351,40 @@ export default function SchedulePage() {
     }
   }
 
-  const visibleStaff = (overview?.staff ?? []).filter(
-    (member) => staffFilter === "all" || member.id === staffFilter
+  function isStaffChecked(staffId: string) {
+    return checkedStaffIds === null || checkedStaffIds.has(staffId);
+  }
+
+  function toggleStaff(staffId: string) {
+    setCheckedStaffIds((current) => {
+      const base = current ?? new Set((overview?.staff ?? []).map((s) => s.id));
+      const next = new Set(base);
+      if (next.has(staffId)) next.delete(staffId);
+      else next.add(staffId);
+      return next;
+    });
+  }
+
+  function toggleAllStaff() {
+    const allChecked = checkedStaffIds === null;
+    setCheckedStaffIds(allChecked ? new Set() : null);
+  }
+
+  function toggleGroup(staffIds: string[]) {
+    const allGroupChecked = staffIds.every((id) => isStaffChecked(id));
+    setCheckedStaffIds((current) => {
+      const base = current ?? new Set((overview?.staff ?? []).map((s) => s.id));
+      const next = new Set(base);
+      for (const id of staffIds) {
+        if (allGroupChecked) next.delete(id);
+        else next.add(id);
+      }
+      return next;
+    });
+  }
+
+  const visibleStaff = (overview?.staff ?? []).filter((member) =>
+    isStaffChecked(member.id)
   );
 
   return (
@@ -377,19 +420,25 @@ export default function SchedulePage() {
       {activeTab === "month" ? (
         <MonthGrid
           applyError={applyError}
+          checkedStaffIds={checkedStaffIds}
           goToMonth={goToMonth}
           isApplying={isApplying}
           isLoading={isOverviewLoading}
+          isStaffChecked={isStaffChecked}
+          isStaffFilterOpen={isStaffFilterOpen}
           loadError={overviewError}
           onApply={(ranges) => void applyToSelection(ranges)}
           onMakeDaysOff={() => void applyToSelection([])}
           onResetSelection={resetSelection}
           onRetry={() => loadOverview(viewYear, viewMonth)}
+          onToggleAllStaff={toggleAllStaff}
           onToggleCell={toggleCell}
+          onToggleGroup={toggleGroup}
+          onToggleStaff={toggleStaff}
+          onToggleStaffFilterOpen={() => setIsStaffFilterOpen((current) => !current)}
           overview={overview}
           selectedCells={selectedCells}
-          setStaffFilter={setStaffFilter}
-          staffFilter={staffFilter}
+          onCloseStaffFilter={() => setIsStaffFilterOpen(false)}
           viewMonth={viewMonth}
           viewYear={viewYear}
           visibleStaff={visibleStaff}
@@ -409,8 +458,14 @@ function MonthGrid({
   isLoading,
   loadError,
   onRetry,
-  staffFilter,
-  setStaffFilter,
+  checkedStaffIds,
+  isStaffChecked,
+  onToggleStaff,
+  onToggleAllStaff,
+  onToggleGroup,
+  isStaffFilterOpen,
+  onToggleStaffFilterOpen,
+  onCloseStaffFilter,
   visibleStaff,
   selectedCells,
   onToggleCell,
@@ -427,8 +482,14 @@ function MonthGrid({
   isLoading: boolean;
   loadError: string | null;
   onRetry: () => void;
-  staffFilter: string;
-  setStaffFilter: (value: string) => void;
+  checkedStaffIds: Set<string> | null;
+  isStaffChecked: (staffId: string) => boolean;
+  onToggleStaff: (staffId: string) => void;
+  onToggleAllStaff: () => void;
+  onToggleGroup: (staffIds: string[]) => void;
+  isStaffFilterOpen: boolean;
+  onToggleStaffFilterOpen: () => void;
+  onCloseStaffFilter: () => void;
   visibleStaff: MonthOverviewStaff[];
   selectedCells: Set<string>;
   onToggleCell: (staffId: string, date: string) => void;
@@ -447,21 +508,17 @@ function MonthGrid({
   return (
     <section className="dikidi-schedule">
       <div className="dikidi-schedule-toolbar">
-        <label className="dikidi-schedule-staff-filter">
-          <select
-            onChange={(event) => setStaffFilter(event.target.value)}
-            value={staffFilter}
-          >
-            <option value="all">
-              Все сотрудники {overview ? overview.staff.length : ""}
-            </option>
-            {(overview?.staff ?? []).map((member) => (
-              <option key={member.id} value={member.id}>
-                {member.displayName}
-              </option>
-            ))}
-          </select>
-        </label>
+        <StaffFilterDropdown
+          allStaff={overview?.staff ?? []}
+          checkedStaffIds={checkedStaffIds}
+          isOpen={isStaffFilterOpen}
+          isStaffChecked={isStaffChecked}
+          onClose={onCloseStaffFilter}
+          onToggleAll={onToggleAllStaff}
+          onToggleGroup={onToggleGroup}
+          onToggleOpen={onToggleStaffFilterOpen}
+          onToggleStaff={onToggleStaff}
+        />
 
         <div className="dikidi-schedule-month-nav">
           <button onClick={() => goToMonth(-1)} type="button">
@@ -568,6 +625,115 @@ function MonthGrid({
         </div>
       )}
     </section>
+  );
+}
+
+function StaffFilterDropdown({
+  allStaff,
+  checkedStaffIds,
+  isStaffChecked,
+  onToggleStaff,
+  onToggleAll,
+  onToggleGroup,
+  isOpen,
+  onToggleOpen,
+  onClose
+}: {
+  allStaff: MonthOverviewStaff[];
+  checkedStaffIds: Set<string> | null;
+  isStaffChecked: (staffId: string) => boolean;
+  onToggleStaff: (staffId: string) => void;
+  onToggleAll: () => void;
+  onToggleGroup: (staffIds: string[]) => void;
+  isOpen: boolean;
+  onToggleOpen: () => void;
+  onClose: () => void;
+}) {
+  const isAllChecked = checkedStaffIds === null;
+  const groups: Array<{ title: string; staff: MonthOverviewStaff[] }> = [];
+  for (const member of allStaff) {
+    const title = member.positionTitle ?? "Без категории";
+    const group = groups.find((item) => item.title === title);
+    if (group) group.staff.push(member);
+    else groups.push({ title, staff: [member] });
+  }
+
+  return (
+    <div className="dikidi-staff-filter">
+      <button
+        className="dikidi-staff-filter-trigger"
+        onClick={onToggleOpen}
+        type="button"
+      >
+        <span>
+          {isAllChecked
+            ? "Все сотрудники"
+            : `Выбрано сотрудников: ${checkedStaffIds!.size}`}{" "}
+          <span className="dikidi-staff-filter-count">{allStaff.length}</span>
+        </span>
+        <ChevronDown aria-hidden="true" size={16} />
+      </button>
+
+      {isOpen ? (
+        <>
+          <div className="dikidi-staff-filter-backdrop" onClick={onClose} />
+          <div className="dikidi-staff-filter-panel">
+            <label className="dikidi-staff-filter-row dikidi-staff-filter-row-all">
+              <span>
+                Все сотрудники{" "}
+                <span className="dikidi-staff-filter-count">{allStaff.length}</span>
+              </span>
+              <input
+                checked={isAllChecked}
+                onChange={onToggleAll}
+                type="checkbox"
+              />
+            </label>
+
+            {groups.map((group) => (
+              <div key={group.title}>
+                <label className="dikidi-staff-filter-row dikidi-staff-filter-row-group">
+                  <span>
+                    {group.title}{" "}
+                    <span className="dikidi-staff-filter-count">
+                      {group.staff.length}
+                    </span>
+                  </span>
+                  <input
+                    checked={group.staff.every((member) =>
+                      isStaffChecked(member.id)
+                    )}
+                    onChange={() =>
+                      onToggleGroup(group.staff.map((member) => member.id))
+                    }
+                    type="checkbox"
+                  />
+                </label>
+                {group.staff.map((member) => (
+                  <label className="dikidi-staff-filter-row" key={member.id}>
+                    <span className="dikidi-staff-filter-member">
+                      <span className="calendar-grid-avatar">
+                        {member.photoUrl ? (
+                          <img alt="" src={`${apiUrl}${member.photoUrl}`} />
+                        ) : (
+                          initials(member.displayName)
+                        )}
+                      </span>
+                      {member.displayName}
+                    </span>
+                    <input
+                      checked={isStaffChecked(member.id)}
+                      onChange={() => onToggleStaff(member.id)}
+                      type="checkbox"
+                    />
+                  </label>
+                ))}
+              </div>
+            ))}
+          </div>
+        </>
+      ) : null}
+    </div>
   );
 }
 
