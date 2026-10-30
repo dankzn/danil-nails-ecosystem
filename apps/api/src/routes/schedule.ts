@@ -3,7 +3,7 @@ import { businessConfig } from "@danil-nails/shared";
 import type { FastifyInstance, FastifyReply } from "fastify";
 import { z } from "zod";
 import { authorize } from "../auth/session.js";
-import { resolveWorkingRanges, weekdayForDate } from "../availability.js";
+import { resolveDisplayRanges, weekdayForDate } from "../availability.js";
 
 const datePattern = /^\d{4}-\d{2}-\d{2}$/;
 const timePattern = /^([01]\d|2[0-3]):[0-5]\d$/;
@@ -35,6 +35,22 @@ const exceptionSchema = z.object({
   isBookable: z.boolean().default(false)
 });
 const idSchema = z.object({ id: z.string().cuid() });
+const monthOverviewQuerySchema = z.object({
+  from: z.string().regex(datePattern),
+  to: z.string().regex(datePattern)
+});
+const dayOverrideSchema = z.object({
+  staffId: z.string().cuid(),
+  date: z.string().regex(datePattern),
+  ranges: z
+    .array(
+      z.object({
+        startsAt: z.string().regex(timePattern),
+        endsAt: z.string().regex(timePattern)
+      })
+    )
+    .max(2)
+});
 
 type ScheduleUser = {
   id: string;
@@ -83,6 +99,22 @@ function moscowDateKey(date = new Date()) {
 
 function dateAtMoscowMidnight(date: string) {
   return new Date(`${date}T00:00:00+03:00`);
+}
+
+function timeToDate(date: string, time: string) {
+  return new Date(`${date}T${time}:00+03:00`);
+}
+
+function datesBetween(from: string, to: string) {
+  const dates: string[] = [];
+  for (
+    let cursor = dateAtMoscowMidnight(from);
+    cursor <= dateAtMoscowMidnight(to);
+    cursor = new Date(cursor.getTime() + 86400000)
+  ) {
+    dates.push(moscowDateKey(cursor));
+  }
+  return dates;
 }
 
 async function availableStaff(database: DatabaseClient, user: ScheduleUser) {
@@ -229,7 +261,7 @@ export function registerScheduleRoutes(
 
           return {
             staffId,
-            ranges: resolveWorkingRanges({ date, workingHours, exceptions })
+            ranges: resolveDisplayRanges({ date, workingHours, exceptions })
           };
         })
       );
@@ -350,6 +382,217 @@ export function registerScheduleRoutes(
 
       await database!.scheduleException.delete({ where: { id: exception.id } });
       return reply.code(204).send();
+    }
+  );
+
+  server.get(
+    "/v1/admin/schedule/month-overview",
+    { preHandler: staffGuard },
+    async (request, reply) => {
+      const query = monthOverviewQuerySchema.safeParse(request.query);
+      if (!query.success) return sendInvalidPayload(reply);
+
+      const { from, to } = query.data;
+      const rangeStart = dateAtMoscowMidnight(from);
+      const rangeEnd = new Date(dateAtMoscowMidnight(to).getTime() + 86400000);
+      const spanDays = Math.round(
+        (rangeEnd.getTime() - rangeStart.getTime()) / 86400000
+      );
+      if (rangeStart >= rangeEnd || spanDays > 62) {
+        return sendInvalidPayload(reply);
+      }
+
+      const staffList =
+        request.crmUser!.role === UserRole.master
+          ? await database!.staffProfile.findMany({
+              where: { userId: request.crmUser!.id, isBookable: true },
+              select: {
+                id: true,
+                displayName: true,
+                photo: { select: { updatedAt: true } }
+              },
+              orderBy: { displayName: "asc" }
+            })
+          : await database!.staffProfile.findMany({
+              where: { isBookable: true },
+              select: {
+                id: true,
+                displayName: true,
+                photo: { select: { updatedAt: true } }
+              },
+              orderBy: { displayName: "asc" }
+            });
+
+      const staffIds = staffList.map((profile) => profile.id);
+      const [workingHours, exceptions] = await Promise.all([
+        database!.workingHour.findMany({
+          where: { staffId: { in: staffIds }, isActive: true },
+          select: { staffId: true, weekday: true, startsAt: true, endsAt: true }
+        }),
+        database!.scheduleException.findMany({
+          where: {
+            staffId: { in: staffIds },
+            startsAt: { lt: rangeEnd },
+            endsAt: { gt: rangeStart }
+          },
+          select: { staffId: true, startsAt: true, endsAt: true, isBookable: true }
+        })
+      ]);
+
+      const workingHoursByStaff = new Map<string, typeof workingHours>();
+      for (const entry of workingHours) {
+        const list = workingHoursByStaff.get(entry.staffId) ?? [];
+        list.push(entry);
+        workingHoursByStaff.set(entry.staffId, list);
+      }
+      const exceptionsByStaff = new Map<string, typeof exceptions>();
+      for (const entry of exceptions) {
+        const list = exceptionsByStaff.get(entry.staffId) ?? [];
+        list.push(entry);
+        exceptionsByStaff.set(entry.staffId, list);
+      }
+
+      const days = datesBetween(from, to);
+      const entries: Record<
+        string,
+        Record<string, Array<{ startsAt: Date; endsAt: Date }>>
+      > = {};
+
+      for (const staff of staffList) {
+        const staffWorkingHours = workingHoursByStaff.get(staff.id) ?? [];
+        const staffExceptions = exceptionsByStaff.get(staff.id) ?? [];
+        const byDate: Record<string, Array<{ startsAt: Date; endsAt: Date }>> = {};
+
+        for (const date of days) {
+          const weekday = weekdayForDate(date);
+          byDate[date] = resolveDisplayRanges({
+            date,
+            workingHours: staffWorkingHours.filter(
+              (entry) => entry.weekday === weekday
+            ),
+            exceptions: staffExceptions
+          });
+        }
+
+        entries[staff.id] = byDate;
+      }
+
+      return {
+        timezone: businessConfig.timezone,
+        from,
+        to,
+        days,
+        staff: staffList.map(({ photo, ...profile }) => ({
+          ...profile,
+          photoUrl: photo
+            ? `/v1/staff/${profile.id}/photo?v=${photo.updatedAt.getTime()}`
+            : null
+        })),
+        entries
+      };
+    }
+  );
+
+  server.put(
+    "/v1/admin/schedule/day",
+    { preHandler: staffGuard },
+    async (request, reply) => {
+      const input = dayOverrideSchema.safeParse(request.body);
+      if (!input.success) return sendInvalidPayload(reply);
+
+      const sortedRanges = [...input.data.ranges].sort(
+        (left, right) => timeToMinutes(left.startsAt) - timeToMinutes(right.startsAt)
+      );
+      for (let index = 0; index < sortedRanges.length; index += 1) {
+        const current = sortedRanges[index]!;
+        const previous = sortedRanges[index - 1];
+        if (timeToMinutes(current.startsAt) >= timeToMinutes(current.endsAt)) {
+          return sendInvalidPayload(reply);
+        }
+        if (previous && timeToMinutes(current.startsAt) < timeToMinutes(previous.endsAt)) {
+          return sendInvalidPayload(reply);
+        }
+      }
+
+      const selection = await selectStaff(
+        database!,
+        request.crmUser!,
+        input.data.staffId,
+        reply
+      );
+      if (!selection) return;
+
+      const { date } = input.data;
+      const dayStart = dateAtMoscowMidnight(date);
+      const dayEnd = new Date(dayStart.getTime() + 86400000);
+
+      const spanningException = await database!.scheduleException.findFirst({
+        where: {
+          staffId: selection.selected.id,
+          startsAt: { lt: dayEnd },
+          endsAt: { gt: dayStart },
+          OR: [{ startsAt: { lt: dayStart } }, { endsAt: { gt: dayEnd } }]
+        },
+        select: { id: true }
+      });
+      if (spanningException) {
+        return reply.code(409).send({ error: "schedule_exception_spans_multiple_days" });
+      }
+
+      const ranges = await database!.$transaction(async (transaction) => {
+        await transaction.scheduleException.deleteMany({
+          where: {
+            staffId: selection.selected.id,
+            startsAt: { gte: dayStart },
+            endsAt: { lte: dayEnd }
+          }
+        });
+
+        await transaction.scheduleException.create({
+          data: {
+            staffId: selection.selected.id,
+            startsAt: dayStart,
+            endsAt: dayEnd,
+            isBookable: false,
+            reason: null
+          }
+        });
+
+        for (const range of sortedRanges) {
+          await transaction.scheduleException.create({
+            data: {
+              staffId: selection.selected.id,
+              startsAt: timeToDate(date, range.startsAt),
+              endsAt: timeToDate(date, range.endsAt),
+              isBookable: true,
+              reason: null
+            }
+          });
+        }
+
+        const [workingHours, dayExceptions] = await Promise.all([
+          transaction.workingHour.findMany({
+            where: {
+              staffId: selection.selected.id,
+              weekday: weekdayForDate(date),
+              isActive: true
+            },
+            select: { startsAt: true, endsAt: true }
+          }),
+          transaction.scheduleException.findMany({
+            where: {
+              staffId: selection.selected.id,
+              startsAt: { lt: dayEnd },
+              endsAt: { gt: dayStart }
+            },
+            select: { startsAt: true, endsAt: true, isBookable: true }
+          })
+        ]);
+
+        return resolveDisplayRanges({ date, workingHours, exceptions: dayExceptions });
+      });
+
+      return { date, ranges };
     }
   );
 }

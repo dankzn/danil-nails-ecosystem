@@ -94,6 +94,50 @@ export function resolveWorkingRanges(options: {
   ]);
 }
 
+function subtractRanges(base: TimeRange[], blocks: TimeRange[]): TimeRange[] {
+  if (blocks.length === 0) return base;
+
+  const result: TimeRange[] = [];
+  for (const range of base) {
+    let segments: TimeRange[] = [range];
+    for (const block of blocks) {
+      const next: TimeRange[] = [];
+      for (const segment of segments) {
+        if (!overlaps(segment, block)) {
+          next.push(segment);
+          continue;
+        }
+        if (block.startsAt > segment.startsAt) {
+          next.push({ startsAt: segment.startsAt, endsAt: block.startsAt });
+        }
+        if (block.endsAt < segment.endsAt) {
+          next.push({ startsAt: block.endsAt, endsAt: segment.endsAt });
+        }
+      }
+      segments = next;
+    }
+    result.push(...segments);
+  }
+
+  return result.filter((range) => range.startsAt < range.endsAt);
+}
+
+// Like resolveWorkingRanges, but also removes isBookable:false exception
+// time (a vacation/day-off override) from the result. Kept separate from
+// resolveWorkingRanges — which buildAvailableSlots relies on and already
+// accounts for those blocks via its own blockedRanges check — so this is
+// purely for UI surfaces that need to *display* a day as actually closed
+// (schedule grid, calendar header) without touching booking-engine logic.
+export function resolveDisplayRanges(options: {
+  date: string;
+  workingHours: Array<{ startsAt: string; endsAt: string }>;
+  exceptions: ScheduleExceptionRange[];
+}) {
+  const bookable = resolveWorkingRanges(options);
+  const blocks = options.exceptions.filter((exception) => !exception.isBookable);
+  return subtractRanges(bookable, blocks);
+}
+
 export function buildAvailableSlots(options: {
   date: string;
   workingHours: Array<{ startsAt: string; endsAt: string }>;

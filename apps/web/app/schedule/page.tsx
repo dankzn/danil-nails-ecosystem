@@ -3,14 +3,19 @@
 import { bookingRules } from "@danil-nails/shared";
 import {
   CalendarClock,
+  ChevronLeft,
+  ChevronRight,
   CircleAlert,
   Clock3,
   Plus,
   Trash2
 } from "lucide-react";
+import Link from "next/link";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { apiUrl } from "../lib/api-url";
 import { ApiError, apiRequest } from "../lib/api";
 import { Modal } from "../ui/modal";
+import { WorkingHoursPopover, type DayRange } from "../ui/working-hours-popover";
 
 type Staff = { id: string; displayName: string };
 type WorkingHour = {
@@ -51,6 +56,17 @@ type ExceptionForm = {
   reason: string;
 };
 
+type MonthOverviewStaff = { id: string; displayName: string; photoUrl: string | null };
+type MonthOverviewResponse = {
+  timezone: string;
+  from: string;
+  to: string;
+  days: string[];
+  staff: MonthOverviewStaff[];
+  entries: Record<string, Record<string, DayRange[]>>;
+};
+type CellPopover = { staffId: string; date: string; clientX: number; clientY: number };
+
 const weekdays = [
   [1, "Понедельник", "Пн"],
   [2, "Вторник", "Вт"],
@@ -60,6 +76,22 @@ const weekdays = [
   [6, "Суббота", "Сб"],
   [7, "Воскресенье", "Вс"]
 ] as const;
+
+const shortWeekdayByUtcDay = ["Вс", "Пн", "Вт", "Ср", "Чт", "Пт", "Сб"];
+const monthNames = [
+  "Январь",
+  "Февраль",
+  "Март",
+  "Апрель",
+  "Май",
+  "Июнь",
+  "Июль",
+  "Август",
+  "Сентябрь",
+  "Октябрь",
+  "Ноябрь",
+  "Декабрь"
+];
 
 const rules = [
   ["Запись вперёд", `${bookingRules.bookingHorizonDays} дней`],
@@ -97,6 +129,29 @@ function moscowDateKey(date = new Date()) {
   const part = (type: Intl.DateTimeFormatPartTypes) =>
     parts.find((item) => item.type === type)?.value ?? "";
   return `${part("year")}-${part("month")}-${part("day")}`;
+}
+
+function pad2(value: number) {
+  return String(value).padStart(2, "0");
+}
+
+function daysInMonth(year: number, month: number) {
+  return new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+}
+
+function monthRangeDates(year: number, month: number) {
+  const from = `${year}-${pad2(month + 1)}-01`;
+  const to = `${year}-${pad2(month + 1)}-${pad2(daysInMonth(year, month))}`;
+  return { from, to };
+}
+
+function shortWeekdayFor(date: string) {
+  return shortWeekdayByUtcDay[new Date(`${date}T12:00:00Z`).getUTCDay()]!;
+}
+
+function isWeekendDate(date: string) {
+  const day = new Date(`${date}T12:00:00Z`).getUTCDay();
+  return day === 0 || day === 6;
 }
 
 function emptyExceptionForm(): ExceptionForm {
@@ -163,7 +218,343 @@ function exceptionLabel(exception: ScheduleException) {
     : `${shortDateFormatter.format(startsAt)}, ${startTime} – ${shortDateFormatter.format(endsAt)}, ${endTime}`;
 }
 
+function initials(name: string) {
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase())
+    .join("");
+}
+
 export default function SchedulePage() {
+  const [activeTab, setActiveTab] = useState<"month" | "template">("month");
+
+  const today = moscowDateKey();
+  const [viewYear, setViewYear] = useState(() => Number(today.slice(0, 4)));
+  const [viewMonth, setViewMonth] = useState(() => Number(today.slice(5, 7)) - 1);
+  const [overview, setOverview] = useState<MonthOverviewResponse | null>(null);
+  const [isOverviewLoading, setIsOverviewLoading] = useState(true);
+  const [overviewError, setOverviewError] = useState<string | null>(null);
+  const [staffFilter, setStaffFilter] = useState("all");
+  const [cellPopover, setCellPopover] = useState<CellPopover | null>(null);
+
+  const loadOverview = useCallback((year: number, month: number) => {
+    const controller = new AbortController();
+    setIsOverviewLoading(true);
+    setOverviewError(null);
+    const { from, to } = monthRangeDates(year, month);
+    apiRequest<MonthOverviewResponse>(
+      `/v1/admin/schedule/month-overview?from=${from}&to=${to}`,
+      { signal: controller.signal }
+    )
+      .then((response) => setOverview(response))
+      .catch(() => {
+        if (!controller.signal.aborted) setOverviewError("Не удалось загрузить график.");
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setIsOverviewLoading(false);
+      });
+    return () => controller.abort();
+  }, []);
+
+  useEffect(() => {
+    if (activeTab !== "month") return;
+    return loadOverview(viewYear, viewMonth);
+  }, [activeTab, loadOverview, viewYear, viewMonth]);
+
+  function goToMonth(offset: number) {
+    const next = new Date(Date.UTC(viewYear, viewMonth + offset, 1));
+    setViewYear(next.getUTCFullYear());
+    setViewMonth(next.getUTCMonth());
+  }
+
+  const visibleStaff = (overview?.staff ?? []).filter(
+    (member) => staffFilter === "all" || member.id === staffFilter
+  );
+
+  return (
+    <div className="page-stack">
+      <header className="page-header">
+        <div>
+          <p className="eyebrow">Персонал · расписание</p>
+          <h1>Расписание</h1>
+          <p className="page-description">
+            График работы по дням или недельный шаблон с разовыми исключениями.
+          </p>
+        </div>
+        <div className="segmented-control" role="group" aria-label="Режим расписания">
+          <button
+            aria-pressed={activeTab === "month"}
+            className={activeTab === "month" ? "is-active" : ""}
+            onClick={() => setActiveTab("month")}
+            type="button"
+          >
+            График на месяц
+          </button>
+          <button
+            aria-pressed={activeTab === "template"}
+            className={activeTab === "template" ? "is-active" : ""}
+            onClick={() => setActiveTab("template")}
+            type="button"
+          >
+            Шаблон недели
+          </button>
+        </div>
+      </header>
+
+      {activeTab === "month" ? (
+        <MonthGrid
+          goToMonth={goToMonth}
+          isLoading={isOverviewLoading}
+          loadError={overviewError}
+          onRetry={() => loadOverview(viewYear, viewMonth)}
+          overview={overview}
+          setCellPopover={setCellPopover}
+          setStaffFilter={setStaffFilter}
+          staffFilter={staffFilter}
+          viewMonth={viewMonth}
+          viewYear={viewYear}
+          visibleStaff={visibleStaff}
+        />
+      ) : (
+        <WeekTemplateEditor />
+      )}
+
+      {cellPopover ? (
+        <WorkingHoursPopover
+          anchor={{ x: cellPopover.clientX, y: cellPopover.clientY }}
+          date={cellPopover.date}
+          initialRanges={(
+            overview?.entries[cellPopover.staffId]?.[cellPopover.date] ?? []
+          ).map((range) => ({
+            startsAt: timeFormatter.format(new Date(range.startsAt)),
+            endsAt: timeFormatter.format(new Date(range.endsAt))
+          }))}
+          onClose={() => setCellPopover(null)}
+          onSaved={(ranges) => {
+            const { staffId, date } = cellPopover;
+            setOverview((current) =>
+              current
+                ? {
+                    ...current,
+                    entries: {
+                      ...current.entries,
+                      [staffId]: { ...current.entries[staffId], [date]: ranges }
+                    }
+                  }
+                : current
+            );
+          }}
+          staffId={cellPopover.staffId}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+function MonthGrid({
+  viewYear,
+  viewMonth,
+  goToMonth,
+  overview,
+  isLoading,
+  loadError,
+  onRetry,
+  staffFilter,
+  setStaffFilter,
+  visibleStaff,
+  setCellPopover
+}: {
+  viewYear: number;
+  viewMonth: number;
+  goToMonth: (offset: number) => void;
+  overview: MonthOverviewResponse | null;
+  isLoading: boolean;
+  loadError: string | null;
+  onRetry: () => void;
+  staffFilter: string;
+  setStaffFilter: (value: string) => void;
+  visibleStaff: MonthOverviewStaff[];
+  setCellPopover: (popover: CellPopover) => void;
+}) {
+  const today = moscowDateKey();
+  const days = overview?.days ?? [];
+
+  return (
+    <section className="dikidi-schedule">
+      <div className="dikidi-schedule-toolbar">
+        <label className="dikidi-schedule-staff-filter">
+          <select
+            onChange={(event) => setStaffFilter(event.target.value)}
+            value={staffFilter}
+          >
+            <option value="all">
+              Все сотрудники {overview ? overview.staff.length : ""}
+            </option>
+            {(overview?.staff ?? []).map((member) => (
+              <option key={member.id} value={member.id}>
+                {member.displayName}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <div className="dikidi-schedule-month-nav">
+          <button onClick={() => goToMonth(-1)} type="button">
+            <ChevronLeft aria-hidden="true" size={16} />
+            {monthNames[(viewMonth + 11) % 12]}
+          </button>
+          <strong>
+            {monthNames[viewMonth]} {viewYear}
+          </strong>
+          <button onClick={() => goToMonth(1)} type="button">
+            {monthNames[(viewMonth + 1) % 12]}
+            <ChevronRight aria-hidden="true" size={16} />
+          </button>
+        </div>
+
+        <Link className="primary-button" href="/employees">
+          <Plus aria-hidden="true" size={16} />
+          Добавить сотрудника
+        </Link>
+      </div>
+
+      {loadError ? (
+        <div className="empty-schedule" role="alert">
+          <CircleAlert aria-hidden="true" size={26} />
+          <div>
+            <h2>{loadError}</h2>
+            <button className="secondary-button" onClick={onRetry} type="button">
+              Повторить
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="dikidi-schedule-body">
+          <div className="dikidi-schedule-grid-scroll" aria-busy={isLoading}>
+            <div
+              className="dikidi-schedule-grid"
+              style={{
+                gridTemplateColumns: `200px repeat(${days.length || 1}, 64px)`
+              }}
+            >
+              <div className="dikidi-schedule-corner" aria-hidden="true" />
+              {days.map((date) => (
+                <div
+                  className={`dikidi-schedule-day-head${
+                    isWeekendDate(date) ? " is-weekend" : ""
+                  }${date === today ? " is-today" : ""}`}
+                  key={date}
+                >
+                  <span className="dikidi-schedule-day-number">
+                    {Number(date.slice(8, 10))}
+                  </span>
+                  <span className="dikidi-schedule-day-weekday">
+                    {shortWeekdayFor(date)}
+                  </span>
+                </div>
+              ))}
+
+              {visibleStaff.map((member) => (
+                <MonthGridRow
+                  days={days}
+                  key={member.id}
+                  member={member}
+                  ranges={overview?.entries[member.id] ?? {}}
+                  setCellPopover={setCellPopover}
+                  today={today}
+                />
+              ))}
+
+              {!isLoading && visibleStaff.length === 0 ? (
+                <div className="dikidi-schedule-empty-row">
+                  Нет сотрудников с расписанием.
+                </div>
+              ) : null}
+            </div>
+          </div>
+
+          <aside className="dikidi-schedule-side">
+            <p>
+              Выделите в графике один или несколько дней для настройки
+              расписания
+            </p>
+            <label
+              className="checkbox-field"
+              title="Будет добавлено позже"
+            >
+              <input disabled type="checkbox" />
+              <span>Отобразить пометки о записях в графике</span>
+            </label>
+          </aside>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function MonthGridRow({
+  member,
+  days,
+  ranges,
+  today,
+  setCellPopover
+}: {
+  member: MonthOverviewStaff;
+  days: string[];
+  ranges: Record<string, DayRange[]>;
+  today: string;
+  setCellPopover: (popover: CellPopover) => void;
+}) {
+  return (
+    <>
+      <div className="dikidi-schedule-staff-cell">
+        <span className="calendar-grid-avatar">
+          {member.photoUrl ? (
+            <img alt="" src={`${apiUrl}${member.photoUrl}`} />
+          ) : (
+            initials(member.displayName)
+          )}
+        </span>
+        <span>{member.displayName}</span>
+      </div>
+      {days.map((date) => {
+        const dayRanges = ranges[date] ?? [];
+        const sorted = [...dayRanges].sort(
+          (left, right) =>
+            new Date(left.startsAt).getTime() - new Date(right.startsAt).getTime()
+        );
+        return (
+          <button
+            className={`dikidi-schedule-cell${
+              isWeekendDate(date) ? " is-weekend" : ""
+            }${date === today ? " is-today" : ""}`}
+            key={date}
+            onClick={(event) =>
+              setCellPopover({
+                staffId: member.id,
+                date,
+                clientX: event.clientX,
+                clientY: event.clientY
+              })
+            }
+            type="button"
+          >
+            {sorted.length ? (
+              <>
+                <span>{timeFormatter.format(new Date(sorted[0]!.startsAt))}</span>
+                <span>{timeFormatter.format(new Date(sorted.at(-1)!.endsAt))}</span>
+              </>
+            ) : null}
+          </button>
+        );
+      })}
+    </>
+  );
+}
+
+function WeekTemplateEditor() {
   const [staff, setStaff] = useState<Staff[]>([]);
   const [selectedStaffId, setSelectedStaffId] = useState("");
   const [week, setWeek] = useState<DaySchedule[]>(() => buildWeek([]));
@@ -348,13 +739,12 @@ export default function SchedulePage() {
   const activeDays = week.filter((day) => day.enabled).length;
 
   return (
-    <div className="page-stack">
+    <>
       <header className="page-header">
         <div>
           <p className="eyebrow">
             Мастер · {selectedStaff?.displayName ?? "Расписание"}
           </p>
-          <h1>Расписание</h1>
           <p className="page-description">
             Рабочая неделя, обеды, выходные, отпуск и разовые изменения.
           </p>
@@ -799,6 +1189,6 @@ export default function SchedulePage() {
           </div>
         </Modal>
       ) : null}
-    </div>
+    </>
   );
 }

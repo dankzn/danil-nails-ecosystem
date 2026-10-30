@@ -40,6 +40,7 @@ import {
 import { ApiError, apiRequest } from "../lib/api";
 import { apiUrl } from "../lib/api-url";
 import { Modal } from "../ui/modal";
+import { WorkingHoursPopover, type DayRange } from "../ui/working-hours-popover";
 
 type AppointmentStatus =
   | "draft"
@@ -709,6 +710,11 @@ export default function AppointmentsPage() {
     candidates: Date[];
   } | null>(null);
   const [quickAddCandidateIndex, setQuickAddCandidateIndex] = useState(0);
+  const [workingHoursPopover, setWorkingHoursPopover] = useState<{
+    staffId: string;
+    clientX: number;
+    clientY: number;
+  } | null>(null);
   const [options, setOptions] = useState<BookingOptions | null>(null);
   const [bookingDate, setBookingDate] = useState(moscowDateKey);
   const [availableSlots, setAvailableSlots] = useState<AvailableSlot[]>([]);
@@ -1901,18 +1907,49 @@ export default function AppointmentsPage() {
             >
               <div className="calendar-grid-header-row">
                 <div className="calendar-grid-time-spacer" aria-hidden="true" />
-                {staffColumns.map((staff) => (
-                  <div className="calendar-grid-header" key={staff.id}>
-                    <span className="calendar-grid-avatar">
-                      {staff.photoUrl ? (
-                        <img alt="" src={`${apiUrl}${staff.photoUrl}`} />
-                      ) : (
-                        initials(staff.displayName)
-                      )}
-                    </span>
-                    {staff.displayName}
-                  </div>
-                ))}
+                {staffColumns.map((staff) => {
+                  const staffRanges = [...(dayOverview[staff.id] ?? [])].sort(
+                    (left, right) =>
+                      new Date(left.startsAt).getTime() -
+                      new Date(right.startsAt).getTime()
+                  );
+                  return (
+                    <div className="calendar-grid-header" key={staff.id}>
+                      <span className="calendar-grid-avatar">
+                        {staff.photoUrl ? (
+                          <img alt="" src={`${apiUrl}${staff.photoUrl}`} />
+                        ) : (
+                          initials(staff.displayName)
+                        )}
+                      </span>
+                      <span className="calendar-grid-header-text">
+                        {staff.displayName}
+                        {staffRanges.length ? (
+                          <button
+                            className="calendar-grid-hours-link"
+                            onClick={(event) => {
+                              event.stopPropagation();
+                              setWorkingHoursPopover({
+                                staffId: staff.id,
+                                clientX: event.clientX,
+                                clientY: event.clientY
+                              });
+                            }}
+                            type="button"
+                          >
+                            {timeFormatter.format(
+                              new Date(staffRanges[0]!.startsAt)
+                            )}
+                            {" – "}
+                            {timeFormatter.format(
+                              new Date(staffRanges.at(-1)!.endsAt)
+                            )}
+                          </button>
+                        ) : null}
+                      </span>
+                    </div>
+                  );
+                })}
               </div>
               <div className="calendar-grid-body-row">
                 <div
@@ -2096,6 +2133,28 @@ export default function AppointmentsPage() {
             </button>
           </div>
         </>
+      ) : null}
+
+      {workingHoursPopover ? (
+        <WorkingHoursPopover
+          anchor={{ x: workingHoursPopover.clientX, y: workingHoursPopover.clientY }}
+          date={selectedDate}
+          initialRanges={(dayOverview[workingHoursPopover.staffId] ?? []).map(
+            (range) => ({
+              startsAt: timeFormatter.format(new Date(range.startsAt)),
+              endsAt: timeFormatter.format(new Date(range.endsAt))
+            })
+          )}
+          onClose={() => setWorkingHoursPopover(null)}
+          onSaved={(ranges) => {
+            // ranges here are the server's resolved ISO-datetime ranges
+            // (same shape dayOverview already stores elsewhere), not the
+            // HH:MM pairs the popover sends when saving.
+            const staffId = workingHoursPopover.staffId;
+            setDayOverview((current) => ({ ...current, [staffId]: ranges }));
+          }}
+          staffId={workingHoursPopover.staffId}
+        />
       ) : null}
 
       {isCreateOpen ? (

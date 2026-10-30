@@ -2,7 +2,8 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
   buildAvailableSlots,
-  isDateWithinBookingHorizon
+  isDateWithinBookingHorizon,
+  resolveDisplayRanges
 } from "./availability.js";
 
 const date = "2026-09-28";
@@ -110,6 +111,48 @@ test("keeps multi-day additional hours inside the requested date", () => {
   assert.equal(slots.length, 24);
   assert.equal(slots[0]?.startsAt.toISOString(), localTime("00:00").toISOString());
   assert.equal(slots.at(-1)?.startsAt.toISOString(), localTime("23:00").toISOString());
+});
+
+test("resolveDisplayRanges shows a day off when fully blocked", () => {
+  const ranges = resolveDisplayRanges({
+    date,
+    workingHours: [{ startsAt: "10:00", endsAt: "20:00" }],
+    exceptions: [
+      { startsAt: localTime("00:00"), endsAt: new Date(localTime("00:00").getTime() + 86400000), isBookable: false }
+    ]
+  });
+
+  assert.deepEqual(ranges, []);
+});
+
+test("resolveDisplayRanges removes only the blocked slice of a working day", () => {
+  const ranges = resolveDisplayRanges({
+    date,
+    workingHours: [{ startsAt: "10:00", endsAt: "20:00" }],
+    exceptions: [
+      { startsAt: localTime("13:00"), endsAt: localTime("14:00"), isBookable: false }
+    ]
+  });
+
+  assert.equal(ranges.length, 2);
+  assert.equal(ranges[0]?.startsAt.toISOString(), localTime("10:00").toISOString());
+  assert.equal(ranges[0]?.endsAt.toISOString(), localTime("13:00").toISOString());
+  assert.equal(ranges[1]?.startsAt.toISOString(), localTime("14:00").toISOString());
+  assert.equal(ranges[1]?.endsAt.toISOString(), localTime("20:00").toISOString());
+});
+
+test("resolveDisplayRanges still adds bookable exception hours on top of the week template", () => {
+  const ranges = resolveDisplayRanges({
+    date,
+    workingHours: [],
+    exceptions: [
+      { startsAt: localTime("16:00"), endsAt: localTime("18:00"), isBookable: true }
+    ]
+  });
+
+  assert.equal(ranges.length, 1);
+  assert.equal(ranges[0]?.startsAt.toISOString(), localTime("16:00").toISOString());
+  assert.equal(ranges[0]?.endsAt.toISOString(), localTime("18:00").toISOString());
 });
 
 test("limits booking dates to the configured horizon", () => {
