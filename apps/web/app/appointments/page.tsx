@@ -3,6 +3,7 @@
 import { bookingRules } from "@danil-nails/shared";
 import {
   Activity,
+  Banknote,
   Bell,
   CalendarPlus,
   ChartNoAxesCombined,
@@ -14,13 +15,18 @@ import {
   Check,
   History,
   Info,
+  Landmark,
   LoaderCircle,
   Minus,
+  MoreHorizontal,
   Paperclip,
   Phone,
   Plus,
+  QrCode,
+  Smartphone,
   TriangleAlert,
   UserRound,
+  Wallet,
   X
 } from "lucide-react";
 import Link from "next/link";
@@ -422,6 +428,17 @@ const paymentMethodMeta: Record<PaymentMethod, string> = {
   other: "Другое"
 };
 
+const paymentMethodIcon: Record<PaymentMethod, typeof Banknote> = {
+  online_acquiring: CreditCard,
+  cash: Banknote,
+  phone_transfer: Smartphone,
+  bank_card: Wallet,
+  sbp: QrCode,
+  qr: QrCode,
+  bank_transfer: Landmark,
+  other: MoreHorizontal
+};
+
 const workspaceTabs: Array<{
   value: WorkspaceTab;
   label: string;
@@ -636,6 +653,9 @@ function appointmentErrorMessage(error: unknown) {
       return "Окно уже недоступно. Выберите другое свободное время.";
     }
     if (error.code === "client_not_found") return "Клиент больше не найден.";
+    if (error.code === "client_phone_already_exists") {
+      return "Клиент с таким номером телефона уже есть в базе. Найдите его в списке клиентов.";
+    }
     if (error.code === "service_not_found") return "Услуга недоступна.";
     if (error.code === "staff_not_found") return "Мастер недоступен.";
     if (error.code === "appointment_not_closable") {
@@ -700,6 +720,9 @@ export default function AppointmentsPage() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [isNewClientMode, setIsNewClientMode] = useState(false);
+  const [newClientName, setNewClientName] = useState("");
+  const [newClientPhone, setNewClientPhone] = useState("");
   const [selectedAppointment, setSelectedAppointment] =
     useState<Appointment | null>(null);
   const [workspace, setWorkspace] = useState<AppointmentWorkspace | null>(null);
@@ -728,10 +751,14 @@ export default function AppointmentsPage() {
   >({});
   const [isAddingService, setIsAddingService] = useState(false);
   const [addServiceId, setAddServiceId] = useState("");
+  const [addServiceQuery, setAddServiceQuery] = useState("");
+  const [isAddServiceListOpen, setIsAddServiceListOpen] = useState(false);
   const [isSavingServiceLine, setIsSavingServiceLine] = useState(false);
   const [promoCode, setPromoCode] = useState("");
   const [internalNote, setInternalNote] = useState("");
   const [isCancelPromptOpen, setIsCancelPromptOpen] = useState(false);
+  const [isSaleModalOpen, setIsSaleModalOpen] = useState(false);
+  const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [canceledBy, setCanceledBy] = useState<"client" | "studio">("studio");
   const [rescheduleDate, setRescheduleDate] = useState(moscowDateKey);
   const [rescheduleStaffId, setRescheduleStaffId] = useState("");
@@ -1033,6 +1060,9 @@ export default function AppointmentsPage() {
     setAvailabilityError(null);
     setForm(nextForm);
     setFormError(null);
+    setIsNewClientMode(false);
+    setNewClientName("");
+    setNewClientPhone("");
     setIsCreateOpen(true);
   }
 
@@ -1099,6 +1129,8 @@ export default function AppointmentsPage() {
     setCancellationReason(appointment.cancellationReason ?? "");
     setCanceledBy("studio");
     setIsCancelPromptOpen(false);
+    setIsSaleModalOpen(false);
+    setIsPaymentModalOpen(false);
     setRescheduleDate(initialDate);
     setRescheduleStaffId(appointment.staff.id);
     setRescheduleServiceId(appointment.service.id);
@@ -1131,6 +1163,8 @@ export default function AppointmentsPage() {
     );
     setIsAddingService(false);
     setAddServiceId("");
+    setAddServiceQuery("");
+    setIsAddServiceListOpen(false);
     setDiscountAmount(
       appointment.discountAmountMinor
         ? String(appointment.discountAmountMinor / 100)
@@ -1144,15 +1178,6 @@ export default function AppointmentsPage() {
     setPromoCode(appointment.promoCode ?? "");
     setInternalNote(appointment.internalNote ?? "");
     setFormError(null);
-  }
-
-  function focusPayment() {
-    setWorkspaceTab("appointment");
-    window.requestAnimationFrame(() => {
-      document
-        .getElementById("appointment-payment")
-        ?.scrollIntoView({ behavior: "smooth", block: "start" });
-    });
   }
 
   function updateForm<Key extends keyof BookingForm>(
@@ -1173,14 +1198,41 @@ export default function AppointmentsPage() {
       setFormError("Выберите свободное время для записи.");
       return;
     }
+    if (isNewClientMode) {
+      if (newClientName.trim().length < 2) {
+        setFormError("Укажите имя клиента (минимум 2 символа).");
+        return;
+      }
+      if (newClientPhone.trim().length < 7) {
+        setFormError("Укажите телефон клиента.");
+        return;
+      }
+    } else if (!form.clientId) {
+      setFormError("Выберите клиента.");
+      return;
+    }
     setIsSaving(true);
     setFormError(null);
     setNotice(null);
     try {
+      let clientId = form.clientId;
+      if (isNewClientMode) {
+        const response = await apiRequest<{ client: { id: string } }>(
+          "/v1/admin/clients",
+          {
+            method: "POST",
+            body: JSON.stringify({
+              fullName: newClientName.trim(),
+              phone: newClientPhone.trim()
+            })
+          }
+        );
+        clientId = response.client.id;
+      }
       await apiRequest("/v1/admin/appointments", {
         method: "POST",
         body: JSON.stringify({
-          clientId: form.clientId,
+          clientId,
           serviceId: form.serviceId,
           staffId: form.staffId,
           startsAt: toMoscowIso(form.startsAt),
@@ -1189,8 +1241,13 @@ export default function AppointmentsPage() {
         })
       });
       setIsCreateOpen(false);
-      setNotice("Запись создана и ожидает подтверждения администратора.");
+      setNotice(
+        isNewClientMode
+          ? "Клиент добавлен, запись создана и ожидает подтверждения администратора."
+          : "Запись создана и ожидает подтверждения администратора."
+      );
       await refresh();
+      await loadOptions();
     } catch (error) {
       setFormError(appointmentErrorMessage(error));
       if (
@@ -1398,6 +1455,8 @@ export default function AppointmentsPage() {
       setSelectedAppointment(response.appointment);
       setIsAddingService(false);
       setAddServiceId("");
+      setAddServiceQuery("");
+      setIsAddServiceListOpen(false);
       await refresh();
     } catch (error) {
       setFormError(appointmentErrorMessage(error));
@@ -1586,6 +1645,8 @@ export default function AppointmentsPage() {
         })
       });
       setSelectedAppointment(null);
+      setIsSaleModalOpen(false);
+      setIsPaymentModalOpen(false);
       setNotice("Запись закрыта, оплата зафиксирована.");
       await refresh();
     } catch (error) {
@@ -1733,6 +1794,15 @@ export default function AppointmentsPage() {
     grandBasePriceMinor > 0
       ? Math.round((grandDiscountMinor / grandBasePriceMinor) * 100)
       : 0;
+  const filteredAddServices = addServiceQuery.trim()
+    ? (options?.services ?? [])
+        .filter((service) =>
+          service.titleRu
+            .toLowerCase()
+            .includes(addServiceQuery.trim().toLowerCase())
+        )
+        .slice(0, 8)
+    : [];
 
   return (
     <div className="page-stack">
@@ -2045,13 +2115,20 @@ export default function AppointmentsPage() {
             className="modal-form"
             onSubmit={(event) => void submitAppointment(event)}
           >
-            {!options?.clients.length ? (
+            {!options?.clients.length && !isNewClientMode ? (
               <div className="form-empty-state">
                 <TriangleAlert aria-hidden="true" size={20} />
                 <div>
                   <strong>Сначала добавьте клиента</strong>
                   <span>Для записи нужен клиент с номером телефона.</span>
                 </div>
+                <button
+                  className="primary-button"
+                  onClick={() => setIsNewClientMode(true)}
+                  type="button"
+                >
+                  Создать клиента здесь
+                </button>
                 <Link className="secondary-button" href="/clients">
                   Перейти к клиентам
                 </Link>
@@ -2059,21 +2136,69 @@ export default function AppointmentsPage() {
             ) : (
               <>
                 <div className="form-grid form-grid-two">
-                  <label className="form-field">
-                    <span>Клиент</span>
-                    <select
-                      autoFocus
-                      onChange={(event) => updateForm("clientId", event.target.value)}
-                      required
-                      value={form.clientId}
-                    >
-                      {options.clients.map((client) => (
-                        <option key={client.id} value={client.id}>
-                          {client.fullName ?? "Без имени"} · {client.phone}
-                        </option>
-                      ))}
-                    </select>
-                  </label>
+                  {isNewClientMode ? (
+                    <>
+                      <label className="form-field">
+                        <span>Имя нового клиента</span>
+                        <input
+                          autoFocus
+                          maxLength={160}
+                          onChange={(event) => setNewClientName(event.target.value)}
+                          placeholder="Имя Фамилия"
+                          required
+                          value={newClientName}
+                        />
+                      </label>
+                      <label className="form-field">
+                        <span>
+                          Телефон{" "}
+                          <button
+                            className="dikidi-link"
+                            onClick={() => {
+                              setIsNewClientMode(false);
+                              setNewClientName("");
+                              setNewClientPhone("");
+                            }}
+                            type="button"
+                          >
+                            выбрать из списка
+                          </button>
+                        </span>
+                        <input
+                          maxLength={30}
+                          onChange={(event) => setNewClientPhone(event.target.value)}
+                          placeholder="+7 900 000-00-00"
+                          required
+                          value={newClientPhone}
+                        />
+                      </label>
+                    </>
+                  ) : (
+                    <label className="form-field">
+                      <span>
+                        Клиент{" "}
+                        <button
+                          className="dikidi-link"
+                          onClick={() => setIsNewClientMode(true)}
+                          type="button"
+                        >
+                          + новый клиент
+                        </button>
+                      </span>
+                      <select
+                        autoFocus
+                        onChange={(event) => updateForm("clientId", event.target.value)}
+                        required
+                        value={form.clientId}
+                      >
+                        {(options?.clients ?? []).map((client) => (
+                          <option key={client.id} value={client.id}>
+                            {client.fullName ?? "Без имени"} · {client.phone}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  )}
                   <label className="form-field">
                     <span>Мастер</span>
                     <select
@@ -2084,7 +2209,7 @@ export default function AppointmentsPage() {
                       required
                       value={form.staffId}
                     >
-                      {options.staff.map((staff) => (
+                      {(options?.staff ?? []).map((staff) => (
                         <option key={staff.id} value={staff.id}>
                           {staff.displayName}
                         </option>
@@ -2101,7 +2226,7 @@ export default function AppointmentsPage() {
                       required
                       value={form.serviceId}
                     >
-                      {options.services.map((service) => (
+                      {(options?.services ?? []).map((service) => (
                         <option key={service.id} value={service.id}>
                           {service.titleRu} · {service.durationMinutes} мин
                         </option>
@@ -2188,7 +2313,7 @@ export default function AppointmentsPage() {
               >
                 Отмена
               </button>
-              {options?.clients.length ? (
+              {options?.clients.length || isNewClientMode ? (
                 <button
                   className="primary-button"
                   disabled={isSaving || !form.startsAt}
@@ -2207,7 +2332,11 @@ export default function AppointmentsPage() {
           description={`${selectedAppointment.service.titleRu} · ${timeFormatter.format(
             new Date(selectedAppointment.startsAt)
           )}`}
-          onClose={() => setSelectedAppointment(null)}
+          onClose={() => {
+            setSelectedAppointment(null);
+            setIsSaleModalOpen(false);
+            setIsPaymentModalOpen(false);
+          }}
           size="workspace"
           title={
             selectedAppointment.client.fullName ?? selectedAppointment.client.phone
@@ -2517,18 +2646,51 @@ export default function AppointmentsPage() {
 
                 {isAddingService ? (
                   <div className="dikidi-service-row-body dikidi-service-row-add">
-                    <select
-                      autoFocus
-                      onChange={(event) => setAddServiceId(event.target.value)}
-                      value={addServiceId}
-                    >
-                      <option value="">Выберите услугу</option>
-                      {options?.services.map((service) => (
-                        <option key={service.id} value={service.id}>
-                          {service.titleRu} · {service.durationMinutes} мин
-                        </option>
-                      ))}
-                    </select>
+                    <div className="dikidi-service-combobox">
+                      <input
+                        autoFocus
+                        onBlur={() =>
+                          window.setTimeout(
+                            () => setIsAddServiceListOpen(false),
+                            150
+                          )
+                        }
+                        onChange={(event) => {
+                          setAddServiceQuery(event.target.value);
+                          setAddServiceId("");
+                          setIsAddServiceListOpen(true);
+                        }}
+                        onFocus={() => setIsAddServiceListOpen(true)}
+                        placeholder="Начните вводить название услуги"
+                        value={addServiceQuery}
+                      />
+                      {isAddServiceListOpen && filteredAddServices.length ? (
+                        <ul className="dikidi-service-combobox-list">
+                          {filteredAddServices.map((service) => (
+                            <li key={service.id}>
+                              <button
+                                onMouseDown={(event) => event.preventDefault()}
+                                onClick={() => {
+                                  setAddServiceId(service.id);
+                                  setAddServiceQuery(service.titleRu);
+                                  setIsAddServiceListOpen(false);
+                                }}
+                                type="button"
+                              >
+                                {service.titleRu} · {service.durationMinutes} мин
+                              </button>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : null}
+                      {isAddServiceListOpen &&
+                      addServiceQuery.trim() &&
+                      !filteredAddServices.length ? (
+                        <div className="dikidi-service-combobox-empty">
+                          Ничего не найдено
+                        </div>
+                      ) : null}
+                    </div>
                     <div className="dikidi-service-row-actions">
                       <button
                         aria-label="Отмена"
@@ -2536,6 +2698,8 @@ export default function AppointmentsPage() {
                         onClick={() => {
                           setIsAddingService(false);
                           setAddServiceId("");
+                          setAddServiceQuery("");
+                          setIsAddServiceListOpen(false);
                         }}
                         type="button"
                       >
@@ -2646,7 +2810,12 @@ export default function AppointmentsPage() {
                       className={
                         selectedAppointment.status === "completed" ? "is-active" : ""
                       }
-                      onClick={focusPayment}
+                      disabled={
+                        !closableStatuses.includes(
+                          selectedAppointment.status as (typeof closableStatuses)[number]
+                        )
+                      }
+                      onClick={() => setIsSaleModalOpen(true)}
                       type="button"
                     >
                       Пришёл
@@ -2775,158 +2944,6 @@ export default function AppointmentsPage() {
                 История изменений
               </button>
 
-            {closableStatuses.includes(
-              selectedAppointment.status as (typeof closableStatuses)[number]
-            ) ? (
-              <section className="editor-section workspace-payment-section" id="appointment-payment">
-                <div className="editor-section-heading">
-                  <div>
-                    <p className="section-kicker">Визит состоялся</p>
-                    <h2>Закрыть запись с оплатой</h2>
-                  </div>
-                </div>
-                {closePayments.map((row, index) => (
-                  <div className="form-grid form-grid-two close-payment-row" key={index}>
-                    <label className="form-field">
-                      <span>Способ оплаты</span>
-                      <select
-                        onChange={(event) =>
-                          updateClosePaymentRow(index, {
-                            method: event.target.value as PaymentMethod
-                          })
-                        }
-                        value={row.method}
-                      >
-                        {Object.entries(paymentMethodMeta).map(
-                          ([value, label]) => (
-                            <option key={value} value={value}>
-                              {label}
-                            </option>
-                          )
-                        )}
-                      </select>
-                    </label>
-                    <label className="form-field">
-                      <span>Сумма</span>
-                      <input
-                        inputMode="decimal"
-                        onChange={(event) =>
-                          updateClosePaymentRow(index, {
-                            amount: event.target.value
-                          })
-                        }
-                        placeholder="0"
-                        value={row.amount}
-                      />
-                    </label>
-                    {row.method !== "cash" ? (
-                      <label className="form-field">
-                        <span>Номер транзакции</span>
-                        <input
-                          maxLength={200}
-                          onChange={(event) =>
-                            updateClosePaymentRow(index, {
-                              externalTransactionId: event.target.value
-                            })
-                          }
-                          value={row.externalTransactionId}
-                        />
-                      </label>
-                    ) : null}
-                    {row.method === "other" ? (
-                      <label className="form-field form-field-span-two">
-                        <span>Комментарий к способу оплаты</span>
-                        <input
-                          maxLength={500}
-                          onChange={(event) =>
-                            updateClosePaymentRow(index, {
-                              note: event.target.value
-                            })
-                          }
-                          placeholder="Обязательно укажите, как принята оплата"
-                          value={row.note}
-                        />
-                      </label>
-                    ) : null}
-                    <button
-                      aria-label="Удалить платёж"
-                      className="secondary-button"
-                      onClick={() => removeClosePaymentRow(index)}
-                      type="button"
-                    >
-                      Убрать
-                    </button>
-                  </div>
-                ))}
-                <button
-                  className="secondary-button"
-                  onClick={addClosePaymentRow}
-                  type="button"
-                >
-                  Добавить платёж
-                </button>
-                <div className="workspace-bonus-close">
-                  <div>
-                    <span>Бонусный баланс</span>
-                    <strong>
-                      {workspace?.statistics.bonusBalancePoints ?? 0} бонусов
-                    </strong>
-                    <small>1 бонус уменьшает оплату на 1 единицу валюты</small>
-                  </div>
-                  <label className="form-field">
-                    <span>Списать бонусов</span>
-                    <input
-                      inputMode="numeric"
-                      min="0"
-                      onChange={(event) =>
-                        setBonusRedemptionPoints(event.target.value)
-                      }
-                      type="number"
-                      value={bonusRedemptionPoints}
-                    />
-                  </label>
-                  <label className="form-field">
-                    <span>Начислить бонусов</span>
-                    <input
-                      inputMode="numeric"
-                      min="0"
-                      onChange={(event) =>
-                        setBonusAccrualPoints(event.target.value)
-                      }
-                      type="number"
-                      value={bonusAccrualPoints}
-                    />
-                  </label>
-                </div>
-                <label className="form-field">
-                  <span>Причина расхождения (скидка, долг, возврат)</span>
-                  <input
-                    maxLength={1000}
-                    onChange={(event) =>
-                      setCloseAdjustmentReason(event.target.value)
-                    }
-                    placeholder="Заполните, если сумма платежей не равна стоимости"
-                    value={closeAdjustmentReason}
-                  />
-                </label>
-                <label className="form-field">
-                  <span>Комментарий к закрытию</span>
-                  <input
-                    maxLength={1000}
-                    onChange={(event) => setCloseNote(event.target.value)}
-                    value={closeNote}
-                  />
-                </label>
-                <button
-                  className="primary-button editor-action"
-                  disabled={isClosing}
-                  onClick={() => void closeAppointment()}
-                  type="button"
-                >
-                  {isClosing ? "Закрываем…" : "Закрыть запись"}
-                </button>
-              </section>
-            ) : null}
 
             {selectedAppointment.status === "completed" ? (
               <section className="editor-section workspace-payment-section" id="appointment-payment">
@@ -3042,7 +3059,17 @@ export default function AppointmentsPage() {
                 </button>
                 <button
                   className="secondary-button"
-                  onClick={focusPayment}
+                  disabled={
+                    !closableStatuses.includes(
+                      selectedAppointment.status as (typeof closableStatuses)[number]
+                    )
+                  }
+                  onClick={() => setIsSaleModalOpen(true)}
+                  title={
+                    selectedAppointment.status === "completed"
+                      ? "Запись уже закрыта с оплатой"
+                      : undefined
+                  }
                   type="button"
                 >
                   <CreditCard aria-hidden="true" size={16} />
@@ -3416,6 +3443,405 @@ export default function AppointmentsPage() {
             ) : null}
             </div>
           </div>
+        </Modal>
+      ) : null}
+
+      {isSaleModalOpen && selectedAppointment ? (
+        <Modal
+          onClose={() => setIsSaleModalOpen(false)}
+          size="wide"
+          title={`Продажа товаров и услуг от ${
+            dateTimeFormatter.format(new Date()).split(", ")[0]
+          } в ${dateTimeFormatter.format(new Date()).split(", ")[1]}`}
+        >
+          <div className="modal-form">
+            <div className="dikidi-field">
+              <span>Клиент</span>
+              <div>
+                {selectedAppointment.client.fullName ??
+                  selectedAppointment.client.phone}
+              </div>
+            </div>
+
+            <div className="dikidi-sale-services">
+              <div className="dikidi-sale-services-row dikidi-sale-services-head">
+                <span>Услуга</span>
+                <span>Длит.</span>
+                <span>Цена</span>
+                <span>Скидка</span>
+                <span>Итого</span>
+              </div>
+              <div className="dikidi-sale-services-row">
+                <span>{selectedAppointment.service.titleRu}</span>
+                <span>{durationLabel(selectedAppointment.service.durationMinutes)}</span>
+                <span>{formatMoney(basePriceMinor, selectedAppointment.currency)}</span>
+                <span>
+                  {selectedAppointment.discountAmountMinor
+                    ? formatMoney(
+                        selectedAppointment.discountAmountMinor,
+                        selectedAppointment.currency
+                      )
+                    : "—"}
+                </span>
+                <span>
+                  {formatMoney(
+                    basePriceMinor - selectedAppointment.discountAmountMinor,
+                    selectedAppointment.currency
+                  )}
+                </span>
+              </div>
+              {selectedAppointment.extraServices.map((line) => (
+                <div className="dikidi-sale-services-row" key={line.id}>
+                  <span>{line.service.titleRu}</span>
+                  <span>{durationLabel(line.durationMinutes)}</span>
+                  <span>{formatMoney(line.priceMinor, selectedAppointment.currency)}</span>
+                  <span>
+                    {line.discountAmountMinor
+                      ? formatMoney(
+                          line.discountAmountMinor,
+                          selectedAppointment.currency
+                        )
+                      : "—"}
+                  </span>
+                  <span>
+                    {formatMoney(
+                      line.priceMinor - line.discountAmountMinor,
+                      selectedAppointment.currency
+                    )}
+                  </span>
+                </div>
+              ))}
+            </div>
+
+            <div className="dikidi-sale-total">
+              <span>Начислено</span>
+              <strong>
+                {formatMoney(selectedAppointment.priceMinor, selectedAppointment.currency)}
+              </strong>
+            </div>
+
+            <label className="dikidi-field dikidi-field-block">
+              <span>Пожелания клиента, пометки администратора</span>
+              <textarea
+                maxLength={1000}
+                onChange={(event) => setCloseNote(event.target.value)}
+                rows={2}
+                value={closeNote}
+              />
+            </label>
+
+            <div className="dikidi-color-block">
+              <span>Цвет записи</span>
+              <div className="color-swatch-row">
+                <button
+                  aria-label="Цвет по умолчанию (по статусу)"
+                  aria-pressed={selectedAppointment.colorTag === null}
+                  className={`color-swatch color-swatch-auto${
+                    selectedAppointment.colorTag === null
+                      ? " color-swatch-selected"
+                      : ""
+                  }`}
+                  disabled={isSaving}
+                  onClick={() => void updateColor(null)}
+                  title="По статусу"
+                  type="button"
+                />
+                {appointmentColorTags.map((tag) => (
+                  <button
+                    aria-label={tag}
+                    aria-pressed={selectedAppointment.colorTag === tag}
+                    className={`color-swatch color-swatch-${tag}${
+                      selectedAppointment.colorTag === tag
+                        ? " color-swatch-selected"
+                        : ""
+                    }`}
+                    disabled={isSaving}
+                    key={tag}
+                    onClick={() => void updateColor(tag)}
+                    type="button"
+                  />
+                ))}
+              </div>
+            </div>
+
+            <div className="dikidi-attachment" title="Будет добавлено позже">
+              <Paperclip aria-hidden="true" size={16} />
+              <span>Прикрепить файл (PDF, XLS, PNG, JPG)</span>
+            </div>
+
+            <button
+              className="dikidi-link"
+              onClick={() => {
+                setIsSaleModalOpen(false);
+                setWorkspaceTab("activity");
+              }}
+              type="button"
+            >
+              История изменений
+            </button>
+
+            {formError ? (
+              <p className="feedback feedback-error" role="alert">
+                {formError}
+              </p>
+            ) : null}
+          </div>
+          <footer className="modal-actions">
+            <button
+              className="secondary-button"
+              onClick={() => setIsSaleModalOpen(false)}
+              type="button"
+            >
+              Отмена
+            </button>
+            <button
+              className="primary-button"
+              onClick={() => {
+                setClosePayments((current) =>
+                  current.length && !current[0]?.amount
+                    ? current.map((row, index) =>
+                        index === 0
+                          ? {
+                              ...row,
+                              amount: String(selectedAppointment.priceMinor / 100)
+                            }
+                          : row
+                      )
+                    : current
+                );
+                setIsSaleModalOpen(false);
+                setIsPaymentModalOpen(true);
+              }}
+              type="button"
+            >
+              Перейти к оплате
+            </button>
+          </footer>
+        </Modal>
+      ) : null}
+
+      {isPaymentModalOpen && selectedAppointment ? (
+        <Modal
+          onClose={() => setIsPaymentModalOpen(false)}
+          title="Оплата товаров и услуг"
+        >
+          <div className="modal-form">
+            <div className="dikidi-row dikidi-row-top">
+              <div className="dikidi-field">
+                <span>Клиент</span>
+                <div>
+                  {selectedAppointment.client.fullName ??
+                    selectedAppointment.client.phone}
+                </div>
+              </div>
+              <div className="dikidi-field">
+                <span>Дата</span>
+                <div>{dateTimeFormatter.format(new Date()).split(", ")[0]}</div>
+              </div>
+            </div>
+
+            <div className="dikidi-payment-amount">
+              <span>Сумма к оплате</span>
+              <strong>
+                {formatMoney(selectedAppointment.priceMinor, selectedAppointment.currency)}
+              </strong>
+            </div>
+
+            <div>
+              <span className="dikidi-field-label">Выберите способ оплаты</span>
+              <div className="dikidi-payment-method-grid">
+                {(Object.keys(paymentMethodMeta) as PaymentMethod[]).map(
+                  (method) => {
+                    const Icon = paymentMethodIcon[method];
+                    const isSelected = closePayments[0]?.method === method;
+                    return (
+                      <button
+                        className={`dikidi-payment-method${
+                          isSelected ? " is-selected" : ""
+                        }`}
+                        key={method}
+                        onClick={() => updateClosePaymentRow(0, { method })}
+                        type="button"
+                      >
+                        <Icon aria-hidden="true" size={22} />
+                        <span>{paymentMethodMeta[method]}</span>
+                      </button>
+                    );
+                  }
+                )}
+              </div>
+            </div>
+
+            {closePayments.map((row, index) => (
+              <div className="form-grid form-grid-two close-payment-row" key={index}>
+                <label className="form-field">
+                  <span>{index === 0 ? "Сумма платежа" : "Способ оплаты"}</span>
+                  {index === 0 ? null : (
+                    <select
+                      onChange={(event) =>
+                        updateClosePaymentRow(index, {
+                          method: event.target.value as PaymentMethod
+                        })
+                      }
+                      value={row.method}
+                    >
+                      {Object.entries(paymentMethodMeta).map(([value, label]) => (
+                        <option key={value} value={value}>
+                          {label}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </label>
+                <label className="form-field">
+                  <span>Сумма</span>
+                  <input
+                    inputMode="decimal"
+                    onChange={(event) =>
+                      updateClosePaymentRow(index, { amount: event.target.value })
+                    }
+                    placeholder="0"
+                    value={row.amount}
+                  />
+                </label>
+                {row.method !== "cash" ? (
+                  <label className="form-field">
+                    <span>Номер транзакции</span>
+                    <input
+                      maxLength={200}
+                      onChange={(event) =>
+                        updateClosePaymentRow(index, {
+                          externalTransactionId: event.target.value
+                        })
+                      }
+                      value={row.externalTransactionId}
+                    />
+                  </label>
+                ) : null}
+                {row.method === "other" ? (
+                  <label className="form-field form-field-span-two">
+                    <span>Комментарий к способу оплаты</span>
+                    <input
+                      maxLength={500}
+                      onChange={(event) =>
+                        updateClosePaymentRow(index, { note: event.target.value })
+                      }
+                      placeholder="Обязательно укажите, как принята оплата"
+                      value={row.note}
+                    />
+                  </label>
+                ) : null}
+                {index > 0 ? (
+                  <button
+                    aria-label="Удалить платёж"
+                    className="secondary-button"
+                    onClick={() => removeClosePaymentRow(index)}
+                    type="button"
+                  >
+                    Убрать
+                  </button>
+                ) : null}
+              </div>
+            ))}
+            <button className="secondary-button" onClick={addClosePaymentRow} type="button">
+              Добавить ещё один платёж
+            </button>
+
+            <div className="workspace-bonus-close">
+              <div>
+                <span>Бонусный баланс</span>
+                <strong>{workspace?.statistics.bonusBalancePoints ?? 0} бонусов</strong>
+                <small>1 бонус уменьшает оплату на 1 единицу валюты</small>
+              </div>
+              <label className="form-field">
+                <span>Списать бонусов</span>
+                <input
+                  inputMode="numeric"
+                  min="0"
+                  onChange={(event) => setBonusRedemptionPoints(event.target.value)}
+                  type="number"
+                  value={bonusRedemptionPoints}
+                />
+              </label>
+              <label className="form-field">
+                <span>Начислить бонусов</span>
+                <input
+                  inputMode="numeric"
+                  min="0"
+                  onChange={(event) => setBonusAccrualPoints(event.target.value)}
+                  type="number"
+                  value={bonusAccrualPoints}
+                />
+              </label>
+            </div>
+
+            <label className="form-field">
+              <span>Причина расхождения (скидка, долг, возврат)</span>
+              <input
+                maxLength={1000}
+                onChange={(event) => setCloseAdjustmentReason(event.target.value)}
+                placeholder="Заполните, если сумма платежей не равна стоимости"
+                value={closeAdjustmentReason}
+              />
+            </label>
+
+            <div className="dikidi-payment-summary">
+              <span>
+                Итого к оплате{" "}
+                {formatMoney(selectedAppointment.priceMinor, selectedAppointment.currency)}
+              </span>
+              <span>
+                Оплачено{" "}
+                {formatMoney(
+                  closePayments.reduce(
+                    (sum, row) => sum + (minorAmount(row.amount) || 0),
+                    0
+                  ),
+                  selectedAppointment.currency
+                )}
+              </span>
+              <span className="dikidi-payment-debt">
+                Долг{" "}
+                {formatMoney(
+                  Math.max(
+                    0,
+                    selectedAppointment.priceMinor -
+                      closePayments.reduce(
+                        (sum, row) => sum + (minorAmount(row.amount) || 0),
+                        0
+                      )
+                  ),
+                  selectedAppointment.currency
+                )}
+              </span>
+            </div>
+
+            {formError ? (
+              <p className="feedback feedback-error" role="alert">
+                {formError}
+              </p>
+            ) : null}
+          </div>
+          <footer className="modal-actions">
+            <button
+              className="secondary-button"
+              onClick={() => {
+                setIsPaymentModalOpen(false);
+                setIsSaleModalOpen(true);
+              }}
+              type="button"
+            >
+              Назад
+            </button>
+            <button
+              className="primary-button"
+              disabled={isClosing}
+              onClick={() => void closeAppointment()}
+              type="button"
+            >
+              {isClosing ? "Закрываем…" : "Закрыть запись"}
+            </button>
+          </footer>
         </Modal>
       ) : null}
     </div>

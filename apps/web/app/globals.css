@@ -3312,8 +3312,13 @@ td strong {
   opacity: 0.6;
 }
 
-.dikidi-service-row-add select {
+.dikidi-service-combobox {
+  position: relative;
   grid-column: 1 / 6;
+}
+
+.dikidi-service-combobox input {
+  width: 100%;
   border: 1px solid var(--border);
   border-radius: 6px;
   padding: 8px 9px;
@@ -3321,6 +3326,55 @@ td strong {
   color: var(--text);
   font: inherit;
   font-size: 12px;
+}
+
+.dikidi-service-combobox-list {
+  position: absolute;
+  z-index: 5;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  max-height: 220px;
+  overflow-y: auto;
+  margin: 0;
+  padding: 4px;
+  list-style: none;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  background: var(--surface);
+  box-shadow: 0 10px 28px rgba(18, 21, 24, 0.18);
+}
+
+.dikidi-service-combobox-list button {
+  width: 100%;
+  border: 0;
+  border-radius: 5px;
+  padding: 8px 9px;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 12px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.dikidi-service-combobox-list button:hover {
+  background: var(--surface-soft);
+}
+
+.dikidi-service-combobox-empty {
+  position: absolute;
+  z-index: 5;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  padding: 8px 9px;
+  border: 1px solid var(--border-strong);
+  border-radius: 8px;
+  background: var(--surface);
+  color: var(--text-muted);
+  font-size: 11px;
+  box-shadow: 0 10px 28px rgba(18, 21, 24, 0.18);
 }
 
 .dikidi-service-row-add .dikidi-service-row-actions {
@@ -3542,6 +3596,109 @@ td strong {
 
 .dikidi-cancel-prompt input {
   min-width: 220px;
+}
+
+.dikidi-sale-services {
+  display: grid;
+  gap: 6px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+}
+
+.dikidi-sale-services-row {
+  display: grid;
+  grid-template-columns: 2.4fr 1fr 1fr 1fr 1fr;
+  gap: 10px;
+  align-items: center;
+  font-size: 12px;
+}
+
+.dikidi-sale-services-head {
+  color: var(--text-muted);
+  font-size: 9px;
+  font-weight: 750;
+  text-transform: uppercase;
+}
+
+.dikidi-sale-total {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 2px;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
+
+.dikidi-sale-total strong {
+  font-size: 16px;
+}
+
+.dikidi-payment-amount {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-soft);
+}
+
+.dikidi-payment-amount span {
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.dikidi-payment-amount strong {
+  font-size: 20px;
+}
+
+.dikidi-payment-method-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(90px, 1fr));
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.dikidi-payment-method {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px 8px;
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 10px;
+  text-align: center;
+  cursor: pointer;
+}
+
+.dikidi-payment-method:hover {
+  background: var(--surface-soft);
+}
+
+.dikidi-payment-method.is-selected {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, var(--surface));
+  color: var(--accent);
+}
+
+.dikidi-payment-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.dikidi-payment-debt {
+  color: var(--red);
 }
 
 .workspace-payment-section {
