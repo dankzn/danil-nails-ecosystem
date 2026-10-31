@@ -47,6 +47,8 @@ Vercel Cron Jobs ограничен запуском раз в сутки, по�
 | `NOTIFICATIONS_DISPATCH_SECRET` | произвольная случайная строка — тот же секрет нужно положить в GitHub Actions как `NOTIFICATIONS_DISPATCH_SECRET` |
 | `WHATSAPP_ACCESS_TOKEN` | пока не задавать — появится, когда будет зарегистрирован испанский номер в WhatsApp Cloud API |
 | `WHATSAPP_PHONE_NUMBER_ID` | пока не задавать — см. выше |
+| `RESEND_API_KEY` | API-ключ из личного кабинета Resend (resend.com) — без него отправка писем (вход/сброс пароля) выключена |
+| `EMAIL_FROM` | адрес отправителя, например `"Danil Nails Studio <noreply@ваш-домен>"`; без своего домена по умолчанию используется тестовый `onboarding@resend.dev`, с которого Resend доставляет письма только на собственный подтверждённый адрес владельца аккаунта — для реальных клиентов нужно подтвердить в Resend свой домен |
 
 После деплоя проверить: `https://<api-домен>/health` → `{"ok":true,...}`,
 `https://<api-домен>/ready` → `{"ok":true,"database":"connected"}`.

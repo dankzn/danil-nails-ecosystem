@@ -25,6 +25,7 @@
     "dotenv": "^18.0.1",
     "fastify": "latest",
     "grammy": "^1.46.0",
+    "resend": "^6.36.0",
     "zod": "latest"
   },
   "devDependencies": {

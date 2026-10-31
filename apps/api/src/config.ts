@@ -46,7 +46,26 @@ const environmentSchema = z.object({
   TELEGRAM_WEBHOOK_SECRET: z.string().trim().min(1).optional(),
   WHATSAPP_ACCESS_TOKEN: z.string().trim().min(1).optional(),
   WHATSAPP_PHONE_NUMBER_ID: z.string().trim().min(1).optional(),
-  NOTIFICATIONS_DISPATCH_SECRET: z.string().trim().min(1).optional()
+  NOTIFICATIONS_DISPATCH_SECRET: z.string().trim().min(1).optional(),
+  // Transactional email (login links, password reset codes, account
+  // recovery) via Resend — chosen over a personal mailbox (Gmail/Yandex/
+  // Mail.ru) relayed through SMTP because it needs no phone-verified
+  // mailbox at all and isn't tied to any one country, which matters since
+  // the business is expected to move from Moscow to Spain. Same
+  // graceful-degradation philosophy as the other integrations above: no
+  // key, no email sending, nothing else breaks.
+  RESEND_API_KEY: z.string().trim().min(1).optional(),
+  // Defaults to Resend's own shared test domain so sending works the
+  // moment RESEND_API_KEY is set, before a real domain is verified —
+  // Resend only delivers mail sent from that address to the account
+  // owner's own verified address, so this default is for initial testing
+  // only. Replace it with an address on your verified domain for
+  // real users.
+  EMAIL_FROM: z
+    .string()
+    .trim()
+    .min(1)
+    .default("Danil Nails Studio <onboarding@resend.dev>")
 });
 
 const parsedEnvironment = environmentSchema.parse(process.env);
