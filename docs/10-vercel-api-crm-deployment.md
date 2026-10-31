@@ -3,11 +3,15 @@
 CRM и API работают как два отдельных Vercel-проекта из одного репозитория.
 База данных размещена в Supabase.
 
-Очередей уведомлений (Redis/BullMQ) в коде пока нет — они только в
-списке стека на будущее (`AGENTS.md`), поэтому сейчас ничего не мешает
-перенести API на Vercel serverless-функции. Если очереди появятся
-позже, для них понадобится Vercel Cron и внешняя очередь. Сама CRM/API от
-этого решения не зависит.
+Очередь уведомлений (2026-10-31) сделана без Redis/BullMQ — именно потому,
+что `apps/api` работает как Vercel serverless-функция без собственного
+постоянного процесса. Telegram-бот работает через webhook (а не
+long-polling), а отправка накопившихся `NotificationJob` запускается внешним
+планировщиком, который дёргает защищённый эндпоинт
+`POST /v1/internal/notifications/dispatch` — сейчас это GitHub Actions
+(`.github/workflows/dispatch-notifications.yml`, каждые 5 минут; на Hobby-плане
+Vercel Cron Jobs ограничен запуском раз в сутки, поэтому использовать его
+напрямую нельзя). Подробности — в `docs/05-requirements.md` → «Уведомления».
 
 Это два отдельных Vercel-проекта из одного репозитория (как уже сделано для
 `apps/site`): `apps/api` (Fastify как serverless-функция) и `apps/web` (CRM,
@@ -38,9 +42,30 @@ CRM и API работают как два отдельных Vercel-проект
 | `SITE_PUBLIC_URL` | фактический HTTPS URL `apps/site` на Vercel (уже используется) |
 | `SESSION_COOKIE_NAME` | `danil_nails_session` |
 | `SESSION_TTL_DAYS` | `30` |
+| `TELEGRAM_BOT_TOKEN` | токен бота от @BotFather — без него Telegram-канал выключен |
+| `TELEGRAM_WEBHOOK_SECRET` | произвольная случайная строка — Telegram возвращает её в заголовке каждого webhook-запроса, так эндпоинт проверяет, что запрос действительно от Telegram |
+| `NOTIFICATIONS_DISPATCH_SECRET` | произвольная случайная строка — тот же секрет нужно положить в GitHub Actions как `NOTIFICATIONS_DISPATCH_SECRET` |
+| `WHATSAPP_ACCESS_TOKEN` | пока не задавать — появится, когда будет зарегистрирован испанский номер в WhatsApp Cloud API |
+| `WHATSAPP_PHONE_NUMBER_ID` | пока не задавать — см. выше |
 
 После деплоя проверить: `https://<api-домен>/health` → `{"ok":true,...}`,
 `https://<api-домен>/ready` → `{"ok":true,"database":"connected"}`.
+
+### Включение Telegram-уведомлений (разовая настройка после первого деплоя)
+
+1. Задать `TELEGRAM_BOT_TOKEN`, `TELEGRAM_WEBHOOK_SECRET`, `APP_PUBLIC_URL`
+   (реальный домен этого проекта) в переменных окружения и передеплоить.
+2. Войти в CRM под владельцем и один раз вызвать
+   `POST https://<api-домен>/v1/admin/telegram/webhook/register` (с
+   сессионной cookie — например через `fetch` в консоли браузера на CRM-домене,
+   либо через `curl` с предварительно полученной cookie). Это регистрирует
+   webhook в Telegram; повторный вызов безопасен и просто перезаписывает URL.
+3. В GitHub репозитория добавить секреты `NOTIFICATIONS_DISPATCH_URL`
+   (`https://<api-домен>/v1/internal/notifications/dispatch`) и
+   `NOTIFICATIONS_DISPATCH_SECRET` (тот же, что в переменных API) — Settings →
+   Secrets and variables → Actions. Без них
+   `.github/workflows/dispatch-notifications.yml` не сможет вызывать эндпоинт
+   и очередь уведомлений не будет разгребаться.
 
 ## 2. Проект CRM (`apps/web`)
 

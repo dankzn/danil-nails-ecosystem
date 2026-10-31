@@ -1,4 +1,4 @@
-import { Bot, Keyboard } from "grammy";
+import { Bot, Keyboard, webhookCallback } from "grammy";
 import type { DatabaseClient } from "@danil-nails/db";
 import { environment } from "../config.js";
 import { normalizePhone } from "../routes/clients.js";
@@ -52,20 +52,63 @@ export function createTelegramBot(database: DatabaseClient): Bot | null {
   return bot;
 }
 
-export async function startTelegramBot(database: DatabaseClient): Promise<Bot | null> {
+// apps/api runs as a Vercel serverless function in production (see
+// api/index.ts) — there is no persistent process for long-polling, so the
+// bot is driven by a Telegram webhook instead. bot.init() needs one network
+// call to Telegram (getMe) before handleUpdate will work; doing that here,
+// once per cold start when this route is registered, rather than per
+// request, keeps steady-state requests fast.
+export async function createTelegramWebhookHandler(database: DatabaseClient) {
   const bot = createTelegramBot(database);
   if (!bot) return null;
 
-  bot
-    .start({
-      drop_pending_updates: true,
-      onStart: () => console.log("[telegram-bot] started")
-    })
-    .catch((error) => console.error("[telegram-bot] polling stopped with an error", error));
+  try {
+    await bot.init();
+  } catch (error) {
+    console.error("[telegram-bot] failed to initialize — webhook stays disabled", error);
+    return null;
+  }
 
-  return bot;
+  if (!environment.TELEGRAM_WEBHOOK_SECRET) {
+    console.warn(
+      "[telegram-bot] TELEGRAM_WEBHOOK_SECRET is not set — the webhook endpoint will accept unsigned requests"
+    );
+  }
+
+  return webhookCallback(bot, "fastify", {
+    ...(environment.TELEGRAM_WEBHOOK_SECRET
+      ? { secretToken: environment.TELEGRAM_WEBHOOK_SECRET }
+      : {})
+  });
 }
 
-export async function stopTelegramBot(bot: Bot | null) {
-  await bot?.stop();
+// Tells Telegram where to deliver updates. This is a one-off setup call
+// (idempotent — re-running it just overwrites the same URL), meant to be
+// triggered once after TELEGRAM_BOT_TOKEN/APP_PUBLIC_URL/
+// TELEGRAM_WEBHOOK_SECRET are configured and deployed, not on every cold
+// start.
+export async function registerTelegramWebhook(database: DatabaseClient) {
+  if (!environment.TELEGRAM_BOT_TOKEN) {
+    return { ok: false as const, error: "telegram_not_configured" };
+  }
+
+  const bot = createTelegramBot(database);
+  if (!bot) return { ok: false as const, error: "telegram_not_configured" };
+
+  const webhookUrl = `${environment.APP_PUBLIC_URL}/v1/telegram/webhook`;
+
+  try {
+    await bot.api.setWebhook(webhookUrl, {
+      drop_pending_updates: true,
+      ...(environment.TELEGRAM_WEBHOOK_SECRET
+        ? { secret_token: environment.TELEGRAM_WEBHOOK_SECRET }
+        : {})
+    });
+    return { ok: true as const, url: webhookUrl };
+  } catch (error) {
+    return {
+      ok: false as const,
+      error: error instanceof Error ? error.message : String(error)
+    };
+  }
 }

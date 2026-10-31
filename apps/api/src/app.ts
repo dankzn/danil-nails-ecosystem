@@ -40,6 +40,7 @@ import { registerDashboardRoutes } from "./routes/dashboard.js";
 import { registerDirectoryRoutes } from "./routes/directories.js";
 import { registerEmployeeRoutes } from "./routes/employees.js";
 import { registerInventoryRoutes } from "./routes/inventory.js";
+import { registerNotificationRoutes } from "./routes/notifications.js";
 import { registerOrgStructureRoutes } from "./routes/org-structure.js";
 import { registerPayrollRoutes } from "./routes/payroll.js";
 import { registerScheduleRoutes } from "./routes/schedule.js";
@@ -158,6 +159,7 @@ export async function buildServer(
   registerOrgStructureRoutes(server, database);
   registerInventoryRoutes(server, database);
   registerWaitlistRoutes(server, database);
+  await registerNotificationRoutes(server, database);
 
   // On Vercel the API runs as its own project/serverless function — the
   // CRM is deployed separately (its own Vercel static project, just like

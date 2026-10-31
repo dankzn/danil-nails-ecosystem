@@ -28,15 +28,25 @@ const environmentSchema = z.object({
   API_SLOW_REQUEST_MS: z.coerce.number().int().min(100).max(30_000).default(750),
   SESSION_COOKIE_NAME: z.string().min(1).default("danil_nails_session"),
   SESSION_TTL_DAYS: z.coerce.number().int().min(1).max(365).default(30),
-  // All four below are optional integrations, same philosophy as
+  // All of the below are optional integrations, same philosophy as
   // SITE_PUBLIC_URL/CRM_PUBLIC_URL: absent or malformed must only disable the
-  // feature (Telegram bot, WhatsApp sending, the notification dispatcher),
-  // never crash boot. WhatsApp is wired but intentionally left unconfigured
-  // until a Spanish business phone number is registered with the Cloud API.
+  // feature (Telegram bot, WhatsApp sending, the notification dispatch
+  // endpoint), never crash boot. WhatsApp is wired but intentionally left
+  // unconfigured until a Spanish business phone number is registered with
+  // the Cloud API.
+  //
+  // apps/api runs as a Vercel serverless function in production (see
+  // api/index.ts) — there is no persistent process to run a long-polling
+  // bot or a background worker, so Telegram uses a webhook
+  // (TELEGRAM_WEBHOOK_SECRET validates it's really Telegram calling in) and
+  // the notification queue is drained by an external scheduler hitting
+  // POST /v1/internal/notifications/dispatch (NOTIFICATIONS_DISPATCH_SECRET
+  // guards that endpoint — see .github/workflows/dispatch-notifications.yml).
   TELEGRAM_BOT_TOKEN: z.string().trim().min(1).optional(),
+  TELEGRAM_WEBHOOK_SECRET: z.string().trim().min(1).optional(),
   WHATSAPP_ACCESS_TOKEN: z.string().trim().min(1).optional(),
   WHATSAPP_PHONE_NUMBER_ID: z.string().trim().min(1).optional(),
-  REDIS_URL: z.string().trim().min(1).optional()
+  NOTIFICATIONS_DISPATCH_SECRET: z.string().trim().min(1).optional()
 });
 
 const parsedEnvironment = environmentSchema.parse(process.env);
@@ -56,6 +66,5 @@ function validUrlOrUndefined(value: string | undefined, label: string) {
 export const environment = {
   ...parsedEnvironment,
   SITE_PUBLIC_URL: validUrlOrUndefined(parsedEnvironment.SITE_PUBLIC_URL, "SITE_PUBLIC_URL"),
-  CRM_PUBLIC_URL: validUrlOrUndefined(parsedEnvironment.CRM_PUBLIC_URL, "CRM_PUBLIC_URL"),
-  REDIS_URL: validUrlOrUndefined(parsedEnvironment.REDIS_URL, "REDIS_URL")
+  CRM_PUBLIC_URL: validUrlOrUndefined(parsedEnvironment.CRM_PUBLIC_URL, "CRM_PUBLIC_URL")
 };
