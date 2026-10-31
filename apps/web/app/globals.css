@@ -5381,3 +5381,164 @@ td strong {
     grid-template-columns: 1fr;
   }
 }
+
+.retention-panel {
+  padding: 20px;
+  display: grid;
+  gap: 20px;
+}
+
+.retention-filters-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 32px;
+}
+
+.retention-filter-label {
+  margin: 0 0 8px;
+  font-size: 13px;
+  color: var(--text);
+}
+
+.retention-period-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.retention-granularity {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  width: fit-content;
+}
+
+.retention-period-nav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  padding: 0 6px;
+  height: 38px;
+  background: var(--surface);
+  font-size: 13px;
+  color: var(--text);
+  white-space: nowrap;
+}
+
+.retention-period-nav button {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.retention-period-nav button:hover {
+  background: var(--surface-soft);
+}
+
+.retention-select-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+
+.retention-select-field {
+  display: block;
+}
+
+.retention-select-field > span {
+  display: block;
+  margin-bottom: 8px;
+  font-size: 13px;
+  color: var(--text);
+}
+
+.retention-table {
+  border-collapse: collapse;
+  width: 100%;
+  min-width: 960px;
+}
+
+.retention-table th,
+.retention-table td {
+  padding: 10px 14px;
+  text-align: center;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
+
+.retention-table thead tr:first-child th {
+  background: #f6f6f6;
+  font-weight: 700;
+  padding-top: 12px;
+  padding-bottom: 8px;
+}
+
+.retention-table thead tr:first-child th small {
+  font-weight: 400;
+  color: var(--text-muted);
+}
+
+.retention-table thead tr:last-child th {
+  font-weight: 700;
+  color: var(--text-muted);
+  font-size: 11px;
+  text-transform: uppercase;
+}
+
+.retention-staff-head {
+  text-align: left !important;
+  min-width: 240px;
+}
+
+.retention-number-cell {
+  font-weight: 600;
+}
+
+.retention-lost-cell {
+  color: #5b8fd2;
+}
+
+.retention-company-row {
+  background: var(--surface-soft);
+}
+
+.retention-identity {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-align: left;
+}
+
+.retention-identity small {
+  display: block;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.retention-company-avatar {
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--surface-soft);
+}
+
+.retention-avatar {
+  width: 34px;
+  height: 34px;
+  flex: 0 0 34px;
+  font-size: 12px;
+}
+
+@media (max-width: 960px) {
+  .retention-select-row {
+    grid-template-columns: 1fr 1fr;
+  }
+}

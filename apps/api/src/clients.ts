@@ -105,3 +105,78 @@ export function newClientWindow(now: Date) {
     to: now
   };
 }
+
+export type RetentionRow = {
+  totalClients: number;
+  newClients: number;
+  returnedTotal: number;
+  returnedNew: number;
+  lostTotal: number;
+  lostNew: number;
+};
+
+function summarizeRetention(
+  visitClientIds: Set<string>,
+  returnClientIds: Set<string>,
+  isNewClient: (clientId: string) => boolean
+): RetentionRow {
+  let newClients = 0;
+  let returnedTotal = 0;
+  let returnedNew = 0;
+
+  for (const clientId of visitClientIds) {
+    const isNew = isNewClient(clientId);
+    if (isNew) newClients += 1;
+    if (returnClientIds.has(clientId)) {
+      returnedTotal += 1;
+      if (isNew) returnedNew += 1;
+    }
+  }
+
+  return {
+    totalClients: visitClientIds.size,
+    newClients,
+    returnedTotal,
+    returnedNew,
+    lostTotal: visitClientIds.size - returnedTotal,
+    lostNew: newClients - returnedNew
+  };
+}
+
+// "Visited" this staff member's clients in the visit period, then checks
+// whether each one came back to the SAME staff member in the return
+// period ("Вернувшиеся") or didn't ("Потерянные"). The company row does
+// the same across all staff combined (a client counts once even if they
+// saw several masters). isNewClient flags a client whose very first-ever
+// completed visit (any staff, any time) falls inside the visit period.
+export function computeRetention(options: {
+  visits: Array<{ clientId: string; staffId: string }>;
+  returns: Array<{ clientId: string; staffId: string }>;
+  isNewClient: (clientId: string) => boolean;
+  staffIds: string[];
+}): { company: RetentionRow; byStaff: Record<string, RetentionRow> } {
+  const companyVisitClients = new Set(options.visits.map((v) => v.clientId));
+  const companyReturnClients = new Set(options.returns.map((v) => v.clientId));
+  const company = summarizeRetention(
+    companyVisitClients,
+    companyReturnClients,
+    options.isNewClient
+  );
+
+  const byStaff: Record<string, RetentionRow> = {};
+  for (const staffId of options.staffIds) {
+    const visitClients = new Set(
+      options.visits.filter((v) => v.staffId === staffId).map((v) => v.clientId)
+    );
+    const returnClients = new Set(
+      options.returns.filter((v) => v.staffId === staffId).map((v) => v.clientId)
+    );
+    byStaff[staffId] = summarizeRetention(
+      visitClients,
+      returnClients,
+      options.isNewClient
+    );
+  }
+
+  return { company, byStaff };
+}

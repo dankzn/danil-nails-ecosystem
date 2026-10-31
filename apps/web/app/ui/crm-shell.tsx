@@ -56,7 +56,15 @@ const navigation: NavItem[] = [
   { href: "/", label: "Обзор", icon: LayoutDashboard, ownerOnly: false },
   { href: "/appointments", label: "Записи", icon: CalendarDays, ownerOnly: false },
   { href: "/waitlist", label: "Лист ожидания", icon: Hourglass, ownerOnly: false },
-  { href: "/clients", label: "Клиенты", icon: Users, ownerOnly: false },
+  {
+    label: "Клиенты",
+    icon: Users,
+    ownerOnly: false,
+    items: [
+      { href: "/clients", label: "Список клиентов" },
+      { href: "/clients/retention", label: "Возвращаемость" }
+    ]
+  },
   {
     label: "Персонал",
     icon: ContactRound,
@@ -73,13 +81,17 @@ const navigation: NavItem[] = [
   { href: "/directories", label: "Справочники", icon: BookOpen, ownerOnly: true }
 ];
 
+function matchesHref(href: string, normalizedPathname: string) {
+  return href === "/"
+    ? normalizedPathname === href
+    : normalizedPathname === href || normalizedPathname.startsWith(`${href}/`);
+}
+
 function isNavItemActive(item: NavItem, normalizedPathname: string) {
   if (item.href) {
-    return item.href === "/"
-      ? normalizedPathname === item.href
-      : normalizedPathname.startsWith(item.href);
+    return matchesHref(item.href, normalizedPathname);
   }
-  return (item.items ?? []).some((leaf) => normalizedPathname.startsWith(leaf.href));
+  return (item.items ?? []).some((leaf) => matchesHref(leaf.href, normalizedPathname));
 }
 
 export function CrmShell({ children }: { children: ReactNode }) {
@@ -236,19 +248,25 @@ export function CrmShell({ children }: { children: ReactNode }) {
                   </button>
                   {isOpen ? (
                     <div className="nav-sublist">
-                      {item.items.map((leaf) => {
-                        const isLeafActive = normalizedPathname.startsWith(leaf.href);
-                        return (
-                          <Link
-                            className={`nav-subitem${isLeafActive ? " nav-item-active" : ""}`}
-                            href={leaf.href}
-                            key={leaf.href}
-                            ref={isLeafActive ? activeNavItemRef : undefined}
-                          >
-                            <span>{leaf.label}</span>
-                          </Link>
-                        );
-                      })}
+                      {(() => {
+                        const activeLeafHref = item.items
+                          .filter((leaf) => matchesHref(leaf.href, normalizedPathname))
+                          .sort((left, right) => right.href.length - left.href.length)[0]
+                          ?.href;
+                        return item.items.map((leaf) => {
+                          const isLeafActive = leaf.href === activeLeafHref;
+                          return (
+                            <Link
+                              className={`nav-subitem${isLeafActive ? " nav-item-active" : ""}`}
+                              href={leaf.href}
+                              key={leaf.href}
+                              ref={isLeafActive ? activeNavItemRef : undefined}
+                            >
+                              <span>{leaf.label}</span>
+                            </Link>
+                          );
+                        });
+                      })()}
                     </div>
                   ) : null}
                 </div>

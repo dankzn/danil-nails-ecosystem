@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { AppointmentStatus } from "@danil-nails/db";
-import { categorizeClient, dayMs } from "./clients.js";
+import { categorizeClient, computeRetention, dayMs } from "./clients.js";
 
 const now = new Date("2026-10-31T12:00:00+03:00");
 const daysAgo = (days: number) => new Date(now.getTime() - days * dayMs);
@@ -124,4 +124,83 @@ test("a deleted client is only deleted, nothing else", () => {
     now
   );
   assert.deepEqual([...categories], ["deleted"]);
+});
+
+test("computeRetention scopes returns to the same staff member per row, but company-wide for the total", () => {
+  const visits = [
+    { clientId: "c1", staffId: "A" },
+    { clientId: "c2", staffId: "A" },
+    { clientId: "c3", staffId: "B" },
+    { clientId: "c4", staffId: "A" }
+  ];
+  const returns = [
+    { clientId: "c1", staffId: "A" },
+    { clientId: "c2", staffId: "B" },
+    { clientId: "c4", staffId: "A" }
+  ];
+  const isNewClient = (id: string) => id === "c1" || id === "c3";
+
+  const { company, byStaff } = computeRetention({
+    visits,
+    returns,
+    isNewClient,
+    staffIds: ["A", "B"]
+  });
+
+  assert.deepEqual(byStaff.A, {
+    totalClients: 3,
+    newClients: 1,
+    returnedTotal: 2,
+    returnedNew: 1,
+    lostTotal: 1,
+    lostNew: 0
+  });
+  assert.deepEqual(byStaff.B, {
+    totalClients: 1,
+    newClients: 1,
+    returnedTotal: 0,
+    returnedNew: 0,
+    lostTotal: 1,
+    lostNew: 1
+  });
+  assert.deepEqual(company, {
+    totalClients: 4,
+    newClients: 2,
+    returnedTotal: 3,
+    returnedNew: 1,
+    lostTotal: 1,
+    lostNew: 1
+  });
+});
+
+test("computeRetention gives a zeroed row for a staff member with no visits in the period", () => {
+  const { byStaff } = computeRetention({
+    visits: [],
+    returns: [],
+    isNewClient: () => false,
+    staffIds: ["A"]
+  });
+
+  assert.deepEqual(byStaff.A, {
+    totalClients: 0,
+    newClients: 0,
+    returnedTotal: 0,
+    returnedNew: 0,
+    lostTotal: 0,
+    lostNew: 0
+  });
+});
+
+test("computeRetention counts a duplicate visit to the same staff only once", () => {
+  const { byStaff } = computeRetention({
+    visits: [
+      { clientId: "c1", staffId: "A" },
+      { clientId: "c1", staffId: "A" }
+    ],
+    returns: [],
+    isNewClient: () => false,
+    staffIds: ["A"]
+  });
+
+  assert.equal(byStaff.A!.totalClients, 1);
 });

@@ -5,10 +5,22 @@ import {
   UserRole,
   type DatabaseClient
 } from "@danil-nails/db";
+import { businessConfig } from "@danil-nails/shared";
 import type { FastifyInstance, FastifyReply } from "fastify";
 import { z } from "zod";
 import { authorize } from "../auth/session.js";
-import { categorizeClient, clientCategories, newClientWindow } from "../clients.js";
+import {
+  categorizeClient,
+  clientCategories,
+  computeRetention,
+  newClientWindow
+} from "../clients.js";
+
+const datePattern = /^\d{4}-\d{2}-\d{2}$/;
+
+function dateAtMoscowMidnight(date: string) {
+  return new Date(`${date}T00:00:00+03:00`);
+}
 
 const clientInputSchema = z.object({
   fullName: z.string().trim().min(2).max(160),
@@ -38,6 +50,16 @@ const listQuerySchema = z.object({
   category: z.enum(clientCategories).optional(),
   staffId: z.string().cuid().optional(),
   limit: z.coerce.number().int().min(1).max(100).default(50)
+});
+const retentionQuerySchema = z.object({
+  visitFrom: z.string().regex(datePattern),
+  visitTo: z.string().regex(datePattern),
+  returnFrom: z.string().regex(datePattern),
+  returnTo: z.string().regex(datePattern),
+  staffId: z.string().cuid().optional(),
+  staffCategory: z.string().trim().max(160).optional(),
+  serviceId: z.string().cuid().optional(),
+  serviceCategory: z.string().trim().max(160).optional()
 });
 
 export function normalizeDictionaryTitles(titles: string[]) {
@@ -583,6 +605,155 @@ export function registerClientRoutes(
       });
 
       return { client: restored };
+    }
+  );
+
+  server.get(
+    "/v1/admin/clients/retention-filters",
+    { preHandler: adminGuard },
+    async () => {
+      const [staffList, services] = await Promise.all([
+        database!.staffProfile.findMany({
+          where: { isBookable: true },
+          select: {
+            id: true,
+            displayName: true,
+            positions: {
+              orderBy: { order: "asc" },
+              take: 1,
+              select: { position: { select: { titleRu: true } } }
+            }
+          },
+          orderBy: { displayName: "asc" }
+        }),
+        database!.service.findMany({
+          where: { isActive: true },
+          select: { id: true, titleRu: true, category: true },
+          orderBy: { titleRu: "asc" }
+        })
+      ]);
+
+      const staff = staffList.map(({ positions, ...profile }) => ({
+        ...profile,
+        positionTitle: positions[0]?.position.titleRu ?? null
+      }));
+      const staffCategories = [
+        ...new Set(staff.map((member) => member.positionTitle).filter((title): title is string => Boolean(title)))
+      ].sort((left, right) => left.localeCompare(right, "ru"));
+      const serviceCategories = [
+        ...new Set(services.map((service) => service.category).filter((category): category is string => Boolean(category)))
+      ].sort((left, right) => left.localeCompare(right, "ru"));
+
+      return { staff, staffCategories, services, serviceCategories };
+    }
+  );
+
+  server.get(
+    "/v1/admin/clients/retention",
+    { preHandler: adminGuard },
+    async (request, reply) => {
+      const query = retentionQuerySchema.safeParse(request.query);
+      if (!query.success) return sendInvalidPayload(reply);
+
+      const {
+        visitFrom,
+        visitTo,
+        returnFrom,
+        returnTo,
+        staffId,
+        staffCategory,
+        serviceId,
+        serviceCategory
+      } = query.data;
+
+      const visitStart = dateAtMoscowMidnight(visitFrom);
+      const visitEnd = new Date(dateAtMoscowMidnight(visitTo).getTime() + 86400000);
+      const returnStart = dateAtMoscowMidnight(returnFrom);
+      const returnEnd = new Date(dateAtMoscowMidnight(returnTo).getTime() + 86400000);
+      if (visitStart >= visitEnd || returnStart >= returnEnd) {
+        return sendInvalidPayload(reply);
+      }
+
+      const staffList = await database!.staffProfile.findMany({
+        where: {
+          isBookable: true,
+          ...(staffId ? { id: staffId } : {}),
+          ...(staffCategory
+            ? { positions: { some: { position: { titleRu: staffCategory } } } }
+            : {})
+        },
+        select: {
+          id: true,
+          displayName: true,
+          photo: { select: { updatedAt: true } },
+          positions: {
+            orderBy: { order: "asc" },
+            take: 1,
+            select: { position: { select: { titleRu: true } } }
+          }
+        },
+        orderBy: { displayName: "asc" }
+      });
+      const staffIds = staffList.map((profile) => profile.id);
+
+      const appointmentWhereBase = {
+        status: AppointmentStatus.completed,
+        staffId: { in: staffIds },
+        ...(serviceId ? { serviceId } : {}),
+        ...(serviceCategory ? { service: { category: serviceCategory } } : {})
+      };
+
+      const [visitAppointments, returnAppointments] = await Promise.all([
+        database!.appointment.findMany({
+          where: { ...appointmentWhereBase, startsAt: { gte: visitStart, lt: visitEnd } },
+          select: { clientId: true, staffId: true }
+        }),
+        database!.appointment.findMany({
+          where: { ...appointmentWhereBase, startsAt: { gte: returnStart, lt: returnEnd } },
+          select: { clientId: true, staffId: true }
+        })
+      ]);
+
+      const visitClientIds = [...new Set(visitAppointments.map((a) => a.clientId))];
+      const firstVisits = visitClientIds.length
+        ? await database!.appointment.groupBy({
+            by: ["clientId"],
+            where: {
+              clientId: { in: visitClientIds },
+              status: AppointmentStatus.completed
+            },
+            _min: { startsAt: true }
+          })
+        : [];
+      const firstVisitByClient = new Map(
+        firstVisits.map((entry) => [entry.clientId, entry._min.startsAt!])
+      );
+      const isNewClient = (clientId: string) => {
+        const first = firstVisitByClient.get(clientId);
+        return first ? first.getTime() >= visitStart.getTime() : false;
+      };
+
+      const { company, byStaff } = computeRetention({
+        visits: visitAppointments,
+        returns: returnAppointments,
+        isNewClient,
+        staffIds
+      });
+
+      return {
+        timezone: businessConfig.timezone,
+        visitPeriod: { from: visitFrom, to: visitTo },
+        returnPeriod: { from: returnFrom, to: returnTo },
+        staff: staffList.map(({ photo, positions, ...profile }) => ({
+          ...profile,
+          photoUrl: photo
+            ? `/v1/staff/${profile.id}/photo?v=${photo.updatedAt.getTime()}`
+            : null,
+          positionTitle: positions[0]?.position.titleRu ?? null
+        })),
+        company,
+        byStaff
+      };
     }
   );
 }
