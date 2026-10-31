@@ -45,6 +45,7 @@ type Client = {
   email: string | null;
   telegramUsername: string | null;
   whatsappPhone: string | null;
+  preferredLanguage: "ru" | "en" | "es" | "fr";
   allergies: string | null;
   noKnownAllergies: boolean;
   customAllergyNote: string | null;
@@ -68,6 +69,7 @@ type ClientForm = {
   email: string;
   telegramUsername: string;
   whatsappPhone: string;
+  preferredLanguage: "ru" | "en" | "es" | "fr";
   allergens: string[];
   notes: string;
   privateTags: string[];
@@ -83,6 +85,7 @@ const emptyForm: ClientForm = {
   email: "",
   telegramUsername: "",
   whatsappPhone: "",
+  preferredLanguage: "ru",
   allergens: [],
   notes: "",
   privateTags: [],
@@ -136,6 +139,13 @@ const categoryMeta: Record<
     hint: "нарушили условия записи",
     colorClass: "client-category-red"
   }
+};
+
+const languageLabels: Record<ClientForm["preferredLanguage"], string> = {
+  ru: "Русский",
+  en: "English",
+  es: "Español",
+  fr: "Français"
 };
 
 const avatarPalette = [
@@ -436,6 +446,7 @@ export default function ClientsPage() {
       email: client.email ?? "",
       telegramUsername: client.telegramUsername ?? "",
       whatsappPhone: client.whatsappPhone ?? "",
+      preferredLanguage: client.preferredLanguage,
       allergens: uniqueDictionaryTitles(
         client.allergenAssignments.map(({ allergen }) => allergen.title)
       ),
@@ -533,6 +544,7 @@ export default function ClientsPage() {
       email: optionalValue(form.email),
       telegramUsername: optionalValue(form.telegramUsername),
       whatsappPhone: optionalValue(form.whatsappPhone),
+      preferredLanguage: form.preferredLanguage,
       allergens: form.allergens,
       notes: optionalValue(form.notes),
       privateTags: form.privateTags,
@@ -986,6 +998,25 @@ export default function ClientsPage() {
                   type="tel"
                   value={form.whatsappPhone}
                 />
+              </label>
+              <label className="form-field">
+                <span>Язык уведомлений</span>
+                <select
+                  onChange={(event) =>
+                    updateForm(
+                      "preferredLanguage",
+                      event.target.value as ClientForm["preferredLanguage"]
+                    )
+                  }
+                  required
+                  value={form.preferredLanguage}
+                >
+                  {Object.entries(languageLabels).map(([value, label]) => (
+                    <option key={value} value={value}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
               </label>
             </div>
 

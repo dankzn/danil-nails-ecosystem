@@ -5,7 +5,7 @@ import {
   UserRole,
   type DatabaseClient
 } from "@danil-nails/db";
-import { businessConfig } from "@danil-nails/shared";
+import { businessConfig, supportedLocales } from "@danil-nails/shared";
 import type { FastifyInstance, FastifyReply } from "fastify";
 import { z } from "zod";
 import { authorize } from "../auth/session.js";
@@ -28,6 +28,7 @@ const clientInputSchema = z.object({
   email: z.email().nullable().optional(),
   telegramUsername: z.string().trim().max(80).nullable().optional(),
   whatsappPhone: z.string().trim().max(30).nullable().optional(),
+  preferredLanguage: z.enum(supportedLocales),
   allergies: z.string().trim().max(2000).nullable().optional(),
   allergens: z.array(z.string().trim().min(1).max(120)).max(30).optional(),
   notes: z.string().trim().max(4000).nullable().optional(),

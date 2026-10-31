@@ -11,6 +11,7 @@ enum Locale {
   ru
   en
   es
+  fr
 }
 
 enum UserRole {
@@ -195,6 +196,11 @@ model Client {
   telegramUsername   String?
   telegramChatId     String?
   whatsappPhone      String?
+  // Client's own chosen language for notifications (booking confirmations,
+  // reminders, cancellations) — asked as a required field at registration
+  // and at public booking. Not the same as the site UI locale, though it
+  // defaults from it.
+  preferredLanguage  Locale   @default(ru)
   allergies          String?
   noKnownAllergies   Boolean  @default(false)
   customAllergyNote  String?

@@ -5,11 +5,12 @@ import {
   Currency,
   LoyaltyTransactionType,
   PaymentMethod,
+  Prisma,
   StockMovementType,
   UserRole,
   type DatabaseClient
 } from "@danil-nails/db";
-import { bookingRules, businessConfig } from "@danil-nails/shared";
+import { bookingRules, businessConfig, supportedLocales } from "@danil-nails/shared";
 import type { FastifyInstance, FastifyReply } from "fastify";
 import { z } from "zod";
 import {
@@ -17,6 +18,12 @@ import {
   isDateWithinBookingHorizon
 } from "../availability.js";
 import { authorize, resolveSessionClient } from "../auth/session.js";
+import {
+  cancelPendingReminder,
+  queueAppointmentCancellation,
+  queueAppointmentConfirmation,
+  queueAppointmentReminder
+} from "../notifications/jobs.js";
 import { isUniqueConstraintError, normalizePhone } from "./clients.js";
 
 const appointmentStatuses = ["confirmed", "canceled", "no_show"] as const;
@@ -72,7 +79,8 @@ const publicBookingSchema = z.object({
     .object({
       fullName: z.string().trim().min(2).max(160),
       phone: z.string().trim().min(7).max(30),
-      email: z.email().nullable().optional()
+      email: z.email().nullable().optional(),
+      preferredLanguage: z.enum(supportedLocales)
     })
     .optional()
 });
@@ -376,6 +384,43 @@ function canManageAppointment(
   );
 }
 
+// Notifications are only ever queued from a confirmed/canceled/rescheduled
+// status transition (never at raw creation, since bookings start out
+// pending_admin_confirmation) — this loads the service/staff/client fields
+// those templates need, from inside the same transaction doing the
+// transition, in one place rather than duplicated at each call site.
+async function loadAppointmentNotificationContext(
+  transaction: Prisma.TransactionClient,
+  appointment: {
+    id: string;
+    startsAt: Date;
+    serviceId: string;
+    staffId: string;
+    clientId: string;
+  }
+) {
+  const [service, staff, client] = await Promise.all([
+    transaction.service.findUnique({
+      where: { id: appointment.serviceId },
+      select: { titleRu: true }
+    }),
+    transaction.staffProfile.findUnique({
+      where: { id: appointment.staffId },
+      select: { displayName: true }
+    }),
+    transaction.client.findUnique({
+      where: { id: appointment.clientId },
+      select: { telegramChatId: true, whatsappPhone: true, preferredLanguage: true }
+    })
+  ]);
+  if (!service || !staff || !client) return null;
+
+  return {
+    appointment: { id: appointment.id, startsAt: appointment.startsAt, service, staff },
+    client
+  };
+}
+
 export function registerAppointmentRoutes(
   server: FastifyInstance,
   database: DatabaseClient | null
@@ -482,7 +527,8 @@ export function registerAppointmentRoutes(
                 data: {
                   fullName: input.data.guest!.fullName,
                   phone,
-                  email: input.data.guest!.email ?? null
+                  email: input.data.guest!.email ?? null,
+                  preferredLanguage: input.data.guest!.preferredLanguage
                 }
               });
               clientId = created.id;
@@ -919,6 +965,19 @@ export function registerAppointmentRoutes(
                   : "Поздняя отмена клиентом"
             }
           });
+        }
+        if (status === AppointmentStatus.confirmed) {
+          const context = await loadAppointmentNotificationContext(transaction, current);
+          if (context) {
+            await queueAppointmentConfirmation(transaction, context.appointment, context.client);
+            await queueAppointmentReminder(transaction, context.appointment, context.client);
+          }
+        } else if (status === AppointmentStatus.canceled) {
+          await cancelPendingReminder(transaction, current.id);
+          const context = await loadAppointmentNotificationContext(transaction, current);
+          if (context) {
+            await queueAppointmentCancellation(transaction, context.appointment, context.client);
+          }
         }
         return transaction.appointment.findUniqueOrThrow({
           where: { id: updated.id },
@@ -1423,6 +1482,9 @@ export function registerAppointmentRoutes(
               ...(input.data.note !== undefined ? { note: input.data.note } : {})
             }
           });
+          // The old slot's reminder (if one was queued when it was confirmed)
+          // would otherwise still fire for a time the client no longer has.
+          await cancelPendingReminder(transaction, current.id);
           const created = await transaction.appointment.create({
             data: {
               clientId: current.clientId,

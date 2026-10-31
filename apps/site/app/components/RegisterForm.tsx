@@ -2,11 +2,19 @@
 
 import { useState, type FormEvent } from "react";
 import type { Dictionary } from "../i18n/dictionary";
+import { languageNames } from "../i18n/language-names";
+import type { Locale } from "../i18n/locales";
 import { apiUrl } from "../lib/api-url";
 
 type Status = "idle" | "submitting" | "success" | "error";
 
-export function RegisterForm({ dict }: { dict: Dictionary["register"] }) {
+export function RegisterForm({
+  dict,
+  lang
+}: {
+  dict: Dictionary["register"];
+  lang: Locale;
+}) {
   const [status, setStatus] = useState<Status>("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -35,6 +43,7 @@ export function RegisterForm({ dict }: { dict: Dictionary["register"] }) {
           fullName: form.get("fullName"),
           phone: form.get("phone"),
           email: form.get("email"),
+          preferredLanguage: form.get("preferredLanguage"),
           password
         })
       });
@@ -88,6 +97,17 @@ export function RegisterForm({ dict }: { dict: Dictionary["register"] }) {
       <div className="register-field">
         <label htmlFor="email">{dict.emailLabel}</label>
         <input id="email" name="email" type="email" required maxLength={200} />
+      </div>
+
+      <div className="register-field">
+        <label htmlFor="preferredLanguage">{dict.languageLabel}</label>
+        <select id="preferredLanguage" name="preferredLanguage" defaultValue={lang} required>
+          {Object.entries(languageNames).map(([value, label]) => (
+            <option key={value} value={value}>
+              {label}
+            </option>
+          ))}
+        </select>
       </div>
 
       <div className="register-field">

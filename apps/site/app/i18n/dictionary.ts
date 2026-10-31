@@ -105,6 +105,7 @@ export type Dictionary = {
     fullNameLabel: string;
     phoneLabel: string;
     emailLabel: string;
+    languageLabel: string;
     commentLabel: string;
     signedInAs: string;
     submitLabel: string;
@@ -124,6 +125,7 @@ export type Dictionary = {
     fullNameLabel: string;
     phoneLabel: string;
     emailLabel: string;
+    languageLabel: string;
     passwordLabel: string;
     passwordHint: string;
     confirmPasswordLabel: string;

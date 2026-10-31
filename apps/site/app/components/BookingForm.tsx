@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import type { Dictionary } from "../i18n/dictionary";
+import { languageNames } from "../i18n/language-names";
 import type { Locale } from "../i18n/locales";
 import { apiUrl } from "../lib/api-url";
 import { useAuthStatus } from "../lib/use-auth";
@@ -150,7 +151,8 @@ export function BookingForm({ dict, lang }: { dict: Dictionary["booking"]; lang:
                 guest: {
                   fullName: form.get("fullName"),
                   phone: form.get("phone"),
-                  email: form.get("email") || undefined
+                  email: form.get("email") || undefined,
+                  preferredLanguage: form.get("preferredLanguage")
                 }
               })
         })
@@ -294,6 +296,16 @@ export function BookingForm({ dict, lang }: { dict: Dictionary["booking"]; lang:
           <div className="register-field">
             <label htmlFor="email">{dict.emailLabel}</label>
             <input id="email" name="email" type="email" maxLength={200} />
+          </div>
+          <div className="register-field">
+            <label htmlFor="preferredLanguage">{dict.languageLabel}</label>
+            <select id="preferredLanguage" name="preferredLanguage" defaultValue={lang} required>
+              {Object.entries(languageNames).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
           </div>
         </>
       )}

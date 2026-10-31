@@ -1,4 +1,5 @@
 import { hashPassword, verifyPassword, type DatabaseClient } from "@danil-nails/db";
+import { supportedLocales } from "@danil-nails/shared";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { environment } from "../config.js";
@@ -21,7 +22,8 @@ const registerSchema = z.object({
   fullName: z.string().trim().min(2).max(160),
   phone: z.string().trim().min(7).max(30),
   email: z.email().transform((value) => value.trim().toLowerCase()),
-  password: z.string().min(12).max(256)
+  password: z.string().min(12).max(256),
+  preferredLanguage: z.enum(supportedLocales)
 });
 
 export function registerAuthRoutes(
@@ -139,7 +141,8 @@ export function registerAuthRoutes(
                 create: {
                   fullName: input.data.fullName,
                   phone,
-                  email: input.data.email
+                  email: input.data.email,
+                  preferredLanguage: input.data.preferredLanguage
                 }
               }
             }

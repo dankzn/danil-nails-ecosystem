@@ -23,7 +23,7 @@ export default async function RegisterPage({ params }: PageProps<"/[lang]/regist
           </Reveal>
 
           <Reveal delay={100}>
-            <RegisterForm dict={dict.register} />
+            <RegisterForm dict={dict.register} lang={lang} />
           </Reveal>
         </div>
       </section>

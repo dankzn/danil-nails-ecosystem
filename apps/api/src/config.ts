@@ -27,7 +27,16 @@ const environmentSchema = z.object({
   DB_CONNECTION_TIMEOUT_MS: z.coerce.number().int().min(500).max(30_000).default(5_000),
   API_SLOW_REQUEST_MS: z.coerce.number().int().min(100).max(30_000).default(750),
   SESSION_COOKIE_NAME: z.string().min(1).default("danil_nails_session"),
-  SESSION_TTL_DAYS: z.coerce.number().int().min(1).max(365).default(30)
+  SESSION_TTL_DAYS: z.coerce.number().int().min(1).max(365).default(30),
+  // All four below are optional integrations, same philosophy as
+  // SITE_PUBLIC_URL/CRM_PUBLIC_URL: absent or malformed must only disable the
+  // feature (Telegram bot, WhatsApp sending, the notification dispatcher),
+  // never crash boot. WhatsApp is wired but intentionally left unconfigured
+  // until a Spanish business phone number is registered with the Cloud API.
+  TELEGRAM_BOT_TOKEN: z.string().trim().min(1).optional(),
+  WHATSAPP_ACCESS_TOKEN: z.string().trim().min(1).optional(),
+  WHATSAPP_PHONE_NUMBER_ID: z.string().trim().min(1).optional(),
+  REDIS_URL: z.string().trim().min(1).optional()
 });
 
 const parsedEnvironment = environmentSchema.parse(process.env);
@@ -47,5 +56,6 @@ function validUrlOrUndefined(value: string | undefined, label: string) {
 export const environment = {
   ...parsedEnvironment,
   SITE_PUBLIC_URL: validUrlOrUndefined(parsedEnvironment.SITE_PUBLIC_URL, "SITE_PUBLIC_URL"),
-  CRM_PUBLIC_URL: validUrlOrUndefined(parsedEnvironment.CRM_PUBLIC_URL, "CRM_PUBLIC_URL")
+  CRM_PUBLIC_URL: validUrlOrUndefined(parsedEnvironment.CRM_PUBLIC_URL, "CRM_PUBLIC_URL"),
+  REDIS_URL: validUrlOrUndefined(parsedEnvironment.REDIS_URL, "REDIS_URL")
 };
