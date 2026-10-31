@@ -1,4 +1,5 @@
 import {
+  AppointmentStatus,
   LoyaltyTransactionType,
   Prisma,
   UserRole,
@@ -7,6 +8,7 @@ import {
 import type { FastifyInstance, FastifyReply } from "fastify";
 import { z } from "zod";
 import { authorize } from "../auth/session.js";
+import { categorizeClient, clientCategories, newClientWindow } from "../clients.js";
 
 const clientInputSchema = z.object({
   fullName: z.string().trim().min(2).max(160),
@@ -19,7 +21,9 @@ const clientInputSchema = z.object({
   notes: z.string().trim().max(4000).nullable().optional(),
   privateTags: z.array(z.string().trim().min(1).max(80)).max(20).optional(),
   requiresPrepayment: z.boolean().default(false),
-  prepaymentReason: z.string().trim().max(500).nullable().optional()
+  prepaymentReason: z.string().trim().max(500).nullable().optional(),
+  discountPercent: z.number().int().min(0).max(100).default(0),
+  isBlocked: z.boolean().default(false)
 });
 
 const clientUpdateSchema = clientInputSchema.partial();
@@ -31,6 +35,8 @@ const loyaltyAdjustmentSchema = z.object({
 });
 const listQuerySchema = z.object({
   search: z.string().trim().max(120).optional(),
+  category: z.enum(clientCategories).optional(),
+  staffId: z.string().cuid().optional(),
   limit: z.coerce.number().int().min(1).max(100).default(50)
 });
 
@@ -180,36 +186,120 @@ export function registerClientRoutes(
       const query = listQuerySchema.safeParse(request.query);
       if (!query.success) return sendInvalidPayload(reply);
 
-      const search = query.data.search;
+      const { search, category, staffId } = query.data;
+      const now = new Date();
       const clients = await database!.client.findMany({
-        where: search
-          ? {
-              OR: [
-                { fullName: { contains: search, mode: "insensitive" } },
-                { phone: { contains: search } },
-                {
-                  telegramUsername: {
-                    contains: search.replace(/^@/, ""),
-                    mode: "insensitive"
+        where: {
+          deletedAt: category === "deleted" ? { not: null } : null,
+          ...(search
+            ? {
+                OR: [
+                  { fullName: { contains: search, mode: "insensitive" } },
+                  { phone: { contains: search } },
+                  {
+                    telegramUsername: {
+                      contains: search.replace(/^@/, ""),
+                      mode: "insensitive"
+                    }
                   }
-                }
-              ]
-            }
-          : {},
+                ]
+              }
+            : {})
+        },
         include: {
           ...adminClientInclude,
-          _count: { select: { appointments: true } },
           appointments: {
-            select: { startsAt: true },
-            orderBy: { startsAt: "desc" },
-            take: 1
+            select: {
+              startsAt: true,
+              status: true,
+              staffId: true,
+              payments: { where: { voidedAt: null }, select: { amountMinor: true } }
+            }
           }
         },
-        orderBy: { updatedAt: "desc" },
-        take: query.data.limit
+        orderBy: { updatedAt: "desc" }
       });
 
-      return { clients };
+      const withAggregates = clients.map(({ appointments, ...client }) => {
+        const completedVisits = appointments.filter(
+          (appointment) => appointment.status === AppointmentStatus.completed
+        );
+        const lastVisit = completedVisits.reduce<Date | null>(
+          (latest, visit) =>
+            !latest || visit.startsAt > latest ? visit.startsAt : latest,
+          null
+        );
+        const totalSpentMinor = appointments.reduce(
+          (sum, appointment) =>
+            sum +
+            appointment.payments.reduce((paid, payment) => paid + payment.amountMinor, 0),
+          0
+        );
+
+        return {
+          client,
+          categories: categorizeClient({ ...client, appointments }, now),
+          hasStaff: staffId
+            ? appointments.some((appointment) => appointment.staffId === staffId)
+            : true,
+          summary: {
+            visitCount: completedVisits.length,
+            lastVisitAt: lastVisit,
+            totalSpentMinor,
+            averageCheckMinor:
+              completedVisits.length > 0
+                ? Math.round(totalSpentMinor / completedVisits.length)
+                : 0
+          }
+        };
+      });
+
+      const filtered = withAggregates.filter(
+        (entry) =>
+          entry.hasStaff && (!category || entry.categories.has(category))
+      );
+
+      return {
+        clients: filtered
+          .slice(0, query.data.limit)
+          .map(({ client, summary }) => ({ ...client, summary }))
+      };
+    }
+  );
+
+  server.get(
+    "/v1/admin/clients/category-counts",
+    { preHandler: adminGuard },
+    async () => {
+      const now = new Date();
+      const clients = await database!.client.findMany({
+        select: {
+          id: true,
+          createdAt: true,
+          isBlocked: true,
+          deletedAt: true,
+          appointments: { select: { startsAt: true, status: true } }
+        }
+      });
+
+      const counts: Record<(typeof clientCategories)[number], number> = {
+        regular: 0,
+        sleeping: 0,
+        lost: 0,
+        never_visited: 0,
+        new: 0,
+        blocked: 0,
+        deleted: 0,
+        penalized: 0
+      };
+
+      for (const client of clients) {
+        for (const category of categorizeClient(client, now)) {
+          counts[category] += 1;
+        }
+      }
+
+      return { counts, newClientWindow: newClientWindow(now) };
     }
   );
 
@@ -447,6 +537,52 @@ export function registerClientRoutes(
       });
 
       return reply.code(201).send({ transaction });
+    }
+  );
+
+  server.delete(
+    "/v1/admin/clients/:id",
+    { preHandler: adminGuard },
+    async (request, reply) => {
+      const parameters = idSchema.safeParse(request.params);
+      if (!parameters.success) return sendInvalidPayload(reply);
+
+      const client = await database!.client.findUnique({
+        where: { id: parameters.data.id },
+        select: { id: true, deletedAt: true }
+      });
+      if (!client) return reply.code(404).send({ error: "client_not_found" });
+      if (client.deletedAt) return reply.code(204).send();
+
+      await database!.client.update({
+        where: { id: parameters.data.id },
+        data: { deletedAt: new Date() }
+      });
+
+      return reply.code(204).send();
+    }
+  );
+
+  server.post(
+    "/v1/admin/clients/:id/restore",
+    { preHandler: adminGuard },
+    async (request, reply) => {
+      const parameters = idSchema.safeParse(request.params);
+      if (!parameters.success) return sendInvalidPayload(reply);
+
+      const client = await database!.client.findUnique({
+        where: { id: parameters.data.id },
+        select: { id: true }
+      });
+      if (!client) return reply.code(404).send({ error: "client_not_found" });
+
+      const restored = await database!.client.update({
+        where: { id: parameters.data.id },
+        data: { deletedAt: null },
+        include: adminClientInclude
+      });
+
+      return { client: restored };
     }
   );
 }

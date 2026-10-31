@@ -43,6 +43,7 @@ export const activeAppointmentStatuses: AppointmentStatus[] = [
 ];
 
 class AppointmentTimeConflictError extends Error {}
+class ClientBlockedError extends Error {}
 
 const datePattern = /^\d{4}-\d{2}-\d{2}$/;
 const listQuerySchema = z.object({
@@ -403,6 +404,9 @@ export function registerAppointmentRoutes(
       if (!sessionClient && !input.data.guest) {
         return reply.code(400).send({ error: "guest_details_required" });
       }
+      if (sessionClient?.isBlocked) {
+        return reply.code(403).send({ error: "client_blocked" });
+      }
 
       const startsAt = new Date(input.data.startsAt);
       const [service, staff] = await Promise.all([
@@ -465,6 +469,7 @@ export function registerAppointmentRoutes(
             });
 
             if (existing) {
+              if (existing.isBlocked) throw new ClientBlockedError();
               clientId = existing.id;
               if (!existing.fullName) {
                 await transaction.client.update({
@@ -524,6 +529,9 @@ export function registerAppointmentRoutes(
         ) {
           return reply.code(409).send({ error: "appointment_time_conflict" });
         }
+        if (error instanceof ClientBlockedError) {
+          return reply.code(403).send({ error: "client_blocked" });
+        }
         throw error;
       }
     }
@@ -535,6 +543,7 @@ export function registerAppointmentRoutes(
     async () => {
       const [clients, services, staff] = await Promise.all([
         database!.client.findMany({
+          where: { deletedAt: null },
           select: {
             id: true,
             fullName: true,

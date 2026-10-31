@@ -202,6 +202,16 @@ model Client {
   requiresPrepayment Boolean  @default(false)
   prepaymentReason   String?
   loyaltyStatusId    String?
+  // A standing personal discount percentage (0-100) applied for this
+  // client, separate from per-appointment discounts/promo codes.
+  discountPercent    Int      @default(0)
+  // Blocks only the public self-service booking flow (POST /v1/appointments)
+  // — staff can still book for this client from the CRM. Set from the
+  // client edit form.
+  isBlocked          Boolean  @default(false)
+  // Soft delete: excluded from normal admin lists/pickers and public
+  // booking's client picker once set; existing appointments keep working.
+  deletedAt          DateTime?
   createdAt          DateTime @default(now())
   updatedAt          DateTime @updatedAt
 
